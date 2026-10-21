@@ -1,13 +1,21 @@
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
+using SkiaSharp;
 
 namespace TraceBack.Services;
 
 public sealed record ImageUpload(byte[] Bytes, string ContentType, string Extension);
 public sealed record StoredImage(byte[] Bytes, string ContentType);
 
-public sealed class R2ImageStorage : IDisposable
+public interface IImageStorage
+{
+    Task<string> UploadAsync(string itemId, ImageUpload image, CancellationToken cancellationToken = default);
+    Task<StoredImage?> ReadAsync(string key, CancellationToken cancellationToken = default);
+    Task DeleteAsync(string key, CancellationToken cancellationToken = default);
+}
+
+public sealed class R2ImageStorage : IImageStorage, IDisposable
 {
     public const long MaxImageBytes = 5 * 1024 * 1024;
 
@@ -120,10 +128,25 @@ public sealed class R2ImageStorage : IDisposable
 
     private static (string ContentType, string Extension)? DetectImage(byte[] bytes)
     {
-        if (bytes.AsSpan().StartsWith(new byte[] { 0xFF, 0xD8, 0xFF })) return ("image/jpeg", "jpg");
-        if (bytes.AsSpan().StartsWith(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A })) return ("image/png", "png");
-        if (bytes.AsSpan().StartsWith("GIF87a"u8) || bytes.AsSpan().StartsWith("GIF89a"u8)) return ("image/gif", "gif");
-        if (bytes.Length >= 12 && bytes.AsSpan().StartsWith("RIFF"u8) && bytes.AsSpan(8).StartsWith("WEBP"u8)) return ("image/webp", "webp");
-        return null;
+        using var data = SKData.CreateCopy(bytes);
+        using var codec = SKCodec.Create(data);
+        if (codec is null || codec.Info.Width <= 0 || codec.Info.Height <= 0 ||
+            (long)codec.Info.Width * codec.Info.Height > 20_000_000)
+        {
+            return null;
+        }
+
+        // A decoder may return partial pixels for truncated input. Require a complete decode.
+        using var bitmap = new SKBitmap(codec.Info);
+        if (codec.GetPixels(bitmap.Info, bitmap.GetPixels()) != SKCodecResult.Success) return null;
+
+        return codec.EncodedFormat switch
+        {
+            SKEncodedImageFormat.Jpeg when bytes.AsSpan().StartsWith(new byte[] { 0xFF, 0xD8 }) && bytes.AsSpan().EndsWith(new byte[] { 0xFF, 0xD9 }) => ("image/jpeg", "jpg"),
+            SKEncodedImageFormat.Png when bytes.AsSpan().StartsWith(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }) && bytes.AsSpan().EndsWith(new byte[] { 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82 }) => ("image/png", "png"),
+            SKEncodedImageFormat.Gif when (bytes.AsSpan().StartsWith("GIF87a"u8) || bytes.AsSpan().StartsWith("GIF89a"u8)) && bytes[^1] == 0x3B => ("image/gif", "gif"),
+            SKEncodedImageFormat.Webp when bytes.Length >= 16 && bytes.AsSpan().StartsWith("RIFF"u8) && bytes.AsSpan(8).StartsWith("WEBP"u8) && BitConverter.ToUInt32(bytes, 4) == bytes.Length - 8 => ("image/webp", "webp"),
+            _ => null
+        };
     }
 }

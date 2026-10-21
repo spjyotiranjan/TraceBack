@@ -5,7 +5,7 @@ using TraceBack.Models;
 
 namespace TraceBack.Services;
 
-public sealed class ItemService(MongoStore store, R2ImageStorage images, ILogger<ItemService> logger)
+public sealed class ItemService(MongoStore store, ItemImageService images)
 {
     public async Task<List<Item>> SearchAsync(ItemSearch search)
     {
@@ -134,117 +134,16 @@ public sealed class ItemService(MongoStore store, R2ImageStorage images, ILogger
         return true;
     }
 
-    public async Task<bool> DeleteAsync(string id, string userId, bool admin)
-    {
-        if (!ObjectId.TryParse(id, out _))
-        {
-            return false;
-        }
+    public Task<bool> DeleteAsync(string id, string userId, bool admin) => images.DeleteItemAsync(id, userId, admin);
 
-        var filter = Builders<Item>.Filter.Eq(x => x.Id, id);
-        if (!admin)
-        {
-            filter &= Builders<Item>.Filter.Eq(x => x.PostedByUserId, userId);
-        }
+    public Task<bool> SetImageAsync(string id, ImageUpload image, string userId, bool admin) =>
+        images.SetImageAsync(id, image, userId, admin);
 
-        var existing = await store.Items.Find(filter).FirstOrDefaultAsync();
-        if (existing is null)
-        {
-            return false;
-        }
+    public Task<bool> RemoveImageAsync(string id, string userId, bool admin) =>
+        images.RemoveImageAsync(id, userId, admin);
 
-        filter &= Builders<Item>.Filter.Eq(x => x.UpdatedAt, existing.UpdatedAt);
-        var result = await store.Items.DeleteOneAsync(filter);
-        if (result.DeletedCount > 0)
-        {
-            await store.Claims.DeleteManyAsync(x => x.ItemId == id);
-            await DeleteImageBestEffortAsync(existing.ImageKey);
-        }
-
-        return result.DeletedCount > 0;
-    }
-
-    public async Task<bool> SetImageAsync(string id, ImageUpload image, string userId, bool admin)
-    {
-        var item = await GetAsync(id);
-        if (item is null || item.Status != "Active" || (!admin && item.PostedByUserId != userId))
-        {
-            return false;
-        }
-
-        var newKey = await images.UploadAsync(id, image);
-        UpdateResult result;
-        try
-        {
-            result = await store.Items.UpdateOneAsync(
-                x => x.Id == id && x.Status == "Active" && x.UpdatedAt == item.UpdatedAt,
-                Builders<Item>.Update
-                    .Set(x => x.ImageKey, newKey)
-                    .Set(x => x.ImageUrl, null)
-                    .Set(x => x.UpdatedAt, DateTime.UtcNow));
-        }
-        catch
-        {
-            await DeleteImageBestEffortAsync(newKey);
-            throw;
-        }
-
-        if (result.ModifiedCount == 0)
-        {
-            await DeleteImageBestEffortAsync(newKey);
-            return false;
-        }
-
-        await DeleteImageBestEffortAsync(item.ImageKey);
-        return true;
-    }
-
-    public async Task<bool> RemoveImageAsync(string id, string userId, bool admin)
-    {
-        var item = await GetAsync(id);
-        if (item is null || item.Status != "Active" || (!admin && item.PostedByUserId != userId))
-        {
-            return false;
-        }
-
-        var result = await store.Items.UpdateOneAsync(
-            x => x.Id == id && x.Status == "Active" && x.UpdatedAt == item.UpdatedAt,
-            Builders<Item>.Update
-                .Set(x => x.ImageKey, null)
-                .Set(x => x.ImageUrl, null)
-                .Set(x => x.UpdatedAt, DateTime.UtcNow));
-
-        if (result.ModifiedCount == 0)
-        {
-            return false;
-        }
-
-        await DeleteImageBestEffortAsync(item.ImageKey);
-        return true;
-    }
-
-    public async Task<StoredImage?> GetImageAsync(string id, CancellationToken cancellationToken = default)
-    {
-        var item = await GetAsync(id);
-        return item?.ImageKey is { } key ? await images.ReadAsync(key, cancellationToken) : null;
-    }
-
-    private async Task DeleteImageBestEffortAsync(string? key)
-    {
-        if (key is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await images.DeleteAsync(key);
-        }
-        catch (Exception error)
-        {
-            logger.LogWarning(error, "Could not delete R2 image {ImageKey}", key);
-        }
-    }
+    public Task<StoredImage?> GetImageAsync(string id, CancellationToken cancellationToken = default) =>
+        images.GetImageAsync(id, cancellationToken);
 
     private static Item Apply(Item item, ItemForm form)
     {

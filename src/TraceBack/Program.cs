@@ -19,6 +19,9 @@ builder.Services.AddSingleton<MongoStore>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ItemService>();
 builder.Services.AddSingleton<R2ImageStorage>();
+builder.Services.AddSingleton<IImageStorage>(provider => provider.GetRequiredService<R2ImageStorage>());
+builder.Services.AddSingleton<IItemImageRepository, MongoItemImageRepository>();
+builder.Services.AddSingleton<ItemImageService>();
 builder.Services.AddScoped<ClaimService>();
 builder.Services.AddScoped<AdminBootstrapService>();
 
