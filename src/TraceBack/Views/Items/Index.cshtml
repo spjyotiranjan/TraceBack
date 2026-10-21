@@ -75,7 +75,7 @@
         <p>Try a wider search or share an item you know about.</p>
         <div class="d-flex justify-content-center gap-2 mt-3">
             <a class="btn btn-outline-primary" asp-action="Index">Clear filters</a>
-            <a class="btn btn-primary" asp-action="Create">Report an item</a>
+            <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
         </div>
     </div>
 }
@@ -93,17 +93,24 @@ else
 
 <nav class="mt-4" aria-label="Result pages">
     <ul class="pagination">
-        <li class="page-item @(Model.Search.Page == 1 ? "disabled" : "")">
-            <a class="page-link"
-               asp-action="Index"
-               asp-route-query="@Model.Search.Query"
-               asp-route-type="@Model.Search.Type"
-               asp-route-category="@Model.Search.Category"
-               asp-route-location="@Model.Search.Location"
-               asp-route-status="@Model.Search.Status"
-               asp-route-page="@(Model.Search.Page - 1)"
-               aria-label="Previous page">Previous</a>
-        </li>
+        @if (Model.Search.Page > 1)
+        {
+            <li class="page-item">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-query="@Model.Search.Query"
+                   asp-route-type="@Model.Search.Type"
+                   asp-route-category="@Model.Search.Category"
+                   asp-route-location="@Model.Search.Location"
+                   asp-route-status="@Model.Search.Status"
+                   asp-route-page="@(Model.Search.Page - 1)"
+                   aria-label="Previous page">Previous</a>
+            </li>
+        }
+        else
+        {
+            <li class="page-item disabled"><span class="page-link" aria-disabled="true">Previous</span></li>
+        }
 
         <li class="page-item active">
             <span class="page-link" aria-current="page">@Model.Search.Page</span>

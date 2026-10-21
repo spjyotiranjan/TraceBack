@@ -13,20 +13,20 @@
 
         <div class="mb-3">
             <label asp-for="Name" class="form-label">Full name</label>
-            <input asp-for="Name" class="form-control" autocomplete="name" />
-            <span asp-validation-for="Name" class="text-danger small"></span>
+            <input asp-for="Name" aria-describedby="Name-error" class="form-control" autocomplete="name" />
+            <span id="Name-error" asp-validation-for="Name" class="text-danger small"></span>
         </div>
 
         <div class="mb-3">
             <label asp-for="Email" class="form-label">Email address</label>
-            <input asp-for="Email" class="form-control" autocomplete="email" />
-            <span asp-validation-for="Email" class="text-danger small"></span>
+            <input asp-for="Email" aria-describedby="Email-error" class="form-control" autocomplete="email" />
+            <span id="Email-error" asp-validation-for="Email" class="text-danger small"></span>
         </div>
 
         <div class="mb-4">
             <label asp-for="Password" class="form-label">Password (at least 8 characters)</label>
-            <input asp-for="Password" type="password" class="form-control" autocomplete="new-password" />
-            <span asp-validation-for="Password" class="text-danger small"></span>
+            <input asp-for="Password" aria-describedby="Password-error" type="password" class="form-control" autocomplete="new-password" />
+            <span id="Password-error" asp-validation-for="Password" class="text-danger small"></span>
         </div>
 
         <button class="btn btn-primary w-100" type="submit">Create account</button>

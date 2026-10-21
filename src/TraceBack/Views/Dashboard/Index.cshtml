@@ -12,7 +12,7 @@
 <section class="mb-5" aria-labelledby="my-reports">
     <div class="section-heading">
         <h2 id="my-reports">My reports</h2>
-        <a class="btn btn-primary" asp-controller="Items" asp-action="Create">Report an item</a>
+        <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
     </div>
 
     @if (Model.Items.Count == 0)

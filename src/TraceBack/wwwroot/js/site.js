@@ -13,3 +13,7 @@ document.querySelectorAll('[id$="-error"] .field-validation-error').forEach(mess
   const field = document.getElementById(message.parentElement.id.slice(0, -6));
   if (field) field.setAttribute('aria-invalid', 'true');
 });
+
+document.querySelectorAll('[data-retry]').forEach(button => {
+  button.addEventListener('click', () => window.location.reload());
+});

@@ -10,7 +10,7 @@
     <h1>Claim @Model.Item.Title</h1>
     <p class="text-muted">Describe details that confirm this item belongs to you. Your message is private to the claim review.</p>
 
-    <form asp-action="Create" asp-route-itemId="@Model.Item.Id" method="post" class="form-card" novalidate>
+    <form asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id" method="post" class="form-card" novalidate>
         <partial name="_ValidationSummary" />
 
         <div class="mb-4">
