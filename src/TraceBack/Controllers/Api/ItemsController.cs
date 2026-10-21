@@ -5,7 +5,7 @@ using TraceBack.Services;
 
 namespace TraceBack.Controllers.Api;
 
-public sealed class ItemsController(ItemService items) : ApiControllerBase
+public sealed class ItemsController(ItemService items, ILogger<ItemsController> logger) : ApiControllerBase
 {
     [HttpGet]
     [AllowAnonymous]
@@ -100,6 +100,56 @@ public sealed class ItemsController(ItemService items) : ApiControllerBase
 
         var resolved = await items.ResolveAsync(id, UserId, IsAdmin);
         return resolved ? NoContent() : NotFound();
+    }
+
+    [HttpPut("{id}/image")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<ActionResult<ItemResponse>> UploadImage(string id, [FromForm] IFormFile? file)
+    {
+        if (!ValidId(id))
+        {
+            return BadRequest(new { error = "Invalid item ID." });
+        }
+
+        if (file is null)
+        {
+            return BadRequest(new { error = "Choose an image." });
+        }
+
+        ImageUpload upload;
+        try
+        {
+            upload = await R2ImageStorage.ReadUploadAsync(file, HttpContext.RequestAborted);
+        }
+        catch (ArgumentException error)
+        {
+            return BadRequest(new { error = error.Message });
+        }
+
+        try
+        {
+            if (!await items.SetImageAsync(id, upload, UserId, IsAdmin)) return NotFound();
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            logger.LogError(error, "Image upload failed for report {ItemId}", id);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Image storage is unavailable." });
+        }
+
+        var item = await items.GetAsync(id);
+        return item is null ? NotFound() : Ok(ItemResponse.From(item));
+    }
+
+    [HttpDelete("{id}/image")]
+    public async Task<IActionResult> RemoveImage(string id)
+    {
+        if (!ValidId(id))
+        {
+            return BadRequest(new { error = "Invalid item ID." });
+        }
+
+        return await items.RemoveImageAsync(id, UserId, IsAdmin) ? NoContent() : NotFound();
     }
 
     [HttpDelete("{id}")]

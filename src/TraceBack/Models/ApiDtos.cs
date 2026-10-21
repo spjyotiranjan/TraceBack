@@ -39,7 +39,7 @@ public sealed record ItemResponse(
         item.Location,
         item.DateReported,
         item.ContactPreference,
-        item.ImageUrl,
+        item.DisplayImageUrl,
         item.Status,
         item.PostedByUserId,
         item.CreatedAt,

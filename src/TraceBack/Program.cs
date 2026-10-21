@@ -18,6 +18,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<MongoStore>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ItemService>();
+builder.Services.AddSingleton<R2ImageStorage>();
 builder.Services.AddScoped<ClaimService>();
 builder.Services.AddScoped<AdminBootstrapService>();
 

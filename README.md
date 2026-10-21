@@ -14,6 +14,7 @@ src/TraceBack/
   Views/             Razor pages and reusable partials
   wwwroot/           Bootstrap, CSS, JavaScript, and static assets
 docs/ux.md           Screen map and responsive design guidance
+tests/TraceBack.Tests/  Image upload validation tests
 ```
 
 Keep page presentation in `Views`, HTTP concerns in controllers, business rules in `Services`, and MongoDB setup in `Data`. Add new features within these modules instead of putting query or authorization logic in Razor views.
@@ -32,6 +33,17 @@ Keep page presentation in `Views`, HTTP concerns in controllers, business rules 
    Jwt__Secret=<at least 32 random characters>
    ```
 
+   For report image uploads, create an R2 API token with **Object Read & Write** permission scoped to the existing bucket. Add these settings to `.env` or your deployment secret store:
+
+   ```env
+   R2__AccountId=<Cloudflare account ID>
+   R2__Bucket=<existing bucket name>
+   R2__AccessKeyId=<R2 Access Key ID>
+   R2__SecretAccessKey=<R2 Secret Access Key>
+   ```
+
+   Keep the bucket private. The server stores uploaded files there and serves report images through `/Items/Image/{id}`. The R2 secret is never sent to browsers or returned by the API. Image uploads are unavailable until all four settings are present.
+
 3. Start the app:
 
    ```powershell
@@ -49,8 +61,8 @@ To provision the first admin, set `BootstrapAdmin__Email` and `BootstrapAdmin__P
 - Submit a claim for another member's active found item, then track its status on your dashboard.
 - An admin can review claims, approve or reject them, moderate reports, and mark reports resolved.
 
-The API starts under `/api`; login returns a JWT for requests that need a bearer token. Listing images currently use an optional URL. File uploads and notification delivery are future additions.
+The API starts under `/api`; login returns a JWT for requests that need a bearer token. Report forms accept optional JPEG, PNG, GIF, or WebP images up to 5 MB. Owners and admins can replace or remove an image. API clients can use `PUT /api/items/{id}/image` with a multipart `file` field and `DELETE /api/items/{id}/image`. Existing reports with external image URLs still display, but new reports use R2 uploads. Notification delivery is a future addition.
 
 ## Verification
 
-Run `dotnet build TraceBack.slnx` for a compile check. A running MongoDB instance is needed to exercise registration, listings, claims, and admin workflows. Check the site at phone and desktop widths when changing Razor views or styles.
+Run `dotnet test TraceBack.slnx -c Release` for the build and image validation tests. A running MongoDB instance and configured R2 bucket are needed to exercise complete report upload, retrieval, replacement, and deletion workflows. Check the site at phone and desktop widths when changing Razor views or styles.

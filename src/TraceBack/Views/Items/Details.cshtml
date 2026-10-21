@@ -7,9 +7,9 @@
 
 <div class="row g-4 mt-1 mb-5">
     <div class="col-lg-6">
-        @if (!string.IsNullOrWhiteSpace(Model.Item.ImageUrl))
+        @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
         {
-            <img class="detail-image" src="@Model.Item.ImageUrl" alt="@Model.Item.Title" />
+            <img class="detail-image" src="@Model.Item.DisplayImageUrl" alt="@Model.Item.Title" />
         }
         else
         {
