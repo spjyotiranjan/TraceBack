@@ -1,7 +1,7 @@
 @model TraceBack.Controllers.ItemEditorPage
 @{ var editing = Model.Id is not null; ViewData["Title"] = editing ? "Edit report" : "Report an item"; }
 <div class="form-page"><p class="eyebrow">Share with your campus</p><h1>@ViewData["Title"]</h1><p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
-<form asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" class="form-card" novalidate>
+<form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" class="form-card" novalidate>
     <partial name="_ValidationSummary" />
     @if (editing)
     {
