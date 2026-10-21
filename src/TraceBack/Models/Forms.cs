@@ -57,7 +57,7 @@ public sealed class ItemForm : IValidatableObject
     [StringLength(120)]
     public string ContactPreference { get; set; } = string.Empty;
 
-    [Url]
+    [HttpsUrl]
     public string? ImageUrl { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -91,6 +91,26 @@ public sealed class ItemForm : IValidatableObject
         {
             yield return new ValidationResult("Report date cannot be in the future.", [nameof(DateReported)]);
         }
+    }
+}
+
+public sealed class HttpsUrlAttribute : ValidationAttribute
+{
+    public HttpsUrlAttribute() : base("Image URL must be a valid HTTPS URL (https://).")
+    {
+    }
+
+    public override bool IsValid(object? value)
+    {
+        if (value is null || value is string { Length: 0 })
+        {
+            return true;
+        }
+
+        return value is string url &&
+            Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+            uri.Scheme == Uri.UriSchemeHttps &&
+            uri.IsWellFormedOriginalString();
     }
 }
 
