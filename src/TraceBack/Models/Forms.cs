@@ -57,7 +57,7 @@ public sealed class ItemForm : IValidatableObject
     [StringLength(120)]
     public string ContactPreference { get; set; } = string.Empty;
 
-    [Url]
+    [HttpsUrl]
     public string? ImageUrl { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -94,6 +94,26 @@ public sealed class ItemForm : IValidatableObject
     }
 }
 
+public sealed class HttpsUrlAttribute : ValidationAttribute
+{
+    public HttpsUrlAttribute() : base("Image URL must be a valid HTTPS URL (https://).")
+    {
+    }
+
+    public override bool IsValid(object? value)
+    {
+        if (value is null || value is string { Length: 0 })
+        {
+            return true;
+        }
+
+        return value is string url &&
+            Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+            uri.Scheme == Uri.UriSchemeHttps &&
+            uri.IsWellFormedOriginalString();
+    }
+}
+
 public sealed class ClaimForm : IValidatableObject
 {
     [Required]
@@ -118,3 +138,4 @@ public sealed class ItemSearch
     public string? Status { get; set; }
     public int Page { get; set; } = 1;
 }
+
