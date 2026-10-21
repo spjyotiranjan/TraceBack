@@ -196,4 +196,3 @@ public class ItemsController(ItemService items) : Controller
     private bool CanManage(Item item) =>
         User.IsInRole("Admin") || item.PostedByUserId == User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
-
