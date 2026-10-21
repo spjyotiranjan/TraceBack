@@ -50,7 +50,8 @@ public class ItemsController(ItemService items) : Controller
         var item = await items.GetAsync(id);
         if (item is null)
         {
-            return NotFound();
+            Response.StatusCode = StatusCodes.Status404NotFound;
+            return View("NotFound");
         }
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -195,3 +196,4 @@ public class ItemsController(ItemService items) : Controller
     private bool CanManage(Item item) =>
         User.IsInRole("Admin") || item.PostedByUserId == User.FindFirstValue(ClaimTypes.NameIdentifier);
 }
+
