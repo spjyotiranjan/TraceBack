@@ -11,7 +11,9 @@ namespace TraceBack.Controllers.Api;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public abstract class ApiControllerBase : ControllerBase
 {
-    protected string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+    protected string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+
     protected bool IsAdmin => User.IsInRole("Admin");
+
     protected static bool ValidId(string id) => ObjectId.TryParse(id, out _);
 }

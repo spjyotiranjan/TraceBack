@@ -5,19 +5,39 @@ using TraceBack.Models;
 
 namespace TraceBack.Services;
 
+/// <summary>
+/// Provisons the initial administrator account on startup when bootstrap credentials are provided in configuration.
+/// </summary>
 public sealed class AdminBootstrapService(MongoStore store, IConfiguration configuration)
 {
     public async Task EnsureAdminAsync()
     {
-        var email = configuration["BootstrapAdmin:Email"]?.Trim().ToLowerInvariant();
-        var password = configuration["BootstrapAdmin:Password"];
-        var name = configuration["BootstrapAdmin:Name"]?.Trim();
-        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(password)) return;
+        var email = (configuration["BootstrapAdmin:Email"]
+            ?? configuration["BootstrapAdmin__Email"]
+            ?? configuration["BOOTSTRAP_ADMIN_EMAIL"])?.Trim().ToLowerInvariant();
+
+        var password = configuration["BootstrapAdmin:Password"]
+            ?? configuration["BootstrapAdmin__Password"]
+            ?? configuration["BOOTSTRAP_ADMIN_PASSWORD"];
+
+        var name = (configuration["BootstrapAdmin:Name"]
+            ?? configuration["BootstrapAdmin__Name"]
+            ?? configuration["BOOTSTRAP_ADMIN_NAME"])?.Trim();
+
+        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(password))
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password) || password.Length < 12)
-            throw new InvalidOperationException("BootstrapAdmin:Email and a password of at least 12 characters must both be configured.");
+        {
+            throw new InvalidOperationException(
+                "BootstrapAdmin:Email and a password of at least 12 characters must both be configured.");
+        }
 
         var user = await store.Users.Find(x => x.Email == email).FirstOrDefaultAsync();
         var hasher = new PasswordHasher<AppUser>();
+
         if (user is null)
         {
             user = new AppUser
@@ -26,7 +46,9 @@ public sealed class AdminBootstrapService(MongoStore store, IConfiguration confi
                 Name = string.IsNullOrWhiteSpace(name) ? "Campus Admin" : name,
                 Role = "Admin"
             };
+
             user.PasswordHash = hasher.HashPassword(user, password);
+
             try
             {
                 await store.Users.InsertOneAsync(user);

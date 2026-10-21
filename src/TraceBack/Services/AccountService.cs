@@ -15,35 +15,71 @@ public sealed class AccountService(MongoStore store, JwtSettings jwt)
     private readonly PasswordHasher<AppUser> _hasher = new();
 
     public Task<List<AppUser>> RecentUsersAsync() =>
-        store.Users.Find(_ => true).SortByDescending(x => x.CreatedAt).Limit(100).ToListAsync();
+        store.Users.Find(_ => true)
+            .SortByDescending(user => user.CreatedAt)
+            .Limit(100)
+            .ToListAsync();
 
     public async Task<AppUser?> RegisterAsync(RegisterForm form)
     {
         var email = form.Email.Trim().ToLowerInvariant();
-        if (await store.Users.Find(x => x.Email == email).AnyAsync()) return null;
-        var user = new AppUser { Name = form.Name.Trim(), Email = email };
+
+        var existingUser = await store.Users.Find(user => user.Email == email).AnyAsync();
+        if (existingUser)
+        {
+            return null;
+        }
+
+        var user = new AppUser
+        {
+            Name = form.Name.Trim(),
+            Email = email
+        };
+
         user.PasswordHash = _hasher.HashPassword(user, form.Password);
-        try { await store.Users.InsertOneAsync(user); }
-        catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey) { return null; }
+
+        try
+        {
+            await store.Users.InsertOneAsync(user);
+        }
+        catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+        {
+            return null;
+        }
+
         return user;
     }
 
     public async Task<AppUser?> LoginAsync(LoginForm form)
     {
         var email = form.Email.Trim().ToLowerInvariant();
-        var user = await store.Users.Find(x => x.Email == email).FirstOrDefaultAsync();
-        return user is not null &&
-            _hasher.VerifyHashedPassword(user, user.PasswordHash, form.Password) != PasswordVerificationResult.Failed
-            ? user : null;
+        var user = await store.Users.Find(u => u.Email == email).FirstOrDefaultAsync();
+
+        if (user is null)
+        {
+            return null;
+        }
+
+        var verificationResult = _hasher.VerifyHashedPassword(user, user.PasswordHash, form.Password);
+        return verificationResult != PasswordVerificationResult.Failed ? user : null;
     }
 
     public string CreateToken(AppUser user)
     {
+        var claims = new[]
+        {
+            new System.Security.Claims.Claim(ClaimTypes.NameIdentifier, user.Id),
+            new System.Security.Claims.Claim(ClaimTypes.Name, user.Name),
+            new System.Security.Claims.Claim(ClaimTypes.Role, user.Role)
+        };
+
         var token = new JwtSecurityToken(
-            issuer: jwt.Issuer, audience: "TraceBack.Api",
-            claims: [new System.Security.Claims.Claim(ClaimTypes.NameIdentifier, user.Id), new System.Security.Claims.Claim(ClaimTypes.Name, user.Name), new System.Security.Claims.Claim(ClaimTypes.Role, user.Role)],
+            issuer: jwt.Issuer,
+            audience: "TraceBack.Api",
+            claims: claims,
             expires: DateTime.UtcNow.AddHours(12),
             signingCredentials: new SigningCredentials(jwt.Key, SecurityAlgorithms.HmacSha256));
+
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

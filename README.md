@@ -21,13 +21,15 @@ Keep page presentation in `Views`, HTTP concerns in controllers, business rules 
 ## Local setup
 
 1. Install the .NET 10 SDK and run MongoDB locally on `mongodb://localhost:27017`, or set a connection string for an existing MongoDB instance.
-2. Set configuration through environment variables or local user secrets. Do not commit credentials.
+2. Set configuration through a `.env` file (see `.env.example`), process environment variables, or local user secrets. Do not commit credentials.
 
-   ```powershell
-   $env:Mongo__ConnectionString = 'mongodb://localhost:27017'
-   $env:Mongo__Database = 'TraceBack'
-   $env:Jwt__Issuer = 'TraceBack'
-   $env:Jwt__Secret = '<at least 32 random characters>'
+   Create a `.env` file at the repository root:
+
+   ```env
+   Mongo__ConnectionString=mongodb://localhost:27017
+   Mongo__Database=TraceBack
+   Jwt__Issuer=TraceBack
+   Jwt__Secret=<at least 32 random characters>
    ```
 
 3. Start the app:
