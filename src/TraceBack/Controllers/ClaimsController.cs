@@ -13,24 +13,48 @@ public class ClaimsController(ClaimService claims, ItemService items) : Controll
     public async Task<IActionResult> Create(string itemId)
     {
         var item = await items.GetAsync(itemId);
-        if (item is null || item.Type != "Found" || item.Status != "Active") return NotFound();
-        if (item.PostedByUserId == User.FindFirstValue(ClaimTypes.NameIdentifier)) return Forbid();
+        if (item is null || item.Type != "Found" || item.Status != "Active")
+        {
+            return NotFound();
+        }
+
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (item.PostedByUserId == currentUserId)
+        {
+            return Forbid();
+        }
+
         return View(new ClaimPage(item, new ClaimForm()));
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(string itemId, ClaimForm form)
     {
         var item = await items.GetAsync(itemId);
-        if (item is null || item.Type != "Found" || item.Status != "Active") return NotFound();
-        if (item.PostedByUserId == User.FindFirstValue(ClaimTypes.NameIdentifier)) return Forbid();
-        if (!ModelState.IsValid) return View(new ClaimPage(item, form));
-        var claim = await claims.CreateAsync(itemId, User.FindFirstValue(ClaimTypes.NameIdentifier)!, form);
+        if (item is null || item.Type != "Found" || item.Status != "Active")
+        {
+            return NotFound();
+        }
+
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+        if (item.PostedByUserId == currentUserId)
+        {
+            return Forbid();
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return View(new ClaimPage(item, form));
+        }
+
+        var claim = await claims.CreateAsync(itemId, currentUserId, form);
         if (claim is null)
         {
             ModelState.AddModelError(string.Empty, "This claim could not be submitted. You may already have a claim for this item.");
             return View(new ClaimPage(item, form));
         }
+
         TempData["Success"] = "Your claim was submitted. You can track it in My claims.";
         return RedirectToAction("Index", "Dashboard");
     }

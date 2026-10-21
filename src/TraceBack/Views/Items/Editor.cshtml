@@ -1,22 +1,122 @@
 @model TraceBack.Controllers.ItemEditorPage
-@{ var editing = Model.Id is not null; ViewData["Title"] = editing ? "Edit report" : "Report an item"; }
-<div class="form-page"><p class="eyebrow">Share with your campus</p><h1>@ViewData["Title"]</h1><p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
-<form asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" class="form-card" novalidate>
-    <partial name="_ValidationSummary" />
-    @if (editing)
-    {
-        <div class="mb-3"><span class="form-label d-block">Type</span><p class="form-control-plaintext mb-0">@Model.Form.Type</p><input type="hidden" name="Type" value="@Model.Form.Type" /><p class="form-text">Report type cannot be changed after publishing.</p><span id="type-error" class="text-danger small">@Html.ValidationMessage("Type")</span></div>
-    }
-    else
-    {
-        <div class="mb-3"><label class="form-label" for="type">Type <span class="required">required</span></label><select id="type" name="Type" class="form-select" aria-describedby="type-error"><option value="Lost" selected="@(Model.Form.Type == "Lost")">Lost</option><option value="Found" selected="@(Model.Form.Type == "Found")">Found</option></select><span id="type-error" class="text-danger small">@Html.ValidationMessage("Type")</span></div>
-    }
-    <div class="mb-3"><label class="form-label" for="title">Title <span class="required">required</span></label><input id="title" name="Title" class="form-control" value="@Model.Form.Title" maxlength="120" aria-describedby="title-error" /><span id="title-error" class="text-danger small" >@Html.ValidationMessage("Title")</span></div>
-    <div class="mb-3"><label class="form-label" for="category">Category <span class="required">required</span></label><input id="category" name="Category" class="form-control" value="@Model.Form.Category" maxlength="80" aria-describedby="category-help category-error" /><div id="category-help" class="form-text">Examples: Electronics, Clothing, Keys</div><span id="category-error" class="text-danger small" >@Html.ValidationMessage("Category")</span></div>
-    <div class="mb-3"><label class="form-label" for="description">Description <span class="required">required</span></label><textarea id="description" name="Description" class="form-control" rows="5" maxlength="2000" aria-describedby="description-error">@Model.Form.Description</textarea><span id="description-error" class="text-danger small" >@Html.ValidationMessage("Description")</span></div>
-    <div class="mb-3"><label class="form-label" for="location">Location <span class="required">required</span></label><input id="location" name="Location" class="form-control" value="@Model.Form.Location" maxlength="120" aria-describedby="location-help location-error" /><div id="location-help" class="form-text">For example, North Library entrance.</div><span id="location-error" class="text-danger small" >@Html.ValidationMessage("Location")</span></div>
-    <div class="mb-3"><label class="form-label" for="date">Date <span class="required">required</span></label><input id="date" name="DateReported" type="date" class="form-control" value="@Model.Form.DateReported.ToString("yyyy-MM-dd")" aria-describedby="date-error" /><span id="date-error" class="text-danger small" >@Html.ValidationMessage("DateReported")</span></div>
-    <div class="mb-3"><label class="form-label" for="contact">Contact preference <span class="required">required</span></label><input id="contact" name="ContactPreference" class="form-control" value="@Model.Form.ContactPreference" maxlength="120" aria-describedby="contact-help contact-error" /><div id="contact-help" class="form-text">For example, meet at the campus help desk. This is public.</div><span id="contact-error" class="text-danger small" >@Html.ValidationMessage("ContactPreference")</span></div>
-    <div class="mb-4"><label class="form-label" for="image">Image URL <span class="text-muted">optional</span></label><input id="image" name="ImageUrl" type="url" class="form-control" value="@Model.Form.ImageUrl" aria-describedby="image-error" /><span id="image-error" class="text-danger small" >@Html.ValidationMessage("ImageUrl")</span></div>
-    <button class="btn btn-primary" type="submit">@(editing ? "Save changes" : "Publish report")</button> <a class="btn btn-link" asp-controller="Dashboard" asp-action="Index">Cancel</a>
-</form></div>
+@{
+    var editing = Model.Id is not null;
+    ViewData["Title"] = editing ? "Edit report" : "Report an item";
+}
+
+<div class="form-page">
+    <p class="eyebrow">Share with your campus</p>
+    <h1>@ViewData["Title"]</h1>
+    <p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
+
+    <form asp-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" class="form-card" novalidate>
+        <partial name="_ValidationSummary" />
+
+        @if (editing)
+        {
+            <div class="mb-3">
+                <span class="form-label d-block">Type</span>
+                <p class="form-control-plaintext mb-0">@Model.Form.Type</p>
+                <input type="hidden" name="Type" value="@Model.Form.Type" />
+                <p class="form-text">Report type cannot be changed after publishing.</p>
+                <span id="type-error" class="text-danger small">@Html.ValidationMessage("Type")</span>
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <label class="form-label" for="type">Type <span class="required">required</span></label>
+                <select id="type" name="Type" class="form-select" aria-describedby="type-error">
+                    <option value="Lost" selected="@(Model.Form.Type == "Lost")">Lost</option>
+                    <option value="Found" selected="@(Model.Form.Type == "Found")">Found</option>
+                </select>
+                <span id="type-error" class="text-danger small">@Html.ValidationMessage("Type")</span>
+            </div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label" for="title">Title <span class="required">required</span></label>
+            <input id="title"
+                   name="Title"
+                   class="form-control"
+                   value="@Model.Form.Title"
+                   maxlength="120"
+                   aria-describedby="title-error" />
+            <span id="title-error" class="text-danger small">@Html.ValidationMessage("Title")</span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="category">Category <span class="required">required</span></label>
+            <input id="category"
+                   name="Category"
+                   class="form-control"
+                   value="@Model.Form.Category"
+                   maxlength="80"
+                   aria-describedby="category-help category-error" />
+            <div id="category-help" class="form-text">Examples: Electronics, Clothing, Keys</div>
+            <span id="category-error" class="text-danger small">@Html.ValidationMessage("Category")</span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="description">Description <span class="required">required</span></label>
+            <textarea id="description"
+                      name="Description"
+                      class="form-control"
+                      rows="5"
+                      maxlength="2000"
+                      aria-describedby="description-error">@Model.Form.Description</textarea>
+            <span id="description-error" class="text-danger small">@Html.ValidationMessage("Description")</span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="location">Location <span class="required">required</span></label>
+            <input id="location"
+                   name="Location"
+                   class="form-control"
+                   value="@Model.Form.Location"
+                   maxlength="120"
+                   aria-describedby="location-help location-error" />
+            <div id="location-help" class="form-text">For example, North Library entrance.</div>
+            <span id="location-error" class="text-danger small">@Html.ValidationMessage("Location")</span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="date">Date <span class="required">required</span></label>
+            <input id="date"
+                   name="DateReported"
+                   type="date"
+                   class="form-control"
+                   value="@Model.Form.DateReported.ToString("yyyy-MM-dd")"
+                   aria-describedby="date-error" />
+            <span id="date-error" class="text-danger small">@Html.ValidationMessage("DateReported")</span>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="contact">Contact preference <span class="required">required</span></label>
+            <input id="contact"
+                   name="ContactPreference"
+                   class="form-control"
+                   value="@Model.Form.ContactPreference"
+                   maxlength="120"
+                   aria-describedby="contact-help contact-error" />
+            <div id="contact-help" class="form-text">For example, meet at the campus help desk. This is public.</div>
+            <span id="contact-error" class="text-danger small">@Html.ValidationMessage("ContactPreference")</span>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label" for="image">Image URL <span class="text-muted">optional</span></label>
+            <input id="image"
+                   name="ImageUrl"
+                   type="url"
+                   class="form-control"
+                   value="@Model.Form.ImageUrl"
+                   aria-describedby="image-error" />
+            <span id="image-error" class="text-danger small">@Html.ValidationMessage("ImageUrl")</span>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-primary" type="submit">@(editing ? "Save changes" : "Publish report")</button>
+            <a class="btn btn-link" asp-controller="Dashboard" asp-action="Index">Cancel</a>
+        </div>
+    </form>
+</div>

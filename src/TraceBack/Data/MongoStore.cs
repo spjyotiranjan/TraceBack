@@ -3,6 +3,9 @@ using TraceBack.Models;
 
 namespace TraceBack.Data;
 
+/// <summary>
+/// MongoDB data context providing access to database collections and index initializations.
+/// </summary>
 public sealed class MongoStore
 {
     public IMongoCollection<AppUser> Users { get; }
@@ -11,17 +14,37 @@ public sealed class MongoStore
 
     public MongoStore(IConfiguration configuration)
     {
-        var connection = configuration["Mongo:ConnectionString"] ?? "mongodb://localhost:27017";
-        var database = configuration["Mongo:Database"] ?? "TraceBack";
-        var db = new MongoClient(connection).GetDatabase(database);
-        Users = db.GetCollection<AppUser>("users");
-        Items = db.GetCollection<Item>("items");
-        Claims = db.GetCollection<Claim>("claims");
+        var connectionString = configuration["Mongo:ConnectionString"]
+            ?? configuration["Mongo__ConnectionString"]
+            ?? configuration["MONGO_CONNECTION_STRING"]
+            ?? configuration["MONGODB_URI"]
+            ?? "mongodb://localhost:27017";
+
+        var databaseName = configuration["Mongo:Database"]
+            ?? configuration["Mongo__Database"]
+            ?? configuration["MONGO_DATABASE"]
+            ?? "TraceBack";
+
+        var client = new MongoClient(connectionString);
+        var database = client.GetDatabase(databaseName);
+
+        Users = database.GetCollection<AppUser>("users");
+        Items = database.GetCollection<Item>("items");
+        Claims = database.GetCollection<Claim>("claims");
+
+        EnsureIndexes();
+    }
+
+    private void EnsureIndexes()
+    {
+        // Unique index on AppUser email
         Users.Indexes.CreateOne(new CreateIndexModel<AppUser>(
-            Builders<AppUser>.IndexKeys.Ascending(x => x.Email),
+            Builders<AppUser>.IndexKeys.Ascending(user => user.Email),
             new CreateIndexOptions { Unique = true }));
+
+        // Compound unique index on Claim (ItemId + UserId) preventing duplicate claims per user on the same item
         Claims.Indexes.CreateOne(new CreateIndexModel<Claim>(
-            Builders<Claim>.IndexKeys.Ascending(x => x.ItemId).Ascending(x => x.UserId),
+            Builders<Claim>.IndexKeys.Ascending(claim => claim.ItemId).Ascending(claim => claim.UserId),
             new CreateIndexOptions { Unique = true }));
     }
 }
