@@ -12,10 +12,12 @@ The first delivery is a usable local campus lost-and-found app. Work stays in th
 
 The API and MVC pages share services and data contracts. Wayne's screens depend on the account, item, and claim services; Grace's review follows the integrated build. There is no AI feature or separate low-level design task in this delivery, so Terressa and Jason are not assigned implementation work now.
 
+R2 image storage code is delivered. When configured, the app stores new report images in a private Cloudflare R2 bucket and serves them through the app; owners and admins can replace or remove images. Existing external image URLs remain readable for older reports.
+
 ## Later work
 
 - Exercise registration, item, claim, and admin workflows against a running MongoDB instance.
-- Store new report images in the configured private Cloudflare R2 bucket and retrieve them through the app. Existing external image URLs remain readable for older reports.
+- Complete PAT-33: set up the project-specific private R2 bucket, scoped Object Read & Write key, and environment settings, then verify image upload, retrieval, replacement, and deletion against the live bucket.
 - Add notifications and deployment after the core workflows have passed end-to-end checks.
 
 Keep each new feature in the existing module boundaries. Update this plan and the project layout in `README.md` when adding or moving folders.
