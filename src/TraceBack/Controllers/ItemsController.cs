@@ -50,25 +50,34 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
             search.Status = null;
         }
 
-        var results = await items.SearchAsync(search);
-        var hasNext = false;
-
-        if (results.Count == 24 && search.Page < 1000)
+        try
         {
-            var nextPageSearch = new ItemSearch
+            var results = await items.SearchAsync(search);
+            var hasNext = false;
+
+            if (results.Count == 24 && search.Page < 1000)
             {
-                Query = search.Query,
-                Type = search.Type,
-                Category = search.Category,
-                Location = search.Location,
-                Status = search.Status,
-                Page = search.Page + 1
-            };
+                var nextPageSearch = new ItemSearch
+                {
+                    Query = search.Query,
+                    Type = search.Type,
+                    Category = search.Category,
+                    Location = search.Location,
+                    Status = search.Status,
+                    Page = search.Page + 1
+                };
 
-            hasNext = (await items.SearchAsync(nextPageSearch)).Count > 0;
+                hasNext = (await items.SearchAsync(nextPageSearch)).Count > 0;
+            }
+
+            return View(new BrowsePage(search, results, hasNext));
         }
-
-        return View(new BrowsePage(search, results, hasNext));
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            logger.LogError(error, "Report search failed");
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return View(new BrowsePage(search, [], false, true));
+        }
     }
 
     [HttpGet]
@@ -170,7 +179,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
             ContactPreference = item.ContactPreference
         };
 
-        return View("Editor", new ItemEditorPage(form, id));
+        return View("Editor", new ItemEditorPage(form, id, item.DisplayImageUrl));
     }
 
     [Authorize]
@@ -179,6 +188,10 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Edit(string id, ItemForm form, IFormFile? imageFile, bool removeImage)
     {
+        var existingItem = await items.GetAsync(id);
+        if (existingItem is null) return NotFound();
+        if (!CanManage(existingItem)) return Forbid();
+
         ImageUpload? upload = null;
         if (imageFile is not null)
         {
@@ -188,7 +201,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
 
         if (!ModelState.IsValid)
         {
-            return View("Editor", new ItemEditorPage(form, id));
+            return View("Editor", new ItemEditorPage(form, id, existingItem.DisplayImageUrl));
         }
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;

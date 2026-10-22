@@ -12,6 +12,9 @@
     <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card" novalidate>
         <partial name="_ValidationSummary" />
 
+        <section class="form-section" aria-labelledby="report-details-heading">
+            <h2 id="report-details-heading" class="h5">What happened</h2>
+            <p class="form-section-intro">Describe the item so someone can recognize it.</p>
         @if (editing)
         {
             <div class="mb-3">
@@ -67,7 +70,11 @@
                       aria-describedby="description-error">@Model.Form.Description</textarea>
             <span id="description-error" class="text-danger small">@Html.ValidationMessage("Description")</span>
         </div>
+        </section>
 
+        <section class="form-section" aria-labelledby="report-place-heading">
+            <h2 id="report-place-heading" class="h5">Where and when</h2>
+            <p class="form-section-intro">Give the location and date that best match the report.</p>
         <div class="mb-3">
             <label class="form-label" for="location">Location <span class="required">required</span></label>
             <input id="location"
@@ -90,7 +97,10 @@
                    aria-describedby="date-error" />
             <span id="date-error" class="text-danger small">@Html.ValidationMessage("DateReported")</span>
         </div>
+        </section>
 
+        <section class="form-section" aria-labelledby="report-contact-heading">
+            <h2 id="report-contact-heading" class="h5">How to reconnect</h2>
         <div class="mb-3">
             <label class="form-label" for="contact">Contact preference <span class="required">required</span></label>
             <input id="contact"
@@ -102,29 +112,68 @@
             <div id="contact-help" class="form-text">For example, meet at the campus help desk. This is public.</div>
             <span id="contact-error" class="text-danger small">@Html.ValidationMessage("ContactPreference")</span>
         </div>
+        </section>
 
-        <div class="mb-4">
-            <label class="form-label" for="image">Image <span class="text-muted">optional</span></label>
+        <section class="form-section image-editor" data-image-editor data-editing="@(editing ? "true" : "false")" data-current-image-url="@Model.CurrentImageUrl" aria-labelledby="report-image-heading">
+            <h2 id="report-image-heading" class="h5">Add an image (optional)</h2>
+            <p id="image-help" class="form-section-intro">A clear photo helps others recognize the item. JPEG, PNG, GIF, or WebP; up to 5 MB.</p>
             <input id="image"
                    name="ImageFile"
                    type="file"
                    accept="image/jpeg,image/png,image/gif,image/webp"
                    class="form-control"
-                   aria-describedby="image-error" />
-            <div class="form-text">JPEG, PNG, GIF, or WebP, up to 5 MB. Images are stored in Cloudflare R2.</div>
-            <span id="image-error" class="text-danger small">@Html.ValidationMessage("ImageFile")</span>
+                   aria-label="Upload image"
+                   aria-describedby="image-help image-error" />
+            <div class="image-choices" data-image-choices hidden>
+                <label class="btn btn-outline-primary" for="image">Upload image</label>
+                <button class="btn btn-outline-primary" type="button" data-take-photo>Take photo</button>
+            </div>
+            <p class="form-text" data-camera-unavailable hidden>Camera capture is unavailable in this browser; choose an image instead.</p>
+            <div class="image-camera" data-camera-panel hidden>
+                <h3 class="h6" tabindex="-1" data-camera-heading>Take a photo</h3>
+                <p id="camera-instructions">Position the item in the frame, then choose Capture photo.</p>
+                <video autoplay muted playsinline aria-label="Live camera preview" aria-describedby="camera-instructions" data-camera-video></video>
+                <p class="form-text" role="status" aria-live="polite" data-camera-status></p>
+                <div class="image-actions">
+                    <button class="btn btn-primary" type="button" data-capture-photo disabled>Capture photo</button>
+                    <button class="btn btn-outline-primary" type="button" data-cancel-camera>Cancel camera</button>
+                    <button class="btn btn-outline-primary" type="button" data-retry-camera hidden>Try camera again</button>
+                    <label class="btn btn-outline-primary" for="image" data-camera-upload hidden>Upload image</label>
+                </div>
+            </div>
+            <div class="image-preview" data-image-preview hidden>
+                <div class="image-preview-frame"><img src="" alt="Selected image preview" data-preview-image /></div>
+                <p class="image-preview-status" tabindex="-1" data-preview-status></p>
+                <p class="form-text" data-preview-details></p>
+                <div class="image-actions">
+                    <button class="btn btn-outline-primary" type="button" data-retake-photo hidden>Retake photo</button>
+                    <button class="btn btn-outline-primary" type="button" data-replace-image>Replace image</button>
+                    <button class="btn btn-outline-primary" type="button" data-remove-pending>Remove image</button>
+                    <button class="btn btn-outline-primary" type="button" data-remove-current hidden>Remove image</button>
+                </div>
+            </div>
+            <div class="image-removal" data-image-removal hidden>
+                <p>Image will be removed when you save.</p>
+                <button class="btn btn-outline-primary" type="button" data-undo-remove>Undo remove</button>
+            </div>
+            <span id="image-error" class="text-danger small d-block mt-2" role="alert"><span data-client-image-error></span>@Html.ValidationMessage("ImageFile")</span>
             @if (editing)
             {
-                <div class="form-check mt-2">
+                <div class="form-check mt-2" data-native-remove>
                     <input id="remove-image" name="RemoveImage" type="checkbox" value="true" class="form-check-input" />
                     <label for="remove-image" class="form-check-label">Remove current image</label>
                 </div>
             }
-        </div>
+        </section>
 
-        <div class="d-flex align-items-center gap-2">
-            <button class="btn btn-primary" type="submit">@(editing ? "Save changes" : "Publish report")</button>
-            <a class="btn btn-link" asp-controller="Dashboard" asp-action="Index">Cancel</a>
+        <div class="report-form-actions">
+            <button class="btn btn-primary" type="submit" data-submit-label="@(editing ? "Saving…" : "Publishing…")">@(editing ? "Save changes" : "Publish report")</button>
+            <a class="btn btn-outline-primary" asp-controller="Dashboard" asp-action="Index">Cancel</a>
+            <span class="visually-hidden" role="status" aria-live="polite" data-submit-status></span>
         </div>
     </form>
 </div>
+
+@section Scripts {
+    <script src="~/js/report-image.js" asp-append-version="true" defer></script>
+}

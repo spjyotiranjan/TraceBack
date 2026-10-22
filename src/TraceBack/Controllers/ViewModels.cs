@@ -5,7 +5,8 @@ namespace TraceBack.Controllers;
 public sealed record BrowsePage(
     ItemSearch Search,
     List<Item> Items,
-    bool HasNext);
+    bool HasNext,
+    bool LoadFailed = false);
 
 public sealed record ItemDetailPage(
     Item Item,
@@ -15,7 +16,8 @@ public sealed record ItemDetailPage(
 
 public sealed record ItemEditorPage(
     ItemForm Form,
-    string? Id);
+    string? Id,
+    string? CurrentImageUrl = null);
 
 public sealed record ClaimPage(
     Item Item,

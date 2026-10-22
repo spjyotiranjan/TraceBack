@@ -1,6 +1,12 @@
 @model TraceBack.Controllers.BrowsePage
 @{
     ViewData["Title"] = "Browse reports";
+    var filteredStatus = Model.Search.Status is "Resolved" or "Claimed";
+    var hasActiveFilters = !string.IsNullOrWhiteSpace(Model.Search.Query)
+        || !string.IsNullOrWhiteSpace(Model.Search.Type)
+        || !string.IsNullOrWhiteSpace(Model.Search.Category)
+        || !string.IsNullOrWhiteSpace(Model.Search.Location)
+        || filteredStatus;
 }
 
 <div class="page-heading">
@@ -9,7 +15,7 @@
     <p>Search what your campus has lost or found.</p>
 </div>
 
-<form asp-action="Index" method="get" class="filter-panel mb-4" role="search">
+<form asp-action="Index" method="get" class="filter-panel browse-filters mb-4" role="search">
     <div class="row g-3 align-items-end">
         <div class="col-lg-4">
             <label for="query" class="form-label">Search words</label>
@@ -26,6 +32,15 @@
                 <option value="">All types</option>
                 <option value="Lost" selected="@(Model.Search.Type == "Lost")">Lost</option>
                 <option value="Found" selected="@(Model.Search.Type == "Found")">Found</option>
+            </select>
+        </div>
+
+        <div class="col-sm-6 col-lg-2">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" name="Status" class="form-select">
+                <option value="Active" selected="@(Model.Search.Status is null or "Active")">Active</option>
+                <option value="Resolved" selected="@(Model.Search.Status == "Resolved")">Resolved</option>
+                <option value="Claimed" selected="@(Model.Search.Status == "Claimed")">Claimed</option>
             </select>
         </div>
 
@@ -47,34 +62,67 @@
                    placeholder="e.g. Library" />
         </div>
 
-        <div class="col-sm-6 col-lg-2">
-            <label for="status" class="form-label">Status</label>
-            <select id="status" name="Status" class="form-select">
-                <option value="Active" selected="@(Model.Search.Status is null or "Active")">Active</option>
-                <option value="Resolved" selected="@(Model.Search.Status == "Resolved")">Resolved</option>
-                <option value="Claimed" selected="@(Model.Search.Status == "Claimed")">Claimed</option>
-            </select>
-        </div>
-
-        <div class="col-12 d-flex gap-2 flex-wrap">
+        <div class="col-12 browse-filter-actions">
             <button type="submit" class="btn btn-primary">Apply filters</button>
-            <a class="btn btn-link" asp-action="Index">Clear filters</a>
+            <a class="btn btn-outline-primary" asp-action="Index">Clear filters</a>
         </div>
     </div>
 </form>
 
-<div class="section-heading">
-    <h2 class="h4 mb-0">@Model.Items.Count @(Model.Items.Count == 1 ? "report" : "reports") on this page</h2>
-    <span class="text-muted">Page @Model.Search.Page</span>
+<div class="section-heading browse-results-heading">
+    <div>
+        <h2 class="h4">Reports</h2>
+        @if (!Model.LoadFailed)
+        {
+            <p class="text-muted mb-0">Showing @Model.Items.Count @(Model.Items.Count == 1 ? "report" : "reports") on page @Model.Search.Page</p>
+        }
+    </div>
 </div>
 
-@if (Model.Items.Count == 0)
+@if (hasActiveFilters)
+{
+    <div class="active-filters" aria-label="Applied filters">
+        @if (!string.IsNullOrWhiteSpace(Model.Search.Query))
+        {
+            <a class="filter-chip" href="@Url.Action("Index", new { type = Model.Search.Type, category = Model.Search.Category, location = Model.Search.Location, status = Model.Search.Status, page = 1 })" aria-label="Remove search words filter: @Model.Search.Query">Search: @Model.Search.Query <span aria-hidden="true">×</span></a>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Search.Type))
+        {
+            <a class="filter-chip" href="@Url.Action("Index", new { query = Model.Search.Query, category = Model.Search.Category, location = Model.Search.Location, status = Model.Search.Status, page = 1 })" aria-label="Remove type filter: @Model.Search.Type">Type: @Model.Search.Type <span aria-hidden="true">×</span></a>
+        }
+        @if (filteredStatus)
+        {
+            <a class="filter-chip" href="@Url.Action("Index", new { query = Model.Search.Query, type = Model.Search.Type, category = Model.Search.Category, location = Model.Search.Location, page = 1 })" aria-label="Remove status filter: @Model.Search.Status">Status: @Model.Search.Status <span aria-hidden="true">×</span></a>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Search.Category))
+        {
+            <a class="filter-chip" href="@Url.Action("Index", new { query = Model.Search.Query, type = Model.Search.Type, location = Model.Search.Location, status = Model.Search.Status, page = 1 })" aria-label="Remove category filter: @Model.Search.Category">Category: @Model.Search.Category <span aria-hidden="true">×</span></a>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Search.Location))
+        {
+            <a class="filter-chip" href="@Url.Action("Index", new { query = Model.Search.Query, type = Model.Search.Type, category = Model.Search.Category, status = Model.Search.Status, page = 1 })" aria-label="Remove location filter: @Model.Search.Location">Location: @Model.Search.Location <span aria-hidden="true">×</span></a>
+        }
+        <a class="clear-all-filters" asp-action="Index">Clear all filters</a>
+    </div>
+}
+
+@if (Model.LoadFailed)
+{
+    <div class="empty-state" role="alert">
+        <h3 class="h5">Reports could not load. Try again.</h3>
+        <a class="btn btn-primary" href="@Context.Request.Path@Context.Request.QueryString">Retry</a>
+    </div>
+}
+else if (Model.Items.Count == 0)
 {
     <div class="empty-state">
-        <h3 class="h5">No reports match these filters.</h3>
-        <p>Try a wider search or share an item you know about.</p>
+        <h3 class="h5">@(hasActiveFilters ? "No reports match these filters." : "No active reports yet.")</h3>
+        <p>@(hasActiveFilters ? "Try fewer search words or clear a filter." : "When someone posts a lost or found item, it will appear here.")</p>
         <div class="d-flex justify-content-center gap-2 mt-3">
-            <a class="btn btn-outline-primary" asp-action="Index">Clear filters</a>
+            @if (hasActiveFilters)
+            {
+                <a class="btn btn-outline-primary" asp-action="Index">Clear filters</a>
+            }
             <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
         </div>
     </div>
@@ -91,6 +139,8 @@ else
     </div>
 }
 
+@if (!Model.LoadFailed && (Model.Items.Count > 0 || Model.Search.Page > 1))
+{
 <nav class="mt-4" aria-label="Result pages">
     <ul class="pagination">
         @if (Model.Search.Page > 1)
@@ -132,3 +182,4 @@ else
         }
     </ul>
 </nav>
+}
