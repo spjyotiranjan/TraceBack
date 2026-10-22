@@ -11,7 +11,7 @@
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <header class="site-header">
-        <nav class="navbar navbar-expand-lg container" aria-label="Primary navigation">
+        <nav class="navbar navbar-expand-md container" aria-label="Primary navigation">
             <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
                 <span class="brand-symbol" aria-hidden="true">↗</span> TraceBack
             </a>
@@ -24,20 +24,22 @@
                     aria-expanded="false"
                     aria-label="Open menu">
                 <span class="navbar-toggler-icon"></span>
-                <span class="ms-2 small">Menu</span>
             </button>
 
             <div class="collapse navbar-collapse" id="site-nav">
-                <ul class="navbar-nav mx-lg-auto gap-lg-3">
+                <ul class="navbar-nav mx-md-auto gap-md-3">
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
                     <li class="nav-item">
                         <a class="nav-link" asp-controller="Items" asp-action="Index">Browse</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
                     </li>
+                    }
                 </ul>
 
-                <div class="d-flex align-items-lg-center flex-column flex-lg-row gap-2 py-2 py-lg-0">
+                <div class="d-flex align-items-md-center flex-column flex-md-row gap-2 py-2 py-md-0">
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         <a class="nav-link" asp-controller="Dashboard" asp-action="Index">My dashboard</a>
