@@ -1,0 +1,40 @@
+@if (!ViewData.ModelState.IsValid)
+{
+    var fieldIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["DateReported"] = "date",
+        ["ContactPreference"] = "contact",
+        ["ImageFile"] = "image",
+        ["Type"] = "type",
+        ["Title"] = "title",
+        ["Category"] = "category",
+        ["Description"] = "description",
+        ["Location"] = "location",
+        ["Message"] = "message",
+        ["Email"] = "Email",
+        ["Password"] = "Password",
+        ["Name"] = "Name"
+    };
+
+    <div class="alert alert-danger" role="alert" tabindex="-1" id="form-errors">
+        <strong>Please correct the following:</strong>
+        <ul class="mb-0 mt-2">
+            @foreach (var entry in ViewData.ModelState)
+            {
+                foreach (var error in entry.Value.Errors)
+                {
+                    <li>
+                        @if (fieldIds.TryGetValue(entry.Key, out var id))
+                        {
+                            <a href="#@id">@error.ErrorMessage</a>
+                        }
+                        else
+                        {
+                            @error.ErrorMessage
+                        }
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+}

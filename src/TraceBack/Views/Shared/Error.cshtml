@@ -1,0 +1,14 @@
+@model ErrorViewModel
+@{ ViewData["Title"] = "Something went wrong"; }
+<div class="empty-state">
+    <h1>Something went wrong</h1>
+    <p>We could not load this page. Please try again. If the problem continues, contact your campus service desk.</p>
+    <div class="d-flex justify-content-center gap-2 flex-wrap">
+        <button class="btn btn-primary" type="button" data-retry>Try again</button>
+        <a class="btn btn-outline-primary" asp-controller="Home" asp-action="Index">Go home</a>
+    </div>
+    @if (Model.ShowRequestId)
+    {
+        <p class="small text-muted mt-3 mb-0">Reference: <code>@Model.RequestId</code></p>
+    }
+</div>

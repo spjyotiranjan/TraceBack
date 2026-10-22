@@ -1,0 +1,30 @@
+@model TraceBack.Controllers.ClaimPage
+@{
+    ViewData["Title"] = "Claim an item";
+}
+
+<div class="form-page">
+    <a class="back-link" asp-controller="Items" asp-action="Details" asp-route-id="@Model.Item.Id">← Back to item</a>
+
+    <p class="eyebrow mt-4">Ownership claim</p>
+    <h1>Claim @Model.Item.Title</h1>
+    <p class="text-muted">Describe details that confirm this item belongs to you. Your message is private to the claim review.</p>
+
+    <form asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id" method="post" class="form-card" novalidate>
+        <partial name="_ValidationSummary" />
+
+        <div class="mb-4">
+            <label for="message" class="form-label">Ownership details <span class="required">required</span></label>
+            <textarea id="message"
+                      name="Message"
+                      class="form-control"
+                      rows="6"
+                      maxlength="1000"
+                      aria-describedby="message-help message-error">@Model.Form.Message</textarea>
+            <div id="message-help" class="form-text">Include a distinguishing detail, where you last had it, or when you lost it.</div>
+            <span id="message-error" class="text-danger small">@Html.ValidationMessage("Message")</span>
+        </div>
+
+        <button class="btn btn-primary" type="submit">Submit claim</button>
+    </form>
+</div>

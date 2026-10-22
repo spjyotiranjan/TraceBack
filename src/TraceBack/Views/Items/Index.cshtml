@@ -1,0 +1,134 @@
+@model TraceBack.Controllers.BrowsePage
+@{
+    ViewData["Title"] = "Browse reports";
+}
+
+<div class="page-heading">
+    <p class="eyebrow">Explore reports</p>
+    <h1>Browse items</h1>
+    <p>Search what your campus has lost or found.</p>
+</div>
+
+<form asp-action="Index" method="get" class="filter-panel mb-4" role="search">
+    <div class="row g-3 align-items-end">
+        <div class="col-lg-4">
+            <label for="query" class="form-label">Search words</label>
+            <input id="query"
+                   name="Query"
+                   class="form-control"
+                   value="@Model.Search.Query"
+                   placeholder="Item name or description" />
+        </div>
+
+        <div class="col-sm-6 col-lg-2">
+            <label for="type" class="form-label">Type</label>
+            <select id="type" name="Type" class="form-select">
+                <option value="">All types</option>
+                <option value="Lost" selected="@(Model.Search.Type == "Lost")">Lost</option>
+                <option value="Found" selected="@(Model.Search.Type == "Found")">Found</option>
+            </select>
+        </div>
+
+        <div class="col-sm-6 col-lg-2">
+            <label for="category" class="form-label">Category</label>
+            <input id="category"
+                   name="Category"
+                   class="form-control"
+                   value="@Model.Search.Category"
+                   placeholder="e.g. Electronics" />
+        </div>
+
+        <div class="col-sm-6 col-lg-2">
+            <label for="location" class="form-label">Location</label>
+            <input id="location"
+                   name="Location"
+                   class="form-control"
+                   value="@Model.Search.Location"
+                   placeholder="e.g. Library" />
+        </div>
+
+        <div class="col-sm-6 col-lg-2">
+            <label for="status" class="form-label">Status</label>
+            <select id="status" name="Status" class="form-select">
+                <option value="Active" selected="@(Model.Search.Status is null or "Active")">Active</option>
+                <option value="Resolved" selected="@(Model.Search.Status == "Resolved")">Resolved</option>
+                <option value="Claimed" selected="@(Model.Search.Status == "Claimed")">Claimed</option>
+            </select>
+        </div>
+
+        <div class="col-12 d-flex gap-2 flex-wrap">
+            <button type="submit" class="btn btn-primary">Apply filters</button>
+            <a class="btn btn-link" asp-action="Index">Clear filters</a>
+        </div>
+    </div>
+</form>
+
+<div class="section-heading">
+    <h2 class="h4 mb-0">@Model.Items.Count @(Model.Items.Count == 1 ? "report" : "reports") on this page</h2>
+    <span class="text-muted">Page @Model.Search.Page</span>
+</div>
+
+@if (Model.Items.Count == 0)
+{
+    <div class="empty-state">
+        <h3 class="h5">No reports match these filters.</h3>
+        <p>Try a wider search or share an item you know about.</p>
+        <div class="d-flex justify-content-center gap-2 mt-3">
+            <a class="btn btn-outline-primary" asp-action="Index">Clear filters</a>
+            <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @foreach (var item in Model.Items)
+        {
+            <div class="col">
+                <partial name="_ItemCard" model="item" />
+            </div>
+        }
+    </div>
+}
+
+<nav class="mt-4" aria-label="Result pages">
+    <ul class="pagination">
+        @if (Model.Search.Page > 1)
+        {
+            <li class="page-item">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-query="@Model.Search.Query"
+                   asp-route-type="@Model.Search.Type"
+                   asp-route-category="@Model.Search.Category"
+                   asp-route-location="@Model.Search.Location"
+                   asp-route-status="@Model.Search.Status"
+                   asp-route-page="@(Model.Search.Page - 1)"
+                   aria-label="Previous page">Previous</a>
+            </li>
+        }
+        else
+        {
+            <li class="page-item disabled"><span class="page-link" aria-disabled="true">Previous</span></li>
+        }
+
+        <li class="page-item active">
+            <span class="page-link" aria-current="page">@Model.Search.Page</span>
+        </li>
+
+        @if (Model.HasNext)
+        {
+            <li class="page-item">
+                <a class="page-link"
+                   asp-action="Index"
+                   asp-route-query="@Model.Search.Query"
+                   asp-route-type="@Model.Search.Type"
+                   asp-route-category="@Model.Search.Category"
+                   asp-route-location="@Model.Search.Location"
+                   asp-route-status="@Model.Search.Status"
+                   asp-route-page="@(Model.Search.Page + 1)"
+                   aria-label="Next page">Next</a>
+            </li>
+        }
+    </ul>
+</nav>

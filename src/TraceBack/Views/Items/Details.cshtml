@@ -1,0 +1,87 @@
+@model TraceBack.Controllers.ItemDetailPage
+@{
+    ViewData["Title"] = Model.Item.Title;
+}
+
+<a class="back-link" asp-action="Index">← Back to results</a>
+
+<div class="row g-4 mt-1 mb-5">
+    <div class="col-lg-6">
+        @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
+        {
+            <img class="detail-image" src="@Model.Item.DisplayImageUrl" alt="@Model.Item.Title" />
+        }
+        else
+        {
+            <div class="detail-placeholder" aria-hidden="true">TB</div>
+        }
+    </div>
+
+    <div class="col-lg-6">
+        <div class="d-flex gap-2 mb-3">
+            <span class="badge badge-type">@Model.Item.Type</span>
+            <span class="badge badge-status">@Model.Item.Status</span>
+        </div>
+
+        <h1>@Model.Item.Title</h1>
+        <p class="lead text-muted">@Model.Item.Description</p>
+
+        <dl class="detail-list">
+            <div>
+                <dt>Category</dt>
+                <dd>@Model.Item.Category</dd>
+            </div>
+            <div>
+                <dt>Location</dt>
+                <dd>@Model.Item.Location</dd>
+            </div>
+            <div>
+                <dt>Reported</dt>
+                <dd>@Model.Item.DateReported.ToString("d MMM yyyy")</dd>
+            </div>
+            <div>
+                <dt>Contact preference</dt>
+                <dd>@Model.Item.ContactPreference</dd>
+            </div>
+        </dl>
+
+        @if (Model.CanClaim)
+        {
+            <div class="action-panel">
+                <h2 class="h5">Think this is yours?</h2>
+                <p>Share details only the owner would know. Your message stays private.</p>
+                <a class="btn btn-primary" asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id">Submit a claim</a>
+            </div>
+        }
+        else if (User.Identity?.IsAuthenticated != true && Model.Item.Type == "Found" && Model.Item.Status == "Active")
+        {
+            <div class="action-panel">
+                <h2 class="h5">Think this is yours?</h2>
+                <p>Sign in to share private ownership details.</p>
+                <a class="btn btn-primary"
+                   asp-controller="Account"
+                   asp-action="Login"
+                   asp-route-returnUrl="@Url.RouteUrl("default", new { controller = "Claims", action = "Create", itemId = Model.Item.Id })">Sign in to claim</a>
+            </div>
+        }
+
+        @if ((Model.IsOwner || Model.IsAdmin) && Model.Item.Status == "Active")
+        {
+            <div class="d-flex gap-2 flex-wrap mt-4">
+                <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Item.Id">Edit report</a>
+                <form asp-route="default" asp-route-controller="Items" asp-route-action="Resolve" asp-route-id="@Model.Item.Id" method="post">
+                    <button class="btn btn-outline-secondary" type="submit" data-confirm="Mark this report resolved?">Mark resolved</button>
+                </form>
+            </div>
+        }
+
+        @if (Model.IsOwner || Model.IsAdmin)
+        {
+            <form asp-route="default" asp-route-controller="Items" asp-route-action="Delete" asp-route-id="@Model.Item.Id" method="post" class="mt-3">
+                <button class="btn btn-outline-danger"
+                        type="submit"
+                        data-confirm="Delete this report and all of its claims? This cannot be undone.">Delete report</button>
+            </form>
+        }
+    </div>
+</div>

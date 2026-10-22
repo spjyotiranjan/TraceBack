@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/TraceBack.Tests/TraceBack.Tests.csproj" />
+  </Folder>
+  <Project Path="src/TraceBack/TraceBack.csproj" />
+</Solution>
