@@ -5,11 +5,17 @@ using TraceBack.Services;
 
 namespace TraceBack.Controllers;
 
-public class HomeController(ItemService items) : Controller
+public class HomeController(Func<IItemService> createItems) : Controller
 {
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> Index()
     {
-        var recent = await items.SearchAsync(new ItemSearch());
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            return View(new List<Item>());
+        }
+
+        var recent = await createItems().SearchAsync(new ItemSearch());
         return View(recent.Take(6).ToList());
     }
 

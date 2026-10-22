@@ -8,7 +8,7 @@ using TraceBack.Services;
 
 namespace TraceBack.Controllers;
 
-public class AccountController(AccountService accounts) : Controller
+public class AccountController : Controller
 {
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
@@ -19,7 +19,7 @@ public class AccountController(AccountService accounts) : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginForm form, string? returnUrl = null)
+    public async Task<IActionResult> Login([FromServices] AccountService accounts, LoginForm form, string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
 
@@ -49,7 +49,7 @@ public class AccountController(AccountService accounts) : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(RegisterForm form)
+    public async Task<IActionResult> Register([FromServices] AccountService accounts, RegisterForm form)
     {
         if (!ModelState.IsValid)
         {
