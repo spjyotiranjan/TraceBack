@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TraceBack.Models;
@@ -6,7 +7,9 @@ using TraceBack.Services;
 
 namespace TraceBack.Controllers;
 
-public class ItemsController(ItemService items, ILogger<ItemsController> logger) : Controller
+[Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
+[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+public class ItemsController(IItemService items, ILogger<ItemsController> logger) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Image(string id)

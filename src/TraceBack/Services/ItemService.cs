@@ -5,7 +5,21 @@ using TraceBack.Models;
 
 namespace TraceBack.Services;
 
-public sealed class ItemService(MongoStore store, ItemImageService images)
+public interface IItemService
+{
+    Task<List<Item>> SearchAsync(ItemSearch search);
+    Task<Item?> GetAsync(string id);
+    Task<List<Item>> MineAsync(string userId);
+    Task<Item> CreateAsync(ItemForm form, string userId);
+    Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin);
+    Task<bool> ResolveAsync(string id, string userId, bool admin);
+    Task<bool> DeleteAsync(string id, string userId, bool admin);
+    Task<bool> SetImageAsync(string id, ImageUpload image, string userId, bool admin);
+    Task<bool> RemoveImageAsync(string id, string userId, bool admin);
+    Task<StoredImage?> GetImageAsync(string id, CancellationToken cancellationToken = default);
+}
+
+public sealed class ItemService(MongoStore store, ItemImageService images) : IItemService
 {
     public async Task<List<Item>> SearchAsync(ItemSearch search)
     {

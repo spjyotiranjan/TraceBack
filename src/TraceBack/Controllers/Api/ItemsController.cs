@@ -1,14 +1,13 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TraceBack.Models;
 using TraceBack.Services;
 
 namespace TraceBack.Controllers.Api;
 
-public sealed class ItemsController(ItemService items, ILogger<ItemsController> logger) : ApiControllerBase
+[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+public sealed class ItemsController(IItemService items, ILogger<ItemsController> logger) : ApiControllerBase
 {
     [HttpGet]
-    [AllowAnonymous]
     public async Task<ActionResult<IEnumerable<ItemResponse>>> Search([FromQuery] ItemSearch search)
     {
         if (search.Page < 1 || search.Page > 1000)
@@ -43,7 +42,6 @@ public sealed class ItemsController(ItemService items, ILogger<ItemsController> 
     }
 
     [HttpGet("{id}")]
-    [AllowAnonymous]
     public async Task<ActionResult<ItemResponse>> Get(string id)
     {
         if (!ValidId(id))

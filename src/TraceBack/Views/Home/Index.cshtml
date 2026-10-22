@@ -47,7 +47,14 @@
         </a>
     </div>
 
-    @if (Model.Count == 0)
+    @if (User.Identity?.IsAuthenticated != true)
+    {
+        <div class="empty-state">
+            <p>Sign in to see recent reports and search for belongings.</p>
+            <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Sign in</a>
+        </div>
+    }
+    else if (Model.Count == 0)
     {
         <div class="empty-state">
             <p>No active reports yet.</p>

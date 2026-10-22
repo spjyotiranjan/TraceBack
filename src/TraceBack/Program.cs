@@ -18,6 +18,8 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddSingleton<MongoStore>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ItemService>();
+builder.Services.AddScoped<IItemService>(provider => provider.GetRequiredService<ItemService>());
+builder.Services.AddScoped<Func<IItemService>>(provider => () => provider.GetRequiredService<IItemService>());
 builder.Services.AddSingleton<R2ImageStorage>();
 builder.Services.AddSingleton<IImageStorage>(provider => provider.GetRequiredService<R2ImageStorage>());
 builder.Services.AddSingleton<IItemImageRepository, MongoItemImageRepository>();
