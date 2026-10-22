@@ -9,7 +9,7 @@
     <h1>@ViewData["Title"]</h1>
     <p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
 
-    <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" class="form-card" novalidate>
+    <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card" novalidate>
         <partial name="_ValidationSummary" />
 
         @if (editing)
@@ -104,14 +104,22 @@
         </div>
 
         <div class="mb-4">
-            <label class="form-label" for="image">Image URL <span class="text-muted">optional</span></label>
+            <label class="form-label" for="image">Image <span class="text-muted">optional</span></label>
             <input id="image"
-                   name="ImageUrl"
-                   type="url"
+                   name="ImageFile"
+                   type="file"
+                   accept="image/jpeg,image/png,image/gif,image/webp"
                    class="form-control"
-                   value="@Model.Form.ImageUrl"
                    aria-describedby="image-error" />
-            <span id="image-error" class="text-danger small">@Html.ValidationMessage("ImageUrl")</span>
+            <div class="form-text">JPEG, PNG, GIF, or WebP, up to 5 MB. Images are stored in Cloudflare R2.</div>
+            <span id="image-error" class="text-danger small">@Html.ValidationMessage("ImageFile")</span>
+            @if (editing)
+            {
+                <div class="form-check mt-2">
+                    <input id="remove-image" name="RemoveImage" type="checkbox" value="true" class="form-check-input" />
+                    <label for="remove-image" class="form-check-label">Remove current image</label>
+                </div>
+            }
         </div>
 
         <div class="d-flex align-items-center gap-2">

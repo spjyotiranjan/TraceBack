@@ -6,8 +6,32 @@ using TraceBack.Services;
 
 namespace TraceBack.Controllers;
 
-public class ItemsController(ItemService items) : Controller
+public class ItemsController(ItemService items, ILogger<ItemsController> logger) : Controller
 {
+    [HttpGet]
+    public async Task<IActionResult> Image(string id)
+    {
+        StoredImage? image;
+        try
+        {
+            image = await items.GetImageAsync(id, HttpContext.RequestAborted);
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            logger.LogError(error, "Image retrieval failed for report {ItemId}", id);
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
+
+        if (image is null)
+        {
+            return NotFound();
+        }
+
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(image.Bytes, image.ContentType);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Index([FromQuery] ItemSearch search)
     {
@@ -72,8 +96,16 @@ public class ItemsController(ItemService items) : Controller
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(ItemForm form)
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<IActionResult> Create(ItemForm form, IFormFile? imageFile)
     {
+        ImageUpload? upload = null;
+        if (imageFile is not null)
+        {
+            try { upload = await R2ImageStorage.ReadUploadAsync(imageFile, HttpContext.RequestAborted); }
+            catch (ArgumentException error) { ModelState.AddModelError("ImageFile", error.Message); }
+        }
+
         if (!ModelState.IsValid)
         {
             return View("Editor", new ItemEditorPage(form, null));
@@ -81,6 +113,24 @@ public class ItemsController(ItemService items) : Controller
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var item = await items.CreateAsync(form, currentUserId);
+
+        if (upload is not null)
+        {
+            try
+            {
+                if (!await items.SetImageAsync(item.Id, upload, currentUserId, false))
+                {
+                    throw new InvalidOperationException("The new report could not accept an image.");
+                }
+            }
+            catch (Exception error) when (error is not OperationCanceledException)
+            {
+                logger.LogError(error, "Image upload failed for report {ItemId}", item.Id);
+                await items.DeleteAsync(item.Id, currentUserId, false);
+                ModelState.AddModelError("ImageFile", "Could not store the image. Please try again.");
+                return View("Editor", new ItemEditorPage(form, null));
+            }
+        }
 
         TempData["Success"] = "Your report is live.";
         return RedirectToAction(nameof(Details), new { id = item.Id });
@@ -114,8 +164,7 @@ public class ItemsController(ItemService items) : Controller
             Category = item.Category,
             Location = item.Location,
             DateReported = item.DateReported,
-            ContactPreference = item.ContactPreference,
-            ImageUrl = item.ImageUrl
+            ContactPreference = item.ContactPreference
         };
 
         return View("Editor", new ItemEditorPage(form, id));
@@ -124,8 +173,16 @@ public class ItemsController(ItemService items) : Controller
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(string id, ItemForm form)
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<IActionResult> Edit(string id, ItemForm form, IFormFile? imageFile, bool removeImage)
     {
+        ImageUpload? upload = null;
+        if (imageFile is not null)
+        {
+            try { upload = await R2ImageStorage.ReadUploadAsync(imageFile, HttpContext.RequestAborted); }
+            catch (ArgumentException error) { ModelState.AddModelError("ImageFile", error.Message); }
+        }
+
         if (!ModelState.IsValid)
         {
             return View("Editor", new ItemEditorPage(form, id));
@@ -138,6 +195,24 @@ public class ItemsController(ItemService items) : Controller
         if (item is null)
         {
             return NotFound();
+        }
+
+        try
+        {
+            var imageChanged = upload is not null
+                ? await items.SetImageAsync(id, upload, currentUserId, isAdmin)
+                : !removeImage || await items.RemoveImageAsync(id, currentUserId, isAdmin);
+            if (!imageChanged)
+            {
+                TempData["Error"] = "Report details were saved, but the image could not be changed. Please try again.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            logger.LogError(error, "Image change failed for report {ItemId}", id);
+            TempData["Error"] = "Report details were saved, but the image could not be changed. Please try again.";
+            return RedirectToAction(nameof(Details), new { id });
         }
 
         TempData["Success"] = "Your report was updated.";

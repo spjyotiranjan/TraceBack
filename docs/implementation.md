@@ -15,7 +15,7 @@ The API and MVC pages share services and data contracts. Wayne's screens depend 
 ## Later work
 
 - Exercise registration, item, claim, and admin workflows against a running MongoDB instance.
-- Add image upload/storage only after choosing a storage destination; the first delivery accepts an image URL.
+- Store new report images in the configured private Cloudflare R2 bucket and retrieve them through the app. Existing external image URLs remain readable for older reports.
 - Add notifications and deployment after the core workflows have passed end-to-end checks.
 
 Keep each new feature in the existing module boundaries. Update this plan and the project layout in `README.md` when adding or moving folders.

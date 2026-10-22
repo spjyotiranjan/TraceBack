@@ -5,7 +5,7 @@ using TraceBack.Models;
 
 namespace TraceBack.Services;
 
-public sealed class ItemService(MongoStore store)
+public sealed class ItemService(MongoStore store, ItemImageService images)
 {
     public async Task<List<Item>> SearchAsync(ItemSearch search)
     {
@@ -134,27 +134,16 @@ public sealed class ItemService(MongoStore store)
         return true;
     }
 
-    public async Task<bool> DeleteAsync(string id, string userId, bool admin)
-    {
-        if (!ObjectId.TryParse(id, out _))
-        {
-            return false;
-        }
+    public Task<bool> DeleteAsync(string id, string userId, bool admin) => images.DeleteItemAsync(id, userId, admin);
 
-        var filter = Builders<Item>.Filter.Eq(x => x.Id, id);
-        if (!admin)
-        {
-            filter &= Builders<Item>.Filter.Eq(x => x.PostedByUserId, userId);
-        }
+    public Task<bool> SetImageAsync(string id, ImageUpload image, string userId, bool admin) =>
+        images.SetImageAsync(id, image, userId, admin);
 
-        var result = await store.Items.DeleteOneAsync(filter);
-        if (result.DeletedCount > 0)
-        {
-            await store.Claims.DeleteManyAsync(x => x.ItemId == id);
-        }
+    public Task<bool> RemoveImageAsync(string id, string userId, bool admin) =>
+        images.RemoveImageAsync(id, userId, admin);
 
-        return result.DeletedCount > 0;
-    }
+    public Task<StoredImage?> GetImageAsync(string id, CancellationToken cancellationToken = default) =>
+        images.GetImageAsync(id, cancellationToken);
 
     private static Item Apply(Item item, ItemForm form)
     {
@@ -165,7 +154,6 @@ public sealed class ItemService(MongoStore store)
         item.Location = form.Location.Trim();
         item.DateReported = form.DateReported.Date;
         item.ContactPreference = form.ContactPreference.Trim();
-        item.ImageUrl = form.ImageUrl;
         item.UpdatedAt = DateTime.UtcNow;
         return item;
     }

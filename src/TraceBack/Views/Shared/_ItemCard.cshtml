@@ -1,9 +1,9 @@
 @model Item
 
 <article class="card item-card h-100">
-    @if (!string.IsNullOrWhiteSpace(Model.ImageUrl))
+    @if (!string.IsNullOrWhiteSpace(Model.DisplayImageUrl))
     {
-        <img class="card-img-top item-image" src="@Model.ImageUrl" alt="@Model.Title" loading="lazy" />
+        <img class="card-img-top item-image" src="@Model.DisplayImageUrl" alt="@Model.Title" loading="lazy" />
     }
     else
     {

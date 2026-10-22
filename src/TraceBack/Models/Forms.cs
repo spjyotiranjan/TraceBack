@@ -57,9 +57,6 @@ public sealed class ItemForm : IValidatableObject
     [StringLength(120)]
     public string ContactPreference { get; set; } = string.Empty;
 
-    [HttpsUrl]
-    public string? ImageUrl { get; set; }
-
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (string.IsNullOrWhiteSpace(Title))

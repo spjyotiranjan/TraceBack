@@ -42,6 +42,11 @@ public sealed class Item
 
     public string? ImageUrl { get; set; }
 
+    public string? ImageKey { get; set; }
+
+    [BsonIgnore]
+    public string? DisplayImageUrl => ImageKey is not null ? $"/Items/Image/{Id}" : ImageUrl;
+
     public string Status { get; set; } = "Active";
 
     public string? ApprovedClaimId { get; set; }
