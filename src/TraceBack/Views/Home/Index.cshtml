@@ -10,7 +10,9 @@
             <h1 class="display-4 fw-bold">Find what matters.</h1>
             <p class="lead">A simple place to report missing belongings, share what you found, and bring things back to their people.</p>
 
-            <form asp-controller="Items" asp-action="Index" method="get" class="d-flex gap-2 mt-4" role="search">
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+            <form asp-controller="Items" asp-action="Index" method="get" class="d-flex gap-2 mt-4 hero-search" role="search">
                 <label class="visually-hidden" for="hero-search">Search belongings</label>
                 <input id="hero-search"
                        name="Query"
@@ -24,6 +26,12 @@
                 <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index" asp-route-type="Found">Browse found</a>
                 <a class="btn btn-accent" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
             </div>
+            }
+            else
+            {
+                <p class="mt-4 mb-2">Reports are available after sign-in.</p>
+                <a href="#how-title">See how it works</a>
+            }
         </div>
 
         <div class="col-lg-5">
@@ -36,6 +44,8 @@
     </div>
 </section>
 
+@if (User.Identity?.IsAuthenticated == true)
+{
 <section aria-labelledby="recent-title" class="mb-5">
     <div class="section-heading">
         <div>
@@ -47,14 +57,7 @@
         </a>
     </div>
 
-    @if (User.Identity?.IsAuthenticated != true)
-    {
-        <div class="empty-state">
-            <p>Sign in to see recent reports and search for belongings.</p>
-            <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Sign in</a>
-        </div>
-    }
-    else if (Model.Count == 0)
+    @if (Model.Count == 0)
     {
         <div class="empty-state">
             <p>No active reports yet.</p>
@@ -73,10 +76,37 @@
         </div>
     }
 </section>
+}
+else
+{
+<section class="guest-welcome mb-5" aria-labelledby="welcome-title">
+    <p class="eyebrow">Campus lost and found</p>
+    <h2 id="welcome-title">A better way back for your belongings.</h2>
+    <p class="guest-welcome-intro">TraceBack brings campus lost and found into one place. Sign in to search reports, share what you found, and help belongings get home.</p>
+    <div class="row g-4 mt-1">
+        <div class="col-md-4">
+            <h3 class="h5">Search in one place</h3>
+            <p>Look through current lost and found reports when you sign in.</p>
+        </div>
+        <div class="col-md-4">
+            <h3 class="h5">Share useful details</h3>
+            <p>Post what you lost or found so others know what to look for.</p>
+        </div>
+        <div class="col-md-4">
+            <h3 class="h5">Keep claims private</h3>
+            <p>Confirm ownership through a claim before arranging a handoff.</p>
+        </div>
+    </div>
+    <div class="guest-welcome-actions mt-4">
+        <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Sign in</a>
+        <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Register">Create account</a>
+    </div>
+</section>
+}
 
 <section class="how-it-works mb-5" aria-labelledby="how-title">
     <p class="eyebrow">A clearer way back</p>
-    <h2 id="how-title">How it works</h2>
+    <h2 id="how-title" tabindex="-1">How it works</h2>
 
     <div class="row g-4 mt-1">
         <div class="col-md-4">

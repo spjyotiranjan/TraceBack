@@ -9,3 +9,4 @@ appsettings.Development.json
 .env.*
 !.env.example
 
+/publish/

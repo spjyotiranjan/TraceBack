@@ -56,7 +56,13 @@ public sealed class ReportAuthorizationTests
         Assert.Equal(HttpStatusCode.OK, home.StatusCode);
         Assert.True(home.Headers.CacheControl?.NoStore);
         var markup = await home.Content.ReadAsStringAsync();
-        Assert.Contains("Sign in to see recent reports", markup);
+        Assert.Contains("A better way back for your belongings.", markup);
+        Assert.Contains("Reports are available after sign-in.", markup);
+        Assert.Contains("Create account", markup);
+        Assert.DoesNotContain("Recent reports", markup);
+        Assert.DoesNotContain("Browse all", markup);
+        Assert.DoesNotContain("Browse lost", markup);
+        Assert.DoesNotContain("Report an item", markup);
         Assert.DoesNotContain(reports.Item.Title, markup);
         Assert.DoesNotContain("No active reports yet", markup);
 
@@ -82,7 +88,15 @@ public sealed class ReportAuthorizationTests
             using var response = await client.GetAsync(path);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.True(response.Headers.CacheControl?.NoStore);
-            Assert.Contains(reports.Item.Title, await response.Content.ReadAsStringAsync());
+            var markup = await response.Content.ReadAsStringAsync();
+            Assert.Contains(reports.Item.Title, markup);
+            if (path == "/")
+            {
+                Assert.Contains("Search belongings", markup);
+                Assert.Contains("Browse lost", markup);
+                Assert.Contains("Recent reports", markup);
+                Assert.DoesNotContain("A better way back for your belongings.", markup);
+            }
         }
 
         using var image = await client.GetAsync($"/Items/Image/{reports.Item.Id}");
