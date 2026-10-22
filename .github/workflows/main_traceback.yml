@@ -7,6 +7,9 @@ on:
   push:
     branches:
       - 'main'
+  pull_request:
+    branches:
+      - 'main'
   workflow_dispatch:
 
 jobs:
@@ -23,19 +26,46 @@ jobs:
         with:
           dotnet-version: '10.x'
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+      - name: Restore dependencies
+        run: dotnet restore TraceBack.slnx
 
-      - name: dotnet publish
-        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+      - name: Build solution
+        run: dotnet build TraceBack.slnx --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test TraceBack.slnx --configuration Release --no-build --no-restore
+
+      - name: Publish the web app
+        run: dotnet publish src/TraceBack/TraceBack.csproj --configuration Release --no-restore --output publish -p:DebugType=None
+
+      - name: Assemble Windows deployment package
+        shell: pwsh
+        run: |
+          $publishRoot = (Resolve-Path -LiteralPath 'publish').Path
+          $packageRoot = Join-Path $PWD 'package'
+          Get-ChildItem -LiteralPath $publishRoot -Recurse -File | ForEach-Object {
+            $relativePath = $_.FullName.Substring($publishRoot.Length + 1)
+            if ($_.Extension -ne '.pdb' -and
+                ($relativePath -notmatch '^runtimes[\\/]' -or
+                 $relativePath -match '^runtimes[\\/]win-(x86|x64)[\\/]')) {
+              $target = Join-Path $packageRoot $relativePath
+              New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
+              Copy-Item -LiteralPath $_.FullName -Destination $target
+            }
+          }
+          if (-not (Test-Path -LiteralPath (Join-Path $packageRoot 'TraceBack.dll'))) {
+            throw 'Deployment package is missing TraceBack.dll.'
+          }
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: .net-app
-          path: ${{env.DOTNET_ROOT}}/myapp
+          path: package
+          if-no-files-found: error
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: windows-latest
     needs: build
     permissions:
@@ -47,7 +77,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
-      
+          path: package
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -55,11 +86,24 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_B7124AACAE8349F7A93586FC4C0351D7 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_DD5D6BEDA64F43599159631B83FE27DA }}
 
+      - name: Run the deployed package without extracting it
+        shell: pwsh
+        run: |
+          $siteIds = @(az webapp list --query "[?name=='TraceBack'].id" --output tsv |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+          if ($LASTEXITCODE -ne 0 -or $siteIds.Count -ne 1) {
+            throw 'Expected exactly one TraceBack App Service in the Azure subscription.'
+          }
+          az webapp config appsettings set --ids $siteIds[0] --settings WEBSITE_RUN_FROM_PACKAGE=1 --output none
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Could not enable run-from-package on the TraceBack App Service.'
+          }
+
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'TraceBack'
           slot-name: 'Production'
-          package: .
-          
+          package: package
+
