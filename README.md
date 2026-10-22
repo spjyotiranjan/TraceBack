@@ -53,6 +53,23 @@ Keep page presentation in `Views`, HTTP concerns in controllers, business rules 
 
 Open the address printed by `dotnet run`. Development can start without `Jwt__Secret`; in that case the app generates a new signing key for that run, so existing API tokens expire after restart. Set `Jwt__Secret` in any persistent environment. The app requires it outside Development.
 
+## Azure App Service deployment
+
+Use a **Windows App Service** with the **.NET 10** runtime. The GitHub Actions workflow at `.github/workflows/main_traceback.yml` builds and tests the solution on pushes and pull requests to `main`. Pushes to `main` and manual runs from `main` publish `src/TraceBack/TraceBack.csproj` and deploy only the web app. The Windows deployment package excludes unused non-Windows SkiaSharp binaries and debug symbols to reduce its size. It retains both x86 and x64 native libraries for either App Service process setting.
+
+Set these App Service environment variables under **Settings → Environment variables** before deploying:
+
+```text
+Mongo__ConnectionString=<reachable MongoDB connection string>
+Mongo__Database=TraceBack
+Jwt__Secret=<random secret of at least 32 characters>
+Jwt__Issuer=TraceBack
+```
+
+After Azure login, the workflow sets `WEBSITE_RUN_FROM_PACKAGE=1` on the `TraceBack` App Service before deployment. The Azure identity must be allowed to list the app and update its settings. This makes App Service mount the ZIP instead of extracting it into `wwwroot`, which addresses the disk-space failure in the original deployment. Keep credentials in App Service settings, not in Git. If using MongoDB Atlas, permit connections from the App Service outbound network. Configure the four `R2__*` settings shown above if image uploads are needed. The app creates MongoDB indexes when its data service is first used, so an unreachable database prevents normal site operation.
+
+After saving settings, rerun the GitHub workflow from `main` or merge the deployment change into `main`. Open the Azure site and check the home page, sign-in, and an item flow. If the Azure default welcome page remains, check the workflow's deploy job and App Service log stream. A disk-space error even with the reduced package and run-from-package setting requires clearing App Service storage or increasing the plan's storage capacity.
+
 To provision the first admin, set `BootstrapAdmin__Email` and `BootstrapAdmin__Password` (at least 12 characters) before startup. `BootstrapAdmin__Name` is optional. The configured account is created or promoted to Admin, and its password is reset to the configured value on every startup while these settings remain present. Remove these settings after the initial provision, or manage them as protected deployment secrets. Ordinary registration always creates a Student account.
 
 ## Main flows
