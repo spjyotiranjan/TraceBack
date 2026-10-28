@@ -87,6 +87,28 @@
             <span id="location-error" class="text-danger small">@Html.ValidationMessage("Location")</span>
         </div>
 
+        <fieldset class="mb-3">
+            <legend class="form-label">Map coordinates @if (!editing) { <span class="required">required</span> }</legend>
+            <p class="form-text">This exact location is visible to signed-in report viewers. Choose a nearby public landmark for private places.</p>
+            @if (editing && Model.Form.MapLocation is null)
+            {
+                <p class="form-text">Map location not added. You can save this older report without a pin.</p>
+            }
+            <div class="row g-2">
+                <div class="col-sm-6">
+                    <label class="form-label" for="latitude">Latitude</label>
+                    <input id="latitude" name="MapLocation.Latitude" type="text" inputmode="decimal" class="form-control"
+                           value="@Model.Form.MapLocation?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-error" />
+                </div>
+                <div class="col-sm-6">
+                    <label class="form-label" for="longitude">Longitude</label>
+                    <input id="longitude" name="MapLocation.Longitude" type="text" inputmode="decimal" class="form-control"
+                           value="@Model.Form.MapLocation?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-error" />
+                </div>
+            </div>
+            <span id="map-location-error" class="text-danger small">@Html.ValidationMessage("MapLocation")</span>
+        </fieldset>
+
         <div class="mb-3">
             <label class="form-label" for="date">Date <span class="required">required</span></label>
             <input id="date"

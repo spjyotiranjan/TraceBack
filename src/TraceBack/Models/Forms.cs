@@ -49,6 +49,8 @@ public sealed class ItemForm : IValidatableObject
     [StringLength(120)]
     public string Location { get; set; } = string.Empty;
 
+    public MapLocationInput? MapLocation { get; set; }
+
     [Required]
     [DataType(DataType.Date)]
     public DateTime DateReported { get; set; } = DateTime.Today;
@@ -77,6 +79,11 @@ public sealed class ItemForm : IValidatableObject
         if (string.IsNullOrWhiteSpace(Location))
         {
             yield return new ValidationResult("Location is required.", [nameof(Location)]);
+        }
+
+        if (!MapLocationRules.TryNormalize(MapLocation, out _, out var locationError))
+        {
+            yield return new ValidationResult(locationError, [nameof(MapLocation)]);
         }
 
         if (string.IsNullOrWhiteSpace(ContactPreference))
