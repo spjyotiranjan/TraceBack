@@ -86,7 +86,8 @@ public sealed class ItemService(MongoStore store, ItemImageService images) : IIt
 
     public async Task<Item> CreateAsync(ItemForm form, string userId)
     {
-        var item = Apply(new Item { PostedByUserId = userId }, form);
+        var point = ValidateMapLocation(form.MapLocation, required: true);
+        var item = Apply(new Item { PostedByUserId = userId }, form, point);
         await store.Items.InsertOneAsync(item);
         return item;
     }
@@ -106,13 +107,19 @@ public sealed class ItemService(MongoStore store, ItemImageService images) : IIt
         }
 
         var previousUpdatedAt = item.UpdatedAt;
-        Apply(item, form);
+        var point = ValidateMapLocation(form.MapLocation, required: false);
+        Apply(item, form, point ?? item.MapLocation);
 
         var result = await store.Items.ReplaceOneAsync(
             x => x.Id == id && x.Status == "Active" && x.UpdatedAt == previousUpdatedAt,
             item);
 
-        return result.MatchedCount > 0 ? item : null;
+        if (result.MatchedCount == 0)
+        {
+            throw new ItemUpdateConflictException();
+        }
+
+        return item;
     }
 
     public async Task<bool> ResolveAsync(string id, string userId, bool admin)
@@ -159,16 +166,36 @@ public sealed class ItemService(MongoStore store, ItemImageService images) : IIt
     public Task<StoredImage?> GetImageAsync(string id, CancellationToken cancellationToken = default) =>
         images.GetImageAsync(id, cancellationToken);
 
-    private static Item Apply(Item item, ItemForm form)
+    private static MapLocation? ValidateMapLocation(MapLocationInput? input, bool required)
+    {
+        if (!MapLocationRules.TryNormalize(input, out var point, out var error))
+        {
+            throw new ArgumentException(error, nameof(input));
+        }
+
+        if (required && point is null)
+        {
+            throw new ArgumentException(MapLocationRules.RequiredMessage, nameof(input));
+        }
+
+        return point;
+    }
+
+    private static Item Apply(Item item, ItemForm form, MapLocation? point)
     {
         item.Title = form.Title.Trim();
         item.Description = form.Description.Trim();
         item.Type = form.Type;
         item.Category = form.Category.Trim();
         item.Location = form.Location.Trim();
+        item.MapLocation = point;
         item.DateReported = form.DateReported.Date;
         item.ContactPreference = form.ContactPreference.Trim();
         item.UpdatedAt = DateTime.UtcNow;
         return item;
     }
+}
+
+public sealed class ItemUpdateConflictException : Exception
+{
 }

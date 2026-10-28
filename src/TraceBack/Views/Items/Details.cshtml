@@ -33,7 +33,18 @@
             </div>
             <div>
                 <dt>Location</dt>
-                <dd>@Model.Item.Location</dd>
+                <dd>
+                    @Model.Item.Location
+                    @if (TraceBack.Models.MapLocationRules.SafeStored(Model.Item.MapLocation) is { } point)
+                    {
+                        <span class="d-block">Coordinates: @point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)</span>
+                        <a href="@TraceBack.Models.MapLocationRules.GoogleMapsUrl(point)" target="_blank" rel="noopener noreferrer">View in Google Maps</a>
+                    }
+                    else
+                    {
+                        <span class="d-block">Map location not available</span>
+                    }
+                </dd>
             </div>
             <div>
                 <dt>Reported</dt>

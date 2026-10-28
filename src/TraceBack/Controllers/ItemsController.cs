@@ -111,6 +111,11 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Create(ItemForm form, IFormFile? imageFile)
     {
+        if (form.MapLocation?.Latitude is null && form.MapLocation?.Longitude is null)
+        {
+            ModelState.AddModelError(nameof(form.MapLocation), MapLocationRules.RequiredMessage);
+        }
+
         ImageUpload? upload = null;
         if (imageFile is not null)
         {
@@ -124,7 +129,16 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         }
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        var item = await items.CreateAsync(form, currentUserId);
+        Item item;
+        try
+        {
+            item = await items.CreateAsync(form, currentUserId);
+        }
+        catch (ArgumentException error)
+        {
+            ModelState.AddModelError(nameof(form.MapLocation), error.Message);
+            return View("Editor", new ItemEditorPage(form, null));
+        }
 
         if (upload is not null)
         {
@@ -175,6 +189,11 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
             Type = item.Type,
             Category = item.Category,
             Location = item.Location,
+            MapLocation = item.MapLocation is null ? null : new MapLocationInput
+            {
+                Latitude = item.MapLocation.Latitude,
+                Longitude = item.MapLocation.Longitude
+            },
             DateReported = item.DateReported,
             ContactPreference = item.ContactPreference
         };
@@ -207,7 +226,20 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
         var isAdmin = User.IsInRole("Admin");
 
-        var item = await items.UpdateAsync(id, form, currentUserId, isAdmin);
+        Item? item;
+        try
+        {
+            item = await items.UpdateAsync(id, form, currentUserId, isAdmin);
+        }
+        catch (ArgumentException error)
+        {
+            ModelState.AddModelError(nameof(form.MapLocation), error.Message);
+            return View("Editor", new ItemEditorPage(form, id, existingItem.DisplayImageUrl));
+        }
+        catch (ItemUpdateConflictException)
+        {
+            return Conflict("This report changed while you were editing it. Reload and try again.");
+        }
         if (item is null)
         {
             return NotFound();
