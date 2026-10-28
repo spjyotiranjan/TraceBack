@@ -131,6 +131,46 @@ public sealed class ReportAuthorizationTests
         Assert.Equal("/Account/Login", mvc.Headers.Location?.AbsolutePath);
     }
 
+    [Fact]
+    public async Task Comment_routes_enforce_cookie_bearer_and_antiforgery_boundaries()
+    {
+        var comments = new FakeCommentService();
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<ICommentService>();
+                services.AddSingleton<ICommentService>(comments);
+            }));
+        var path = $"/Items/{comments.ItemId}/Comments";
+        var apiPath = $"/api/items/{comments.ItemId}/comments";
+
+        using (var anonymous = CreateClient(factory))
+        {
+            Assert.Equal(HttpStatusCode.Redirect, (await anonymous.GetAsync(path)).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(apiPath)).StatusCode);
+        }
+
+        using (var cookie = CreateClient(factory))
+        {
+            AddCookie(cookie, factory);
+            Assert.Equal(HttpStatusCode.OK, (await cookie.GetAsync(path)).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await cookie.GetAsync(apiPath)).StatusCode);
+            using var form = new MultipartFormDataContent { { new StringContent("hello"), "body" } };
+            Assert.Equal(HttpStatusCode.BadRequest, (await cookie.PostAsync(path, form)).StatusCode);
+            Assert.Equal(0, comments.CreateCount);
+        }
+
+        using (var bearer = CreateClient(factory))
+        {
+            AddBearerToken(bearer, factory);
+            Assert.Equal(HttpStatusCode.OK, (await bearer.GetAsync(apiPath)).StatusCode);
+            Assert.Equal(HttpStatusCode.Redirect, (await bearer.GetAsync(path)).StatusCode);
+            using var form = new MultipartFormDataContent { { new StringContent("hello"), "body" } };
+            Assert.Equal(HttpStatusCode.Created, (await bearer.PostAsync(apiPath, form)).StatusCode);
+            Assert.Equal(1, comments.CreateCount);
+        }
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(FakeItemService? reports) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -214,5 +254,26 @@ public sealed class ReportAuthorizationTests
         public Task<bool> DeleteAsync(string id, string userId, bool admin) => throw new NotSupportedException();
         public Task<bool> SetImageAsync(string id, ImageUpload image, string userId, bool admin) => throw new NotSupportedException();
         public Task<bool> RemoveImageAsync(string id, string userId, bool admin) => throw new NotSupportedException();
+    }
+
+    private sealed class FakeCommentService : ICommentService
+    {
+        public string ItemId { get; } = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+        public int CreateCount { get; private set; }
+
+        public Task<CommentResult<CommentPage>> ListAsync(string itemId, string? parentId, string? cursor, int limit) =>
+            Task.FromResult(new CommentResult<CommentPage>(new CommentPage([], null)));
+
+        public Task<CommentResult<CommentView>> CreateAsync(
+            string itemId, string? parentId, string? body, string authorId, string authorName)
+        {
+            CreateCount++;
+            return Task.FromResult(new CommentResult<CommentView>(new CommentView(
+                MongoDB.Bson.ObjectId.GenerateNewId().ToString(), itemId, parentId,
+                authorId, authorName, body, DateTime.UtcNow, false)));
+        }
+
+        public Task<CommentError> DeleteAsync(string itemId, string commentId, string userId, bool isAdmin) =>
+            Task.FromResult(CommentError.None);
     }
 }

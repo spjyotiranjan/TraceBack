@@ -82,6 +82,7 @@ public sealed class ItemImageServiceTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.DeleteItemAsync(repository.Item!.Id, "owner", false));
         Assert.Null(repository.Item);
+        Assert.Equal(1, repository.CommentsDeleted);
         Assert.Equal(["old-key"], storage.DeletedKeys);
     }
 
@@ -94,6 +95,7 @@ public sealed class ItemImageServiceTests
         Assert.True(await service.DeleteItemAsync(repository.Item!.Id, "admin", true));
         Assert.Null(repository.Item);
         Assert.Equal(1, repository.ClaimsDeleted);
+        Assert.Equal(1, repository.CommentsDeleted);
         Assert.Equal(["old-key"], storage.DeletedKeys);
     }
 
@@ -114,6 +116,7 @@ public sealed class ItemImageServiceTests
         public Exception? ChangeImageError { get; set; }
         public Exception? DeleteClaimsError { get; set; }
         public int ClaimsDeleted { get; private set; }
+        public int CommentsDeleted { get; private set; }
 
         public Task<Item?> GetAsync(string id) => Task.FromResult(Item?.Id == id ? Item : null);
 
@@ -128,6 +131,12 @@ public sealed class ItemImageServiceTests
         {
             if (DeleteClaimsError is not null) throw DeleteClaimsError;
             ClaimsDeleted++;
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteCommentsAsync(string itemId)
+        {
+            CommentsDeleted++;
             return Task.CompletedTask;
         }
 

@@ -76,3 +76,18 @@ public sealed class Claim
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
+
+public sealed class ReportComment
+{
+    [BsonId]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string Id { get; set; } = ObjectId.GenerateNewId().ToString();
+
+    public string ItemId { get; set; } = string.Empty;
+    public string? ParentId { get; set; }
+    public string AuthorId { get; set; } = string.Empty;
+    public string AuthorName { get; set; } = string.Empty;
+    public string? Body { get; set; }
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeletedAt { get; set; }
+}

@@ -11,6 +11,7 @@ public sealed class MongoStore
     public IMongoCollection<AppUser> Users { get; }
     public IMongoCollection<Item> Items { get; }
     public IMongoCollection<Claim> Claims { get; }
+    public IMongoCollection<ReportComment> Comments { get; }
 
     public MongoStore(IConfiguration configuration)
     {
@@ -31,6 +32,7 @@ public sealed class MongoStore
         Users = database.GetCollection<AppUser>("users");
         Items = database.GetCollection<Item>("items");
         Claims = database.GetCollection<Claim>("claims");
+        Comments = database.GetCollection<ReportComment>("comments");
 
         EnsureIndexes();
     }
@@ -46,5 +48,9 @@ public sealed class MongoStore
         Claims.Indexes.CreateOne(new CreateIndexModel<Claim>(
             Builders<Claim>.IndexKeys.Ascending(claim => claim.ItemId).Ascending(claim => claim.UserId),
             new CreateIndexOptions { Unique = true }));
+
+        Comments.Indexes.CreateOne(new CreateIndexModel<ReportComment>(
+            Builders<ReportComment>.IndexKeys.Ascending(comment => comment.ItemId)
+                .Ascending(comment => comment.ParentId).Ascending(comment => comment.Id)));
     }
 }
