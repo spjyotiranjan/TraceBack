@@ -80,7 +80,9 @@ public sealed class CommentService(ICommentRepository repository) : ICommentServ
     public async Task<CommentResult<CommentPage>> ListAsync(
         string itemId, string? parentId, string? cursor, int limit)
     {
-        if (!ValidId(itemId) || !ValidOptionalId(parentId) || !ValidOptionalId(cursor) ||
+        if (!TryCanonicalId(itemId, out itemId) ||
+            !TryCanonicalOptionalId(parentId, out parentId) ||
+            !TryCanonicalOptionalId(cursor, out cursor) ||
             limit is < 1 or > MaxPageSize)
             return new(null, CommentError.InvalidInput);
 
@@ -106,7 +108,8 @@ public sealed class CommentService(ICommentRepository repository) : ICommentServ
     public async Task<CommentResult<CommentView>> CreateAsync(
         string itemId, string? parentId, string? body, string authorId, string authorName)
     {
-        if (!ValidId(itemId) || !ValidOptionalId(parentId) ||
+        if (!TryCanonicalId(itemId, out itemId) ||
+            !TryCanonicalOptionalId(parentId, out parentId) ||
             string.IsNullOrWhiteSpace(body) || body.Trim().Length > MaxBodyLength ||
             string.IsNullOrWhiteSpace(authorId) || string.IsNullOrWhiteSpace(authorName))
             return new(null, CommentError.InvalidInput);
@@ -139,7 +142,8 @@ public sealed class CommentService(ICommentRepository repository) : ICommentServ
 
     public async Task<CommentError> DeleteAsync(string itemId, string commentId, string userId, bool isAdmin)
     {
-        if (!ValidId(itemId) || !ValidId(commentId)) return CommentError.InvalidInput;
+        if (!TryCanonicalId(itemId, out itemId) ||
+            !TryCanonicalId(commentId, out commentId)) return CommentError.InvalidInput;
         if (await repository.GetItemAsync(itemId) is null) return CommentError.NotFound;
         var comment = await repository.GetAsync(commentId);
         if (comment is null || comment.ItemId != itemId) return CommentError.NotFound;
@@ -152,6 +156,23 @@ public sealed class CommentService(ICommentRepository repository) : ICommentServ
     private async Task<bool> BelongsToItemAsync(string commentId, string itemId) =>
         (await repository.GetAsync(commentId))?.ItemId == itemId;
 
-    private static bool ValidId(string? id) => ObjectId.TryParse(id, out _);
-    private static bool ValidOptionalId(string? id) => id is null || ValidId(id);
+    private static bool TryCanonicalId(string? id, out string canonicalId)
+    {
+        var valid = ObjectId.TryParse(id, out var parsed);
+        canonicalId = valid ? parsed.ToString() : string.Empty;
+        return valid;
+    }
+
+    private static bool TryCanonicalOptionalId(string? id, out string? canonicalId)
+    {
+        if (id is null)
+        {
+            canonicalId = null;
+            return true;
+        }
+
+        var valid = TryCanonicalId(id, out var parsed);
+        canonicalId = valid ? parsed : null;
+        return valid;
+    }
 }

@@ -99,6 +99,17 @@ public sealed class ItemImageServiceTests
         Assert.Equal(["old-key"], storage.DeletedKeys);
     }
 
+    [Fact]
+    public async Task Mixed_case_report_id_deletes_comments_by_loaded_report_id()
+    {
+        var (service, repository, _) = Create();
+        var itemId = repository.Item!.Id;
+
+        Assert.True(await service.DeleteItemAsync(itemId.ToUpperInvariant(), "owner", false));
+        Assert.Equal(itemId, repository.DeletedCommentsForItemId);
+        Assert.Equal(itemId, repository.DeletedClaimsForItemId);
+    }
+
     private static (ItemImageService Service, FakeRepository Repository, FakeStorage Storage) Create(string? imageKey = null)
     {
         var repository = new FakeRepository
@@ -117,6 +128,8 @@ public sealed class ItemImageServiceTests
         public Exception? DeleteClaimsError { get; set; }
         public int ClaimsDeleted { get; private set; }
         public int CommentsDeleted { get; private set; }
+        public string? DeletedCommentsForItemId { get; private set; }
+        public string? DeletedClaimsForItemId { get; private set; }
 
         public Task<Item?> GetAsync(string id) => Task.FromResult(Item?.Id == id ? Item : null);
 
@@ -131,12 +144,14 @@ public sealed class ItemImageServiceTests
         {
             if (DeleteClaimsError is not null) throw DeleteClaimsError;
             ClaimsDeleted++;
+            DeletedClaimsForItemId = itemId;
             return Task.CompletedTask;
         }
 
         public Task DeleteCommentsAsync(string itemId)
         {
             CommentsDeleted++;
+            DeletedCommentsForItemId = itemId;
             return Task.CompletedTask;
         }
 

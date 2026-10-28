@@ -52,8 +52,8 @@ public sealed class ItemImageService(
 {
     public async Task<bool> DeleteItemAsync(string id, string userId, bool admin)
     {
-        if (!ObjectId.TryParse(id, out _)) return false;
-        var item = await repository.GetAsync(id);
+        if (!ObjectId.TryParse(id, out var itemId)) return false;
+        var item = await repository.GetAsync(itemId.ToString());
         if (item is null || (!admin && item.PostedByUserId != userId)) return false;
         if (!await repository.DeleteItemAsync(item, userId, admin)) return false;
 
@@ -61,8 +61,8 @@ public sealed class ItemImageService(
         // Preserve that failure, but still attempt to remove the orphaned object.
         try
         {
-            await repository.DeleteCommentsAsync(id);
-            await repository.DeleteClaimsAsync(id);
+            await repository.DeleteCommentsAsync(item.Id);
+            await repository.DeleteClaimsAsync(item.Id);
         }
         finally
         {

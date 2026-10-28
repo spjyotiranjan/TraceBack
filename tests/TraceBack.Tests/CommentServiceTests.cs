@@ -37,6 +37,28 @@ public sealed class CommentServiceTests
     }
 
     [Fact]
+    public async Task Mixed_case_ids_use_canonical_report_parent_and_cursor_values()
+    {
+        var mixedItemId = item.Id.ToUpperInvariant();
+        var root = (await service.CreateAsync(mixedItemId, null, "root", Author, "Alice")).Value!;
+        var second = (await service.CreateAsync(item.Id, null, "second", Author, "Alice")).Value!;
+        var reply = (await service.CreateAsync(mixedItemId, root.Id.ToUpperInvariant(), "reply", Author, "Alice")).Value!;
+
+        Assert.Equal(item.Id, root.ItemId);
+        Assert.Equal(item.Id, reply.ItemId);
+        Assert.Equal(root.Id, reply.ParentId);
+        Assert.Equal([root.Id, second.Id],
+            (await service.ListAsync(mixedItemId, null, null, 20)).Value!.Comments.Select(x => x.Id));
+        Assert.Equal(second.Id,
+            Assert.Single((await service.ListAsync(mixedItemId, null, root.Id.ToUpperInvariant(), 20)).Value!.Comments).Id);
+        Assert.Equal(reply.Id,
+            Assert.Single((await service.ListAsync(item.Id, root.Id.ToUpperInvariant(), null, 20)).Value!.Comments).Id);
+        Assert.Equal(CommentError.None,
+            await service.DeleteAsync(mixedItemId, root.Id.ToUpperInvariant(), Author, false));
+        Assert.True(Assert.Single((await service.ListAsync(item.Id, null, null, 1)).Value!.Comments).Deleted);
+    }
+
+    [Fact]
     public async Task Cross_report_parent_and_cursor_are_rejected()
     {
         var other = new Item();
