@@ -11,7 +11,7 @@ public sealed class MapLocationInput
 public static class MapLocationRules
 {
     public const string RequiredMessage = "Choose a location on the map or enter latitude and longitude.";
-    public const string InvalidMessage = "Latitude must be between -90 and 90 and longitude between -180 and 180.";
+    public const string InvalidMessage = "Latitude must be between -90 and 90, longitude between -180 and 180, with at most six decimal places.";
 
     public static bool TryNormalize(MapLocationInput? input, out MapLocation? location, out string? error)
     {
@@ -29,7 +29,8 @@ public static class MapLocationRules
 
         if (input.Latitude is not double latitude || input.Longitude is not double longitude ||
             !double.IsFinite(latitude) || !double.IsFinite(longitude) ||
-            latitude is < -90 or > 90 || longitude is < -180 or > 180)
+            latitude is < -90 or > 90 || longitude is < -180 or > 180 ||
+            HasExcessPrecision(latitude) || HasExcessPrecision(longitude))
         {
             error = InvalidMessage;
             return false;
@@ -42,6 +43,9 @@ public static class MapLocationRules
         };
         return true;
     }
+
+    private static bool HasExcessPrecision(double value) =>
+        Math.Abs(value - Math.Round(value, 6, MidpointRounding.AwayFromZero)) > 0.000000001;
 
     public static MapLocation? SafeStored(MapLocation? location) =>
         location is not null &&

@@ -9,7 +9,7 @@ public sealed class MapLocationTests
     [Theory]
     [InlineData(-90.0, -180.0)]
     [InlineData(90.0, 180.0)]
-    [InlineData(20.2960584, 85.8245394)]
+    [InlineData(20.296058, 85.824539)]
     public void Valid_coordinates_are_bounded_and_stored_to_six_decimals(double latitude, double longitude)
     {
         Assert.True(MapLocationRules.TryNormalize(new MapLocationInput
@@ -29,6 +29,8 @@ public sealed class MapLocationTests
     [InlineData(1.0, double.PositiveInfinity)]
     [InlineData(90.000001, 1.0)]
     [InlineData(1.0, -180.000001)]
+    [InlineData(20.2960584, 85.824539)]
+    [InlineData(20.296058, 85.8245394)]
     public void Partial_nonfinite_and_out_of_range_points_are_rejected(double? latitude, double? longitude)
     {
         Assert.False(MapLocationRules.TryNormalize(new MapLocationInput
