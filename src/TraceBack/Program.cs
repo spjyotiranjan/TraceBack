@@ -30,6 +30,8 @@ builder.Services.AddScoped<IItemService>(provider => provider.GetRequiredService
 builder.Services.AddScoped<Func<IItemService>>(provider => () => provider.GetRequiredService<IItemService>());
 builder.Services.AddSingleton<R2ImageStorage>();
 builder.Services.AddSingleton<IImageStorage>(provider => provider.GetRequiredService<R2ImageStorage>());
+builder.Services.AddSingleton<IImageCleanup, ImageCleanup>();
+builder.Services.AddHostedService<ImageCleanupWorker>();
 builder.Services.AddSingleton<IItemImageRepository, MongoItemImageRepository>();
 builder.Services.AddSingleton<ItemImageService>();
 builder.Services.AddScoped<ClaimService>();

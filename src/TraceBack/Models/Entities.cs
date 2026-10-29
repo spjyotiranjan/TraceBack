@@ -101,6 +101,18 @@ public sealed class ReportComment
     public string AuthorId { get; set; } = string.Empty;
     public string AuthorName { get; set; } = string.Empty;
     public string? Body { get; set; }
+    public string? ImageKey { get; set; }
+    public string? ImageAlt { get; set; }
+    public string? ImageContentType { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? DeletedAt { get; set; }
+}
+
+public sealed class PendingImageDelete
+{
+    [BsonId]
+    public string Key { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? NextAttemptAt { get; set; }
+    public int FailureCount { get; set; }
 }

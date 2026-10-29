@@ -14,7 +14,7 @@ public interface IItemImageRepository
     Task<bool> ChangeImageAsync(Item item, string? key, string userId, bool admin);
 }
 
-public sealed class MongoItemImageRepository(MongoStore store) : IItemImageRepository
+public sealed class MongoItemImageRepository(MongoStore store, IImageCleanup cleanup) : IItemImageRepository
 {
     public async Task<Item?> GetAsync(string id) =>
         await store.Items.Find(x => x.Id == id).FirstOrDefaultAsync();
@@ -29,7 +29,14 @@ public sealed class MongoItemImageRepository(MongoStore store) : IItemImageRepos
 
     public Task DeleteClaimsAsync(string itemId) => store.Claims.DeleteManyAsync(x => x.ItemId == itemId);
 
-    public Task DeleteCommentsAsync(string itemId) => store.Comments.DeleteManyAsync(x => x.ItemId == itemId);
+    public async Task DeleteCommentsAsync(string itemId)
+    {
+        ReportComment? comment;
+        while ((comment = await store.Comments.FindOneAndDeleteAsync(x => x.ItemId == itemId)) is not null)
+        {
+            await cleanup.DeleteOrQueueAsync(comment.ImageKey);
+        }
+    }
 
     public async Task<bool> ChangeImageAsync(Item item, string? key, string userId, bool admin)
     {
