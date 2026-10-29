@@ -13,11 +13,44 @@
   const clear = isEditor ? mapRoot.querySelector('[data-map-clear]') : null;
   const maxZoom = Math.min(19, Math.max(2, Number.parseInt(mapRoot.dataset.maxZoom, 10) || 18));
   const tileUrl = mapRoot.dataset.tileUrl;
-  const attribution = mapRoot.dataset.tileAttribution;
+  const attribution = safeAttributionHtml(mapRoot.dataset.tileAttribution || '');
   let map;
   let marker;
   let tileLayer;
   let selectedPoint;
+
+  function safeAttributionHtml(value) {
+    const source = document.createElement('template');
+    source.innerHTML = value;
+    const safe = document.createElement('div');
+    const discarded = new Set(['SCRIPT', 'STYLE', 'TEMPLATE', 'IFRAME', 'OBJECT', 'EMBED', 'SVG', 'MATH']);
+
+    function appendSafeContent(node, parent) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parent.appendChild(document.createTextNode(node.textContent));
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE || discarded.has(node.tagName)) return;
+
+      if (node.tagName === 'A') {
+        let url;
+        try { url = new URL(node.getAttribute('href') || ''); } catch { /* Invalid links become plain text. */ }
+        if (url && (url.protocol === 'https:' || url.protocol === 'http:')) {
+          const link = document.createElement('a');
+          link.href = url.href;
+          link.rel = 'noopener noreferrer';
+          link.textContent = node.textContent;
+          parent.appendChild(link);
+          return;
+        }
+      }
+
+      for (const child of node.childNodes) appendSafeContent(child, parent);
+    }
+
+    for (const child of source.content.childNodes) appendSafeContent(child, safe);
+    return safe.innerHTML;
+  }
 
   function parsedCoordinate(value, min, max) {
     const text = value.trim();

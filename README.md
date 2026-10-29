@@ -59,6 +59,8 @@ Report create, edit, and detail pages load the bundled Leaflet 1.9.4 assets. Con
 with `MapTiles__UrlTemplate`, `MapTiles__AttributionHtml`, and `MapTiles__MaxZoom`. The defaults use public OpenStreetMap
 tiles. Keep attribution visible, browser caching and the normal Referer header enabled, and do not prefetch tiles. Tile
 failures leave coordinate entry and the report's Google Maps link available. Review provider terms before deployment.
+Attribution supports plain text and absolute HTTP(S) links. Other markup and link schemes are discarded before Leaflet
+renders it, so configure provider credit using text and `<a href="https://...">` links only.
 
 ## Azure App Service deployment
 
