@@ -63,6 +63,38 @@ public sealed class MapLocationIntegrationTests
                 .RootElement.GetProperty("id").GetString()!;
             Assert.Equal(20.296058, (await store.Items.Find(x => x.Id == id).FirstAsync()).MapLocation?.Latitude);
 
+            using var rootForm = new MultipartFormDataContent { { new StringContent("Near the east entrance"), "body" } };
+            using var rootCreated = await ownerApi.PostAsync($"/api/items/{id.ToUpperInvariant()}/comments", rootForm);
+            Assert.Equal(HttpStatusCode.Created, rootCreated.StatusCode);
+            using var rootJson = await JsonDocument.ParseAsync(await rootCreated.Content.ReadAsStreamAsync());
+            var rootId = rootJson.RootElement.GetProperty("id").GetString()!;
+            Assert.Equal(id, rootJson.RootElement.GetProperty("itemId").GetString());
+
+            using var replyForm = new MultipartFormDataContent
+            {
+                { new StringContent("I found it"), "body" },
+                { new StringContent(rootId.ToUpperInvariant()), "parentId" }
+            };
+            using var replyCreated = await ownerApi.PostAsync($"/api/items/{id}/comments", replyForm);
+            Assert.Equal(HttpStatusCode.Created, replyCreated.StatusCode);
+            using var replyJson = await JsonDocument.ParseAsync(await replyCreated.Content.ReadAsStreamAsync());
+            Assert.Equal(rootId, replyJson.RootElement.GetProperty("parentId").GetString());
+
+            using var roots = await ownerApi.GetAsync($"/api/items/{id}/comments");
+            Assert.Equal(HttpStatusCode.OK, roots.StatusCode);
+            Assert.Contains(rootId, await roots.Content.ReadAsStringAsync());
+            using var replies = await ownerApi.GetAsync($"/api/items/{id}/comments?parentId={rootId.ToUpperInvariant()}");
+            Assert.Equal(HttpStatusCode.OK, replies.StatusCode);
+            Assert.Contains("I found it", await replies.Content.ReadAsStringAsync());
+
+            using var softDeleted = await ownerApi.DeleteAsync($"/api/items/{id}/comments/{rootId.ToUpperInvariant()}");
+            Assert.Equal(HttpStatusCode.NoContent, softDeleted.StatusCode);
+            using var placeholder = await ownerApi.GetAsync($"/api/items/{id}/comments");
+            using var placeholderJson = await JsonDocument.ParseAsync(await placeholder.Content.ReadAsStreamAsync());
+            var firstComment = placeholderJson.RootElement.GetProperty("comments")[0];
+            Assert.True(firstComment.GetProperty("deleted").GetBoolean());
+            Assert.Equal(JsonValueKind.Null, firstComment.GetProperty("body").ValueKind);
+
             using var otherApi = ApiClient(factory, "other-user");
             using var forbiddenEdit = await otherApi.PutAsJsonAsync($"/api/items/{id}", form);
             Assert.Equal(HttpStatusCode.NotFound, forbiddenEdit.StatusCode);
@@ -125,6 +157,10 @@ public sealed class MapLocationIntegrationTests
             using var otherEditor = await otherMvc.GetAsync($"/Items/Edit/{mvcId}");
             Assert.Equal(HttpStatusCode.Redirect, otherEditor.StatusCode);
             Assert.Equal("/Account/Denied", otherEditor.Headers.Location?.AbsolutePath);
+
+            using var deleted = await ownerApi.DeleteAsync($"/api/items/{id.ToUpperInvariant()}");
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+            Assert.Equal(0, await store.Comments.CountDocumentsAsync(x => x.ItemId == id));
         }
         finally
         {

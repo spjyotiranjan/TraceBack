@@ -80,6 +80,14 @@ To provision the first admin, set `BootstrapAdmin__Email` and `BootstrapAdmin__P
 
 The API starts under `/api`; login returns a JWT for requests that need a bearer token. Report forms accept optional JPEG, PNG, GIF, or WebP images up to 5 MB. Owners and admins can replace or remove an image. API clients can use `PUT /api/items/{id}/image` with a multipart `file` field and `DELETE /api/items/{id}/image`. Existing reports with external image URLs still display, but new reports use R2 uploads. Notification delivery is a future addition.
 
+### Report discussion routes
+
+Signed-in viewers can list text comments with `GET /Items/{itemId}/Comments` using the cookie session, or `GET /api/items/{itemId}/comments` using a bearer token. Both return JSON with `comments` and `nextCursor`. Omit `parentId` for roots; pass a comment ID to list its direct replies. Pass `cursor` for the next page and `limit` from 1 to 50 (default 20). Replies can nest to any depth by listing each parent's children. A missing report or a parent outside that report returns 404; a malformed or unrelated cursor returns 400.
+
+Create with `POST` to the same route, sending multipart fields `body` (1–2000 characters after trimming) and optional `parentId`. New posts require an active report. The cookie route also accepts URL-encoded form fields and requires an anti-forgery token on writes. Bearer API routes use multipart form data. The response is a comment with a stable author name and creation time. Comment images are a separate follow-up feature.
+
+An author or Admin can soft-delete through `POST /Items/{itemId}/Comments/{commentId}/Delete` with a cookie and anti-forgery token, or `DELETE /api/items/{itemId}/comments/{commentId}` with a bearer token. The deleted comment remains as a reply anchor with `deleted: true` and `body: null`. Deleting a report removes its comment records.
+
 ## Verification
 
 Run `dotnet test TraceBack.slnx -c Release` for the build and image validation tests. A running MongoDB instance and configured R2 bucket are needed to exercise complete report upload, retrieval, replacement, and deletion workflows. Check the site at phone and desktop widths when changing Razor views or styles.

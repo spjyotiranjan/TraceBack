@@ -10,6 +10,7 @@ public interface IItemImageRepository
     Task<Item?> GetAsync(string id);
     Task<bool> DeleteItemAsync(Item item, string userId, bool admin);
     Task DeleteClaimsAsync(string itemId);
+    Task DeleteCommentsAsync(string itemId);
     Task<bool> ChangeImageAsync(Item item, string? key, string userId, bool admin);
 }
 
@@ -27,6 +28,8 @@ public sealed class MongoItemImageRepository(MongoStore store) : IItemImageRepos
     }
 
     public Task DeleteClaimsAsync(string itemId) => store.Claims.DeleteManyAsync(x => x.ItemId == itemId);
+
+    public Task DeleteCommentsAsync(string itemId) => store.Comments.DeleteManyAsync(x => x.ItemId == itemId);
 
     public async Task<bool> ChangeImageAsync(Item item, string? key, string userId, bool admin)
     {
@@ -49,8 +52,8 @@ public sealed class ItemImageService(
 {
     public async Task<bool> DeleteItemAsync(string id, string userId, bool admin)
     {
-        if (!ObjectId.TryParse(id, out _)) return false;
-        var item = await repository.GetAsync(id);
+        if (!ObjectId.TryParse(id, out var itemId)) return false;
+        var item = await repository.GetAsync(itemId.ToString());
         if (item is null || (!admin && item.PostedByUserId != userId)) return false;
         if (!await repository.DeleteItemAsync(item, userId, admin)) return false;
 
@@ -58,7 +61,8 @@ public sealed class ItemImageService(
         // Preserve that failure, but still attempt to remove the orphaned object.
         try
         {
-            await repository.DeleteClaimsAsync(id);
+            await repository.DeleteCommentsAsync(item.Id);
+            await repository.DeleteClaimsAsync(item.Id);
         }
         finally
         {

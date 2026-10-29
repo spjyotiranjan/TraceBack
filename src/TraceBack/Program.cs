@@ -33,6 +33,8 @@ builder.Services.AddSingleton<IImageStorage>(provider => provider.GetRequiredSer
 builder.Services.AddSingleton<IItemImageRepository, MongoItemImageRepository>();
 builder.Services.AddSingleton<ItemImageService>();
 builder.Services.AddScoped<ClaimService>();
+builder.Services.AddScoped<ICommentRepository, MongoCommentRepository>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<AdminBootstrapService>();
 
 // 4. Configure JWT Settings and Authentication
