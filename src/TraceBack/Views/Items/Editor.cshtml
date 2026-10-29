@@ -1,6 +1,9 @@
 @model TraceBack.Controllers.ItemEditorPage
+@inject IConfiguration Configuration
 @{
     var editing = Model.Id is not null;
+    TraceBack.Models.MapLocationRules.TryNormalize(Model.Form.MapLocation, out var validPoint, out _);
+    var hasPoint = validPoint is not null;
     ViewData["Title"] = editing ? "Edit report" : "Report an item";
 }
 
@@ -96,17 +99,31 @@
             }
             <div class="row g-2">
                 <div class="col-sm-6">
-                    <label class="form-label" for="latitude">Latitude</label>
+                    <label class="form-label" for="latitude">Latitude @if (!editing) { <span class="required">required</span> }</label>
                     <input id="latitude" name="MapLocation.Latitude" type="text" inputmode="decimal" class="form-control"
-                           value="@Model.Form.MapLocation?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-error" />
+                           value="@Model.Form.MapLocation?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-help map-location-error" />
                 </div>
                 <div class="col-sm-6">
-                    <label class="form-label" for="longitude">Longitude</label>
+                    <label class="form-label" for="longitude">Longitude @if (!editing) { <span class="required">required</span> }</label>
                     <input id="longitude" name="MapLocation.Longitude" type="text" inputmode="decimal" class="form-control"
-                           value="@Model.Form.MapLocation?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-error" />
+                           value="@Model.Form.MapLocation?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-help map-location-error" />
                 </div>
             </div>
-            <span id="map-location-error" class="text-danger small">@Html.ValidationMessage("MapLocation")</span>
+            <p id="map-location-help" class="form-text">Enter both coordinates to place the pin by keyboard, or click or tap the map. Latitude: -90 to 90. Longitude: -180 to 180. Use at most six decimal places.</p>
+            <span id="map-location-error" class="text-danger small d-block" role="alert"><span data-map-error></span>@Html.ValidationMessage("MapLocation")</span>
+            <p class="map-selection" data-map-selection role="status" aria-live="polite">@(hasPoint ? "Selected location: " + validPoint!.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + ", " + validPoint.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) : "No map location selected.")</p>
+            <div class="map-editor" data-report-map="editor" data-point-required="@(!editing || hasPoint ? "true" : "false")"
+                 data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
+                 data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
+                 data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")">
+                <div class="map-canvas" data-map-canvas aria-label="Choose a location on the map"></div>
+                <p class="map-status" data-map-status role="status" aria-live="polite">Loading map…</p>
+                <div class="map-actions">
+                    <button class="btn btn-outline-primary" type="button" data-map-retry hidden>Retry map</button>
+                    <button class="btn btn-outline-primary" type="button" data-map-change>Change pin</button>
+                    <button class="btn btn-outline-primary" type="button" data-map-clear @(editing && hasPoint ? "hidden" : "")>Clear selection</button>
+                </div>
+            </div>
         </fieldset>
 
         <div class="mb-3">
@@ -196,6 +213,13 @@
     </form>
 </div>
 
+@section Styles {
+    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="~/css/report-map.css" asp-append-version="true" />
+}
+
 @section Scripts {
     <script src="~/js/report-image.js" asp-append-version="true" defer></script>
+    <script src="~/lib/leaflet/leaflet.js" defer></script>
+    <script src="~/js/report-map.js" asp-append-version="true" defer></script>
 }

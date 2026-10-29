@@ -53,6 +53,15 @@ Keep page presentation in `Views`, HTTP concerns in controllers, business rules 
 
 Open the address printed by `dotnet run`. Development can start without `Jwt__Secret`; in that case the app generates a new signing key for that run, so existing API tokens expire after restart. Set `Jwt__Secret` in any persistent environment. The app requires it outside Development.
 
+## Map tiles
+
+Report create, edit, and detail pages load the bundled Leaflet 1.9.4 assets. Configure an OSM-compatible tile provider
+with `MapTiles__UrlTemplate`, `MapTiles__AttributionHtml`, and `MapTiles__MaxZoom`. The defaults use public OpenStreetMap
+tiles. Keep attribution visible, browser caching and the normal Referer header enabled, and do not prefetch tiles. Tile
+failures leave coordinate entry and the report's Google Maps link available. Review provider terms before deployment.
+Attribution supports plain text and absolute HTTP(S) links. Other markup and link schemes are discarded before Leaflet
+renders it, so configure provider credit using text and `<a href="https://...">` links only.
+
 ## Azure App Service deployment
 
 Use a **Windows App Service** with the **.NET 10** runtime. The GitHub Actions workflow at `.github/workflows/main_traceback.yml` builds and tests the solution on pushes and pull requests to `main`. Pushes to `main` and manual runs from `main` publish `src/TraceBack/TraceBack.csproj` and deploy only the web app. The Windows deployment package excludes unused non-Windows SkiaSharp binaries and debug symbols to reduce its size. It retains both x86 and x64 native libraries for either App Service process setting.
