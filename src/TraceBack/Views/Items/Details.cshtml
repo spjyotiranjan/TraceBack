@@ -1,4 +1,5 @@
 @model TraceBack.Controllers.ItemDetailPage
+@inject IConfiguration Configuration
 @{
     ViewData["Title"] = Model.Item.Title;
 }
@@ -39,6 +40,16 @@
                     {
                         <span class="d-block">Coordinates: @point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)</span>
                         <a href="@TraceBack.Models.MapLocationRules.GoogleMapsUrl(point)" target="_blank" rel="noopener noreferrer">View in Google Maps</a>
+                        <div class="map-preview" data-report-map="preview"
+                             data-latitude="@point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
+                             data-longitude="@point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
+                             data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
+                             data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
+                             data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")">
+                            <div class="map-canvas" data-map-canvas aria-hidden="true"></div>
+                            <p class="map-status" data-map-status role="status" aria-live="polite">Loading map preview…</p>
+                            <button class="btn btn-outline-primary" type="button" data-map-retry hidden>Retry map preview</button>
+                        </div>
                     }
                     else
                     {
@@ -96,3 +107,13 @@
         }
     </div>
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="~/css/report-map.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/lib/leaflet/leaflet.js" defer></script>
+    <script src="~/js/report-map.js" asp-append-version="true" defer></script>
+}
