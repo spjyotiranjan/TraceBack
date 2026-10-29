@@ -54,5 +54,9 @@ public sealed class MongoStore
         Comments.Indexes.CreateOne(new CreateIndexModel<ReportComment>(
             Builders<ReportComment>.IndexKeys.Ascending(comment => comment.ItemId)
                 .Ascending(comment => comment.ParentId).Ascending(comment => comment.Id)));
+
+        PendingImageDeletes.Indexes.CreateOne(new CreateIndexModel<PendingImageDelete>(
+            Builders<PendingImageDelete>.IndexKeys.Ascending(entry => entry.NextAttemptAt)
+                .Ascending(entry => entry.CreatedAt)));
     }
 }

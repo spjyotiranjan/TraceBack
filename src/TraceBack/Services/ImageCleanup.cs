@@ -31,6 +31,33 @@ public sealed class ImageCleanup(MongoStore store, IImageStorage storage, ILogge
 public sealed class ImageCleanupWorker(
     IServiceScopeFactory scopes, ILogger<ImageCleanupWorker> logger) : BackgroundService
 {
+    public static async Task ProcessBatchAsync(MongoStore store, IImageStorage storage,
+        ILogger<ImageCleanupWorker> logger, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var pending = await store.PendingImageDeletes
+            .Find(x => x.NextAttemptAt == null || x.NextAttemptAt <= now)
+            .SortBy(x => x.NextAttemptAt).ThenBy(x => x.CreatedAt)
+            .Limit(100).ToListAsync(cancellationToken);
+        foreach (var entry in pending)
+        {
+            try
+            {
+                await storage.DeleteAsync(entry.Key, cancellationToken);
+                await store.PendingImageDeletes.DeleteOneAsync(x => x.Key == entry.Key, cancellationToken);
+            }
+            catch (Exception error) when (!cancellationToken.IsCancellationRequested)
+            {
+                logger.LogWarning(error, "Image deletion retry failed for {ImageKey}", entry.Key);
+                var delayMinutes = Math.Min(60, 1 << (Math.Clamp(entry.FailureCount, 0, 5) + 1));
+                await store.PendingImageDeletes.UpdateOneAsync(x => x.Key == entry.Key,
+                    Builders<PendingImageDelete>.Update
+                        .Set(x => x.NextAttemptAt, DateTime.UtcNow.AddMinutes(delayMinutes))
+                        .Inc(x => x.FailureCount, 1), cancellationToken: cancellationToken);
+            }
+        }
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
@@ -41,20 +68,7 @@ public sealed class ImageCleanupWorker(
                 using var scope = scopes.CreateScope();
                 var store = scope.ServiceProvider.GetRequiredService<MongoStore>();
                 var storage = scope.ServiceProvider.GetRequiredService<IImageStorage>();
-                var pending = await store.PendingImageDeletes.Find(_ => true)
-                    .Limit(100).ToListAsync(stoppingToken);
-                foreach (var entry in pending)
-                {
-                    try
-                    {
-                        await storage.DeleteAsync(entry.Key, stoppingToken);
-                        await store.PendingImageDeletes.DeleteOneAsync(x => x.Key == entry.Key, stoppingToken);
-                    }
-                    catch (Exception error)
-                    {
-                        logger.LogWarning(error, "Image deletion retry failed for {ImageKey}", entry.Key);
-                    }
-                }
+                await ProcessBatchAsync(store, storage, logger, stoppingToken);
             }
             catch (Exception error) when (!stoppingToken.IsCancellationRequested)
             {

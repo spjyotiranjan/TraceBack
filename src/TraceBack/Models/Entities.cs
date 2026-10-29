@@ -113,4 +113,6 @@ public sealed class PendingImageDelete
     [BsonId]
     public string Key { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? NextAttemptAt { get; set; }
+    public int FailureCount { get; set; }
 }

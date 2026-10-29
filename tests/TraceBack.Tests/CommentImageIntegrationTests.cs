@@ -3,10 +3,14 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SkiaSharp;
@@ -68,6 +72,18 @@ public sealed class CommentImageIntegrationTests
             Assert.Equal(HttpStatusCode.BadRequest, (await owner.PostAsync(route, disguised)).StatusCode);
             Assert.Equal(0, await store.Comments.CountDocumentsAsync(_ => true));
 
+            using var twoImages = Form(png, "image/png", "bag");
+            twoImages.Add(new ByteArrayContent(png), "imageFile", "second.png");
+            Assert.Equal(HttpStatusCode.BadRequest, (await owner.PostAsync(route, twoImages)).StatusCode);
+            using var unexpectedFile = new MultipartFormDataContent
+            {
+                { new StringContent("hello"), "body" },
+                { new ByteArrayContent(png), "otherFile", "extra.png" }
+            };
+            Assert.Equal(HttpStatusCode.BadRequest,
+                (await owner.PostAsync(route, unexpectedFile)).StatusCode);
+            Assert.Equal(0, await store.Comments.CountDocumentsAsync(_ => true));
+
             using var oversized = Form(new byte[R2ImageStorage.MaxImageBytes + 1], "image/png", "bag");
             Assert.Equal(HttpStatusCode.RequestEntityTooLarge,
                 (await owner.PostAsync(route, oversized)).StatusCode);
@@ -96,6 +112,14 @@ public sealed class CommentImageIntegrationTests
             Assert.Equal(HttpStatusCode.BadRequest,
                 (await owner.DeleteAsync($"{route}/{commentId}/image")).StatusCode);
 
+            using var extraReplacement = Form(png, "image/png", "New view");
+            extraReplacement.Add(new ByteArrayContent(png), "otherFile", "extra.png");
+            using var extraRequest = new HttpRequestMessage(HttpMethod.Put, $"{route}/{commentId}/image")
+            { Content = extraReplacement };
+            Assert.Equal(HttpStatusCode.BadRequest,
+                (await owner.SendAsync(extraRequest)).StatusCode);
+            Assert.Equal(firstKey, (await store.Comments.Find(x => x.Id == commentId).FirstAsync()).ImageKey);
+
             using var replacement = Form(png, "image/png", "New view");
             using var replaceRequest = new HttpRequestMessage(HttpMethod.Put, $"{route}/{commentId}/image")
             { Content = replacement };
@@ -117,6 +141,34 @@ public sealed class CommentImageIntegrationTests
                 (await owner.DeleteAsync($"{route}/{textCommentId}/image")).StatusCode);
             Assert.Null(await storage.ReadAsync(textKey));
 
+            using var cookie = CookieClient(factory, "owner");
+            var antiForgeryToken = await AntiForgeryTokenAsync(cookie);
+            var cookieRoute = $"/Items/{item.Id}/Comments";
+            var countBeforeInvalid = await store.Comments.CountDocumentsAsync(_ => true);
+            using var extraCookieImage = Form(png, "image/png", "Red bag");
+            extraCookieImage.Add(new ByteArrayContent(png), "otherFile", "extra.png");
+            extraCookieImage.Add(new StringContent(antiForgeryToken), "__RequestVerificationToken");
+            Assert.Equal(HttpStatusCode.BadRequest,
+                (await cookie.PostAsync(cookieRoute, extraCookieImage)).StatusCode);
+            Assert.Equal(countBeforeInvalid, await store.Comments.CountDocumentsAsync(_ => true));
+
+            using var cookieImage = Form(png, "image/png", "Cookie view");
+            cookieImage.Add(new StringContent(antiForgeryToken), "__RequestVerificationToken");
+            using var cookieCreated = await cookie.PostAsync(cookieRoute, cookieImage);
+            Assert.Equal(HttpStatusCode.Created, cookieCreated.StatusCode);
+            using var cookieJson = await JsonDocument.ParseAsync(await cookieCreated.Content.ReadAsStreamAsync());
+            var cookieCommentId = cookieJson.RootElement.GetProperty("id").GetString()!;
+            var cookieImageUrl = cookieJson.RootElement.GetProperty("imageUrl").GetString()!;
+            Assert.Equal($"{cookieRoute}/{cookieCommentId}/Image", cookieImageUrl);
+            var cookieKey = (await store.Comments.Find(x => x.Id == cookieCommentId).FirstAsync()).ImageKey!;
+            uploadedKeys.Add(cookieKey);
+            Assert.Equal(HttpStatusCode.OK, (await cookie.GetAsync(cookieImageUrl)).StatusCode);
+            using var cookieDelete = new FormUrlEncodedContent(
+                new Dictionary<string, string> { ["__RequestVerificationToken"] = antiForgeryToken });
+            Assert.Equal(HttpStatusCode.NoContent,
+                (await cookie.PostAsync($"{cookieRoute}/{cookieCommentId}/Delete", cookieDelete)).StatusCode);
+            Assert.Null(await storage.ReadAsync(cookieKey));
+
             Assert.Equal(HttpStatusCode.NoContent,
                 (await owner.DeleteAsync($"{route}/{commentId}")).StatusCode);
             Assert.Null(await storage.ReadAsync(secondKey));
@@ -135,6 +187,22 @@ public sealed class CommentImageIntegrationTests
             Assert.Equal(0, await store.Comments.CountDocumentsAsync(x => x.ItemId == item.Id));
             Assert.Null(await storage.ReadAsync(finalKey));
             Assert.Equal(0, await store.PendingImageDeletes.CountDocumentsAsync(_ => true));
+
+            var queued = Enumerable.Range(0, 101).Select(index => new PendingImageDelete
+            {
+                Key = $"pat60/stalled-{index:D3}",
+                CreatedAt = DateTime.UtcNow.AddMilliseconds(index)
+            }).ToList();
+            await store.PendingImageDeletes.InsertManyAsync(queued);
+            var stubbornStorage = new StubbornDeleteStorage(queued[^1].Key);
+            await ImageCleanupWorker.ProcessBatchAsync(store, stubbornStorage,
+                NullLogger<ImageCleanupWorker>.Instance);
+            Assert.Empty(stubbornStorage.DeletedKeys);
+            Assert.Equal(100, await store.PendingImageDeletes.CountDocumentsAsync(x => x.NextAttemptAt != null));
+            await ImageCleanupWorker.ProcessBatchAsync(store, stubbornStorage,
+                NullLogger<ImageCleanupWorker>.Instance);
+            Assert.Equal([queued[^1].Key], stubbornStorage.DeletedKeys);
+            Assert.Equal(100, await store.PendingImageDeletes.CountDocumentsAsync(_ => true));
         }
         finally
         {
@@ -179,6 +247,34 @@ public sealed class CommentImageIntegrationTests
         return client;
     }
 
+    private static HttpClient CookieClient(WebApplicationFactory<Program> factory, string userId)
+    {
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var options = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+        var identity = new ClaimsIdentity(
+            [new System.Security.Claims.Claim(ClaimTypes.NameIdentifier, userId),
+                new System.Security.Claims.Claim(ClaimTypes.Name, "Test User")],
+            CookieAuthenticationDefaults.AuthenticationScheme);
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity),
+            CookieAuthenticationDefaults.AuthenticationScheme);
+        client.DefaultRequestHeaders.Add("Cookie", $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}");
+        return client;
+    }
+
+    private static async Task<string> AntiForgeryTokenAsync(HttpClient client)
+    {
+        using var editor = await client.GetAsync("/Items/Create");
+        Assert.Equal(HttpStatusCode.OK, editor.StatusCode);
+        var markup = await editor.Content.ReadAsStringAsync();
+        var token = WebUtility.HtmlDecode(Regex.Match(markup,
+            "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
+        var cookie = editor.Headers.GetValues("Set-Cookie").First(value =>
+            value.StartsWith(".AspNetCore.Antiforgery", StringComparison.Ordinal));
+        client.DefaultRequestHeaders.Add("Cookie", cookie.Split(';')[0]);
+        return token;
+    }
+
     private sealed class FailingDeleteStorage : IImageStorage
     {
         public Task<string> UploadAsync(string itemId, ImageUpload image,
@@ -189,5 +285,23 @@ public sealed class CommentImageIntegrationTests
 
         public Task DeleteAsync(string key,
             CancellationToken cancellationToken = default) => throw new InvalidOperationException("R2 unavailable");
+    }
+
+    private sealed class StubbornDeleteStorage(string successfulKey) : IImageStorage
+    {
+        public List<string> DeletedKeys { get; } = [];
+
+        public Task<string> UploadAsync(string itemId, ImageUpload image,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<StoredImage?> ReadAsync(string key,
+            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
+        {
+            if (key != successfulKey) throw new InvalidOperationException("R2 unavailable");
+            DeletedKeys.Add(key);
+            return Task.CompletedTask;
+        }
     }
 }

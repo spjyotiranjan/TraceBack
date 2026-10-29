@@ -24,6 +24,8 @@ public sealed class CommentsController(ICommentService comments) : ApiController
     public async Task<IActionResult> Create(string itemId, [FromForm] string? body,
         [FromForm] string? parentId, [FromForm] IFormFile? imageFile, [FromForm] string? imageAlt)
     {
+        if (!CommentUploadValidation.HasExpectedFiles(Request, imageFile, required: false))
+            return BadRequest(new { error = "Provide at most one imageFile." });
         if (imageFile?.Length > R2ImageStorage.MaxImageBytes)
             return StatusCode(413, new { error = "Image exceeds 5 MiB." });
         ImageUpload? image;
@@ -60,7 +62,8 @@ public sealed class CommentsController(ICommentService comments) : ApiController
     public async Task<IActionResult> SetImage(string itemId, string commentId,
         [FromForm] IFormFile imageFile, [FromForm] string? imageAlt)
     {
-        if (imageFile is null) return BadRequest(new { error = "Image is required." });
+        if (!CommentUploadValidation.HasExpectedFiles(Request, imageFile, required: true))
+            return BadRequest(new { error = "Provide exactly one imageFile." });
         if (imageFile.Length > R2ImageStorage.MaxImageBytes)
             return StatusCode(413, new { error = "Image exceeds 5 MiB." });
         ImageUpload image;
