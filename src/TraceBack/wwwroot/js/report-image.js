@@ -296,7 +296,8 @@
     stopCamera();
     takePhoto.focus();
   });
-  form.addEventListener('submit', () => {
+  form.addEventListener('submit', event => {
+    if (event.defaultPrevented) return;
     stopCamera();
     submit.disabled = true;
     submit.textContent = submit.dataset.submitLabel;
