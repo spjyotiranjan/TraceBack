@@ -61,7 +61,20 @@ public sealed class ItemsController(IItemService items, ILogger<ItemsController>
             return BadRequest(new { error = "Fields cannot be blank and the report date cannot be in the future." });
         }
 
-        var item = await items.CreateAsync(form, UserId);
+        if (form.MapLocation?.Latitude is null && form.MapLocation?.Longitude is null)
+        {
+            return BadRequest(new { error = MapLocationRules.RequiredMessage });
+        }
+
+        Item item;
+        try
+        {
+            item = await items.CreateAsync(form, UserId);
+        }
+        catch (ArgumentException error)
+        {
+            return BadRequest(new { error = error.Message });
+        }
         return CreatedAtAction(nameof(Get), new { id = item.Id }, ItemResponse.From(item));
     }
 
@@ -84,7 +97,19 @@ public sealed class ItemsController(IItemService items, ILogger<ItemsController>
             return Conflict(new { error = "Item type cannot be changed after posting." });
         }
 
-        var item = await items.UpdateAsync(id, form, UserId, IsAdmin);
+        Item? item;
+        try
+        {
+            item = await items.UpdateAsync(id, form, UserId, IsAdmin);
+        }
+        catch (ArgumentException error)
+        {
+            return BadRequest(new { error = error.Message });
+        }
+        catch (ItemUpdateConflictException)
+        {
+            return Conflict(new { error = "This report changed while you were editing it. Reload and try again." });
+        }
         return item is null ? NotFound() : Ok(ItemResponse.From(item));
     }
 

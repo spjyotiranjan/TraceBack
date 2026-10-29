@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -171,6 +172,72 @@ public sealed class ReportAuthorizationTests
         }
     }
 
+    [Fact]
+    public async Task New_report_requires_a_valid_point_through_bearer_api()
+    {
+        var reports = new FakeItemService();
+        using var factory = CreateFactory(reports);
+        using var client = CreateClient(factory);
+        var form = new ItemForm
+        {
+            Title = "Found keys",
+            Description = "A set of keys",
+            Category = "Keys",
+            Location = "Library",
+            ContactPreference = "Help desk"
+        };
+
+        using var anonymous = await client.PostAsJsonAsync("/api/items", form);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        AddBearerToken(client, factory);
+        using var missing = await client.PostAsJsonAsync("/api/items", form);
+        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+        Assert.Contains("location", await missing.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, reports.CreateCount);
+
+        form.MapLocation = new MapLocationInput();
+        using var blank = await client.PostAsJsonAsync("/api/items", form);
+        Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
+        Assert.Contains("location", await blank.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(0, reports.CreateCount);
+
+        form.MapLocation = new MapLocationInput { Latitude = 91, Longitude = 0 };
+        using var invalid = await client.PostAsJsonAsync("/api/items", form);
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal(0, reports.CreateCount);
+
+        form.MapLocation = new MapLocationInput { Latitude = 20.296058, Longitude = 85.824539 };
+        using var created = await client.PostAsJsonAsync("/api/items", form);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Equal(1, reports.CreateCount);
+        var body = await created.Content.ReadAsStringAsync();
+        Assert.Contains("20.296058", body);
+        Assert.Contains("85.824539", body);
+    }
+
+    [Fact]
+    public async Task Signed_in_detail_shows_safe_map_link_and_legacy_text_without_a_pin()
+    {
+        var reports = new FakeItemService();
+        using var factory = CreateFactory(reports);
+        using var client = CreateClient(factory);
+        AddCookie(client, factory);
+
+        using var legacy = await client.GetAsync($"/Items/Details/{reports.Item.Id}");
+        var legacyMarkup = await legacy.Content.ReadAsStringAsync();
+        Assert.Contains("Library", legacyMarkup);
+        Assert.Contains("Map location not available", legacyMarkup);
+        Assert.DoesNotContain("google.com/maps/search", legacyMarkup);
+
+        reports.Item.MapLocation = new MapLocation { Latitude = 20.296058, Longitude = 85.824539 };
+        using var mapped = await client.GetAsync($"/Items/Details/{reports.Item.Id}");
+        var mappedMarkup = await mapped.Content.ReadAsStringAsync();
+        Assert.Contains("20.296058", mappedMarkup);
+        Assert.Contains("google.com/maps/search/?api=1&amp;query=20.296058%2C85.824539", mappedMarkup);
+        Assert.Contains("rel=\"noopener noreferrer\"", mappedMarkup);
+    }
+
     private static WebApplicationFactory<Program> CreateFactory(FakeItemService? reports) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
@@ -215,6 +282,7 @@ public sealed class ReportAuthorizationTests
     private sealed class FakeItemService : IItemService
     {
         private int readCount;
+        private int createCount;
 
         public Item Item { get; } = new()
         {
@@ -228,6 +296,7 @@ public sealed class ReportAuthorizationTests
         };
 
         public int ReadCount => Volatile.Read(ref readCount);
+        public int CreateCount => Volatile.Read(ref createCount);
 
         public Task<List<Item>> SearchAsync(ItemSearch search)
         {
@@ -248,7 +317,17 @@ public sealed class ReportAuthorizationTests
         }
 
         public Task<List<Item>> MineAsync(string userId) => throw new NotSupportedException();
-        public Task<Item> CreateAsync(ItemForm form, string userId) => throw new NotSupportedException();
+        public Task<Item> CreateAsync(ItemForm form, string userId)
+        {
+            Interlocked.Increment(ref createCount);
+            Item.Location = form.Location;
+            Item.MapLocation = new MapLocation
+            {
+                Latitude = form.MapLocation!.Latitude!.Value,
+                Longitude = form.MapLocation.Longitude!.Value
+            };
+            return Task.FromResult(Item);
+        }
         public Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin) => throw new NotSupportedException();
         public Task<bool> ResolveAsync(string id, string userId, bool admin) => throw new NotSupportedException();
         public Task<bool> DeleteAsync(string id, string userId, bool admin) => throw new NotSupportedException();

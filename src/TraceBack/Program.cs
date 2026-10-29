@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using TraceBack.Common;
 using TraceBack.Data;
@@ -13,6 +14,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // 2. Register MVC Controllers and Views
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<ApiBehaviorOptions>(options =>
+    options.InvalidModelStateResponseFactory = context =>
+        new BadRequestObjectResult(new
+        {
+            error = context.ModelState.Values.SelectMany(value => value.Errors)
+                .Select(error => error.ErrorMessage).FirstOrDefault() ?? "Invalid request."
+        }));
 
 // 3. Register Data Store and Application Services
 builder.Services.AddSingleton<MongoStore>();

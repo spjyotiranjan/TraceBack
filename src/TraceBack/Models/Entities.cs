@@ -36,6 +36,10 @@ public sealed class Item
 
     public string Location { get; set; } = string.Empty;
 
+    [BsonElement("mapLocation")]
+    [BsonIgnoreIfNull]
+    public MapLocation? MapLocation { get; set; }
+
     public DateTime DateReported { get; set; } = DateTime.UtcNow.Date;
 
     public string ContactPreference { get; set; } = string.Empty;
@@ -56,6 +60,15 @@ public sealed class Item
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class MapLocation
+{
+    [BsonElement("latitude")]
+    public double Latitude { get; set; }
+
+    [BsonElement("longitude")]
+    public double Longitude { get; set; }
 }
 
 public sealed class Claim
