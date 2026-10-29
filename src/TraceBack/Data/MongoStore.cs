@@ -12,6 +12,7 @@ public sealed class MongoStore
     public IMongoCollection<Item> Items { get; }
     public IMongoCollection<Claim> Claims { get; }
     public IMongoCollection<ReportComment> Comments { get; }
+    public IMongoCollection<PendingImageDelete> PendingImageDeletes { get; }
 
     public MongoStore(IConfiguration configuration)
     {
@@ -33,6 +34,7 @@ public sealed class MongoStore
         Items = database.GetCollection<Item>("items");
         Claims = database.GetCollection<Claim>("claims");
         Comments = database.GetCollection<ReportComment>("comments");
+        PendingImageDeletes = database.GetCollection<PendingImageDelete>("pendingImageDeletes");
 
         EnsureIndexes();
     }

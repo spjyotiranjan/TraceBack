@@ -149,6 +149,10 @@ public sealed class ReportAuthorizationTests
         {
             Assert.Equal(HttpStatusCode.Redirect, (await anonymous.GetAsync(path)).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(apiPath)).StatusCode);
+            Assert.Equal(HttpStatusCode.Redirect,
+                (await anonymous.GetAsync($"{path}/{comments.CommentId}/Image")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized,
+                (await anonymous.GetAsync($"{apiPath}/{comments.CommentId}/image")).StatusCode);
         }
 
         using (var cookie = CreateClient(factory))
@@ -156,6 +160,12 @@ public sealed class ReportAuthorizationTests
             AddCookie(cookie, factory);
             Assert.Equal(HttpStatusCode.OK, (await cookie.GetAsync(path)).StatusCode);
             Assert.Equal(HttpStatusCode.Unauthorized, (await cookie.GetAsync(apiPath)).StatusCode);
+            using var image = await cookie.GetAsync($"{path}/{comments.CommentId}/Image");
+            Assert.Equal(HttpStatusCode.OK, image.StatusCode);
+            Assert.True(image.Headers.CacheControl?.NoStore);
+            Assert.Equal("nosniff", image.Headers.GetValues("X-Content-Type-Options").Single());
+            Assert.Equal(HttpStatusCode.Unauthorized,
+                (await cookie.GetAsync($"{apiPath}/{comments.CommentId}/image")).StatusCode);
             using var form = new MultipartFormDataContent { { new StringContent("hello"), "body" } };
             Assert.Equal(HttpStatusCode.BadRequest, (await cookie.PostAsync(path, form)).StatusCode);
             Assert.Equal(0, comments.CreateCount);
@@ -166,6 +176,12 @@ public sealed class ReportAuthorizationTests
             AddBearerToken(bearer, factory);
             Assert.Equal(HttpStatusCode.OK, (await bearer.GetAsync(apiPath)).StatusCode);
             Assert.Equal(HttpStatusCode.Redirect, (await bearer.GetAsync(path)).StatusCode);
+            using var image = await bearer.GetAsync($"{apiPath}/{comments.CommentId}/image");
+            Assert.Equal(HttpStatusCode.OK, image.StatusCode);
+            Assert.True(image.Headers.CacheControl?.NoStore);
+            Assert.Equal("nosniff", image.Headers.GetValues("X-Content-Type-Options").Single());
+            Assert.Equal(HttpStatusCode.Redirect,
+                (await bearer.GetAsync($"{path}/{comments.CommentId}/Image")).StatusCode);
             using var form = new MultipartFormDataContent { { new StringContent("hello"), "body" } };
             Assert.Equal(HttpStatusCode.Created, (await bearer.PostAsync(apiPath, form)).StatusCode);
             Assert.Equal(1, comments.CreateCount);
@@ -338,13 +354,15 @@ public sealed class ReportAuthorizationTests
     private sealed class FakeCommentService : ICommentService
     {
         public string ItemId { get; } = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+        public string CommentId { get; } = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
         public int CreateCount { get; private set; }
 
         public Task<CommentResult<CommentPage>> ListAsync(string itemId, string? parentId, string? cursor, int limit) =>
             Task.FromResult(new CommentResult<CommentPage>(new CommentPage([], null)));
 
         public Task<CommentResult<CommentView>> CreateAsync(
-            string itemId, string? parentId, string? body, string authorId, string authorName)
+            string itemId, string? parentId, string? body, string authorId, string authorName,
+            ImageUpload? image = null, string? imageAlt = null)
         {
             CreateCount++;
             return Task.FromResult(new CommentResult<CommentView>(new CommentView(
@@ -354,5 +372,14 @@ public sealed class ReportAuthorizationTests
 
         public Task<CommentError> DeleteAsync(string itemId, string commentId, string userId, bool isAdmin) =>
             Task.FromResult(CommentError.None);
+
+        public Task<CommentError> SetImageAsync(string itemId, string commentId, ImageUpload image,
+            string? imageAlt, string userId, bool isAdmin) => Task.FromResult(CommentError.None);
+
+        public Task<CommentError> RemoveImageAsync(string itemId, string commentId,
+            string userId, bool isAdmin) => Task.FromResult(CommentError.None);
+
+        public Task<CommentResult<StoredImage>> GetImageAsync(string itemId, string commentId) =>
+            Task.FromResult(new CommentResult<StoredImage>(new StoredImage(ImageBytes, "image/png")));
     }
 }
