@@ -200,6 +200,7 @@ public sealed class ReportAuthorizationTests
             Description = "A set of keys",
             Category = "Keys",
             Location = "Library",
+            DateReported = DateTime.UtcNow.Date,
             ContactPreference = "Help desk"
         };
 

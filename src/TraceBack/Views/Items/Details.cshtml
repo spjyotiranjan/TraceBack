@@ -1,5 +1,6 @@
 @model TraceBack.Controllers.ItemDetailPage
 @inject IConfiguration Configuration
+@using System.Security.Claims
 @{
     ViewData["Title"] = Model.Item.Title;
 }
@@ -108,12 +109,72 @@
     </div>
 </div>
 
+<section class="discussion" aria-labelledby="discussion-title" data-discussion
+         data-comments-url="@Url.Content($"~/Items/{Model.Item.Id}/Comments")"
+         data-current-user="@User.FindFirstValue(ClaimTypes.NameIdentifier)"
+         data-is-admin="@User.IsInRole("Admin").ToString().ToLowerInvariant()"
+         data-can-post="@((User.Identity?.IsAuthenticated == true && Model.Item.Status == "Active").ToString().ToLowerInvariant())">
+    <div class="section-heading">
+        <div>
+            <h2 id="discussion-title">Public discussion</h2>
+            <p class="text-muted mb-0">Ask about this report here. Ownership details belong in a private claim.</p>
+        </div>
+    </div>
+    @if (User.Identity?.IsAuthenticated != true)
+    {
+        <p class="discussion-notice">Sign in to read and join the discussion.
+            <a asp-controller="Account" asp-action="Login" asp-route-returnUrl="@Context.Request.Path">Sign in</a>
+        </p>
+    }
+    else
+    {
+        <form class="discussion-composer" data-comment-form method="post"
+              action="@Url.Content($"~/Items/{Model.Item.Id}/Comments")"
+              enctype="multipart/form-data" hidden="@(Model.Item.Status != "Active")">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="parentId" data-parent-id />
+            <p class="discussion-reply-label" data-reply-label hidden></p>
+            <label for="comment-body" class="form-label fw-semibold">Your comment</label>
+            <textarea id="comment-body" class="form-control" name="body" rows="3" maxlength="2000"
+                      aria-describedby="comment-help comment-error"></textarea>
+            <p id="comment-help" class="form-text">Write up to 2,000 characters, add one image, or both. Public comments are visible to signed-in viewers.</p>
+            <label for="comment-image" class="form-label fw-semibold">Image (optional)</label>
+            <input id="comment-image" class="form-control" type="file" name="imageFile"
+                   accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="comment-image-help comment-error" />
+            <p id="comment-image-help" class="form-text">JPEG, PNG, GIF, or WebP; up to 5 MB.</p>
+            <div data-image-preview hidden>
+                <img alt="Selected image preview" />
+                <button type="button" class="btn btn-outline-secondary" data-clear-image>Remove image</button>
+            </div>
+            <div data-alt-field hidden>
+                <label for="comment-alt" class="form-label fw-semibold">Describe the image</label>
+                <input id="comment-alt" class="form-control" name="imageAlt" maxlength="200"
+                       aria-describedby="comment-alt-help comment-error" />
+                <p id="comment-alt-help" class="form-text">Required for an image; 1 to 200 characters.</p>
+            </div>
+            <p id="comment-error" class="discussion-error" role="alert" hidden></p>
+            <div class="discussion-actions">
+                <button type="submit" class="btn btn-primary" data-submit-comment>Post comment</button>
+                <button type="button" class="btn btn-outline-secondary" data-cancel-reply hidden>Cancel reply</button>
+            </div>
+        </form>
+        @if (Model.Item.Status != "Active")
+        {
+            <p class="discussion-notice">This report is no longer active. Its discussion is read only.</p>
+        }
+        <p class="visually-hidden" role="status" aria-live="polite" data-discussion-announcement></p>
+        <div data-discussion-root aria-busy="true"><p>Loading discussion…</p></div>
+    }
+</section>
+
 @section Styles {
     <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
     <link rel="stylesheet" href="~/css/report-map.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/discussion.css" asp-append-version="true" />
 }
 
 @section Scripts {
     <script src="~/lib/leaflet/leaflet.js" defer></script>
     <script src="~/js/report-map.js" asp-append-version="true" defer></script>
+    <script src="~/js/discussion.js" asp-append-version="true" defer></script>
 }
