@@ -36,11 +36,16 @@
             <div>
                 <dt>Location</dt>
                 <dd>
-                    @Model.Item.Location
                     @if (TraceBack.Models.MapLocationRules.SafeStored(Model.Item.MapLocation) is { } point)
                     {
-                        <span class="d-block">Coordinates: @point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)</span>
-                        <a href="@TraceBack.Models.MapLocationRules.GoogleMapsUrl(point)" target="_blank" rel="noopener noreferrer">View in Google Maps</a>
+                        <strong class="d-block">Address unavailable for this pin.</strong>
+                        <span class="d-block">The pin is saved at the selected point.</span>
+                        <span class="d-block">Location description: @Model.Item.Location</span>
+                        <details class="map-coordinates">
+                            <summary>Show coordinates</summary>
+                            <span>@point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)</span>
+                        </details>
+                        <a class="d-inline-block mt-2" href="@TraceBack.Models.MapLocationRules.GoogleMapsUrl(point)" target="_blank" rel="noopener noreferrer">View in Google Maps</a>
                         <div class="map-preview" data-report-map="preview"
                              data-latitude="@point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
                              data-longitude="@point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
@@ -54,7 +59,8 @@
                     }
                     else
                     {
-                        <span class="d-block">Map location not available</span>
+                        <span class="d-block">Location description: @Model.Item.Location</span>
+                        <span class="d-block">Map location not added to this older report.</span>
                     }
                 </dd>
             </div>
