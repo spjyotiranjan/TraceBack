@@ -61,6 +61,9 @@ tiles. Keep attribution visible, browser caching and the normal Referer header e
 failures leave coordinate entry and the report's Google Maps link available. Review provider terms before deployment.
 Attribution supports plain text and absolute HTTP(S) links. Other markup and link schemes are discarded before Leaflet
 renders it, so configure provider credit using text and `<a href="https://...">` links only.
+Reverse address lookup is disabled. A selected pin therefore shows “Address unavailable for this pin” while its
+validated coordinates remain available in the disclosure and determine the Google Maps destination. The reporter's
+Location description is separate and is never presented as a verified address.
 
 ## Azure App Service deployment
 
