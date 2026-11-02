@@ -1,0 +1,19 @@
+@model TraceBack.Controllers.ItemDetailPage
+
+@if (Model.CanClaim)
+{
+    <aside class="action-panel tb-panel" aria-labelledby="claim-title">
+        <h2 id="claim-title" class="h5">Think this is yours?</h2>
+        <p>Share details only the owner would know. Your message stays private.</p>
+        <a class="btn btn-primary" asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id">Submit a claim</a>
+    </aside>
+}
+else if (User.Identity?.IsAuthenticated != true && Model.Item.Type == "Found" && Model.Item.Status == "Active")
+{
+    <aside class="action-panel tb-panel" aria-labelledby="claim-title">
+        <h2 id="claim-title" class="h5">Think this is yours?</h2>
+        <p>Sign in to share private ownership details.</p>
+        <a class="btn btn-primary" asp-controller="Account" asp-action="Login"
+           asp-route-returnUrl="@Url.RouteUrl("default", new { controller = "Claims", action = "Create", itemId = Model.Item.Id })">Sign in to claim</a>
+    </aside>
+}
