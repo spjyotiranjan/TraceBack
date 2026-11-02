@@ -22,7 +22,7 @@
     <div class="col-lg-6">
         <div class="d-flex gap-2 mb-3">
             <span class="badge badge-type">@Model.Item.Type</span>
-            <span class="badge badge-status">@Model.Item.Status</span>
+            <partial name="_StatusBadge" model="Model.Item.Status" />
         </div>
 
         <h1>@Model.Item.Title</h1>

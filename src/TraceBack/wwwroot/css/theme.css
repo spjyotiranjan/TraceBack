@@ -1,0 +1,111 @@
+/* PAT-76 public theme API. Keep raw palette values here; route styles consume --tb-* roles. */
+:root {
+  --tb-space-1: .25rem;
+  --tb-space-2: .5rem;
+  --tb-space-3: .75rem;
+  --tb-space-4: 1rem;
+  --tb-space-6: 1.5rem;
+  --tb-space-8: 2rem;
+  --tb-space-12: 3rem;
+  --tb-content-width: 1140px;
+  --tb-form-width: 720px;
+  --tb-radius-control: 10px;
+  --tb-radius-panel: 14px;
+  --tb-duration-feedback: 150ms;
+  --tb-duration-emphasis: 180ms;
+  --tb-ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+html[data-theme='light'] {
+  color-scheme: light;
+  --tb-canvas: #f6f3ec;
+  --tb-surface: #ffffff;
+  --tb-surface-muted: #eaefe9;
+  --tb-ink: #182923;
+  --tb-ink-muted: #4d625a;
+  --tb-divider: #b8c8be;
+  --tb-control-border: #718b7d;
+  --tb-action: #175b4b;
+  --tb-action-hover: #104638;
+  --tb-on-action: #ffffff;
+  --tb-accent: #93501d;
+  --tb-accent-surface: #fff1d8;
+  --tb-focus: #a13d12;
+  --tb-danger: #9b2f2a;
+  --tb-danger-surface: #fce9e5;
+  --tb-success: #155d43;
+  --tb-success-surface: #e4f3e9;
+  --tb-status-active: #155d43;
+  --tb-status-active-surface: #e4f3e9;
+  --tb-status-resolved: #364e63;
+  --tb-status-resolved-surface: #e9eef2;
+  --tb-status-pending: #815016;
+  --tb-status-pending-surface: #fff1d8;
+  --tb-status-approved: #155d43;
+  --tb-status-approved-surface: #e4f3e9;
+  --tb-status-rejected: #9b2f2a;
+  --tb-status-rejected-surface: #fce9e5;
+  --tb-media-ground: #dce8df;
+  --tb-media-ink: #315d50;
+  --tb-map-control: #ffffff;
+  --tb-shadow: 0 8px 24px rgb(24 41 35 / 10%);
+  --bs-primary-rgb: 23, 91, 75;
+  --bs-success-rgb: 21, 93, 67;
+  --bs-danger-rgb: 155, 47, 42;
+}
+
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --tb-canvas: #0e1718;
+  --tb-surface: #172326;
+  --tb-surface-muted: #203136;
+  --tb-ink: #f3f4ec;
+  --tb-ink-muted: #b8c9c2;
+  --tb-divider: #536a68;
+  --tb-control-border: #6a8580;
+  --tb-action: #79d9b6;
+  --tb-action-hover: #a0e6c9;
+  --tb-on-action: #08201a;
+  --tb-accent: #f2be72;
+  --tb-accent-surface: #3c3024;
+  --tb-focus: #ffca77;
+  --tb-danger: #ffaaa0;
+  --tb-danger-surface: #432c2c;
+  --tb-success: #8ce2bb;
+  --tb-success-surface: #213b32;
+  --tb-status-active: #8ce2bb;
+  --tb-status-active-surface: #213b32;
+  --tb-status-resolved: #c2d7e9;
+  --tb-status-resolved-surface: #293a46;
+  --tb-status-pending: #f2be72;
+  --tb-status-pending-surface: #3c3024;
+  --tb-status-approved: #8ce2bb;
+  --tb-status-approved-surface: #213b32;
+  --tb-status-rejected: #ffaaa0;
+  --tb-status-rejected-surface: #432c2c;
+  --tb-media-ground: #203b38;
+  --tb-media-ink: #a0d9c5;
+  --tb-map-control: #203136;
+  --tb-shadow: 0 8px 24px rgb(0 0 0 / 28%);
+  --bs-primary-rgb: 121, 217, 182;
+  --bs-success-rgb: 140, 226, 187;
+  --bs-danger-rgb: 255, 170, 160;
+}
+
+html[data-theme] {
+  --bs-body-bg: var(--tb-canvas);
+  --bs-body-color: var(--tb-ink);
+  --bs-emphasis-color: var(--tb-ink);
+  --bs-secondary-color: var(--tb-ink-muted);
+  --bs-heading-color: var(--tb-ink);
+  --bs-link-color: var(--tb-action);
+  --bs-link-hover-color: var(--tb-action-hover);
+  --bs-border-color: var(--tb-divider);
+  --bs-primary: var(--tb-action);
+  --bs-success: var(--tb-success);
+  --bs-danger: var(--tb-danger);
+  --bs-secondary-bg: var(--tb-surface-muted);
+  --bs-tertiary-bg: var(--tb-surface-muted);
+  --bs-body-font-family: 'Source Sans 3', system-ui, sans-serif;
+  background: var(--tb-canvas);
+}

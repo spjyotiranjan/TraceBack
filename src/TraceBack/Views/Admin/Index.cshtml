@@ -41,7 +41,7 @@
                 <article class="list-group-item">
                     <div class="d-flex justify-content-between gap-2 flex-wrap">
                         <h3 class="h5">@(row.Item?.Title ?? "Removed item")</h3>
-                        <span class="badge badge-status">@row.Claim.Status</span>
+                        <partial name="_StatusBadge" model="row.Claim.Status" />
                     </div>
 
                     <p class="mb-2">@row.Claim.Message</p>
@@ -71,7 +71,7 @@
         {
             <div class="list-group-item d-flex justify-content-between align-items-center gap-3 flex-wrap">
                 <a asp-controller="Items" asp-action="Details" asp-route-id="@item.Id">@item.Title</a>
-                <span class="badge badge-status">@item.Status</span>
+                <partial name="_StatusBadge" model="item.Status" />
             </div>
         }
     </div>
