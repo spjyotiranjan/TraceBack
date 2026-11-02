@@ -1,0 +1,31 @@
+@model TraceBack.Controllers.BrowsePage
+@if (!Model.LoadFailed && (Model.Items.Count > 0 || Model.Search.Page > 1))
+{
+    <nav class="browse-pagination" aria-label="Result pages">
+        <ul class="pagination">
+            @if (Model.Search.Page > 1)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-controller="Items" asp-action="Index"
+                       asp-route-query="@Model.Search.Query" asp-route-type="@Model.Search.Type"
+                       asp-route-category="@Model.Search.Category" asp-route-location="@Model.Search.Location"
+                       asp-route-status="@Model.Search.Status" asp-route-page="@(Model.Search.Page - 1)">Previous</a>
+                </li>
+            }
+            else
+            {
+                <li class="page-item disabled"><span class="page-link" aria-disabled="true">Previous</span></li>
+            }
+            <li class="page-item active"><span class="page-link" aria-current="page" aria-label="Page @Model.Search.Page">@Model.Search.Page</span></li>
+            @if (Model.HasNext)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-controller="Items" asp-action="Index"
+                       asp-route-query="@Model.Search.Query" asp-route-type="@Model.Search.Type"
+                       asp-route-category="@Model.Search.Category" asp-route-location="@Model.Search.Location"
+                       asp-route-status="@Model.Search.Status" asp-route-page="@(Model.Search.Page + 1)">Next</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

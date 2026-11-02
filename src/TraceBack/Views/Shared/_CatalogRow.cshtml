@@ -1,0 +1,39 @@
+@model Item
+
+<article class="catalog-row tb-catalog-row">
+    <div class="catalog-media">
+        @if (!string.IsNullOrWhiteSpace(Model.DisplayImageUrl))
+        {
+            <img src="@Model.DisplayImageUrl" alt="Photo for @Model.Title" loading="lazy" />
+        }
+        else
+        {
+            <div class="catalog-no-photo" aria-label="No report photo">
+                <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false">
+                    <rect x="5" y="9" width="38" height="30" rx="2" />
+                    <circle cx="17" cy="20" r="3" />
+                    <path d="m8 34 10-9 7 6 7-8 9 11" />
+                </svg>
+                <span>No photo</span>
+            </div>
+        }
+    </div>
+    <div class="catalog-main">
+        <div class="catalog-labels">
+            <span class="badge badge-type">@Model.Type</span>
+            <partial name="_StatusBadge" model="Model.Status" />
+        </div>
+        <h3>@Model.Title</h3>
+        @if (!string.IsNullOrWhiteSpace(Model.Category))
+        {
+            <p class="catalog-category">@Model.Category</p>
+        }
+    </div>
+    <div class="catalog-facts">
+        <dl>
+            <div><dt>Location</dt><dd>@Model.Location</dd></div>
+            <div><dt>Reported</dt><dd>@Model.DateReported.ToString("d MMM yyyy")</dd></div>
+        </dl>
+        <a class="catalog-view" asp-controller="Items" asp-action="Details" asp-route-id="@Model.Id" aria-label="View report: @Model.Title">View report</a>
+    </div>
+</article>
