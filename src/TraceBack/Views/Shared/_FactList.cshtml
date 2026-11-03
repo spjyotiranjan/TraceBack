@@ -1,0 +1,37 @@
+@model TraceBack.Models.Item
+@inject IConfiguration Configuration
+
+<dl class="detail-list tb-fact-list" aria-label="Report facts">
+    <div><dt>Category</dt><dd>@Model.Category</dd></div>
+    <div>
+        <dt>Location</dt>
+        <dd>
+            <p class="mb-2">Location description: @Model.Location <span class="d-block form-text">Written by the reporter; this is not a verified address.</span></p>
+            @if (TraceBack.Models.MapLocationRules.SafeStored(Model.MapLocation) is { } point)
+            {
+                <p class="mb-1"><strong>Saved map pin</strong><br />Address unavailable for this pin. The pin is saved at the selected point.</p>
+                <details class="map-coordinates">
+                    <summary>Show coordinates</summary>
+                    <span>@point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)</span>
+                </details>
+                <a class="d-inline-block mt-2" href="@TraceBack.Models.MapLocationRules.GoogleMapsUrl(point)" target="_blank" rel="noopener noreferrer">View in Google Maps</a>
+                <div class="map-preview" data-report-map="preview"
+                     data-latitude="@point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
+                     data-longitude="@point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
+                     data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
+                     data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
+                     data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")">
+                    <div class="map-canvas" data-map-canvas aria-hidden="true"></div>
+                    <p class="map-status" data-map-status role="status" aria-live="polite">Loading map preview…</p>
+                    <button class="btn btn-outline-primary" type="button" data-map-retry hidden>Retry map preview</button>
+                </div>
+            }
+            else
+            {
+                <p class="mb-0">Map location not added to this older report.</p>
+            }
+        </dd>
+    </div>
+    <div><dt>Reported</dt><dd>@Model.DateReported.ToString("d MMM yyyy")</dd></div>
+    <div><dt>Contact preference</dt><dd>@Model.ContactPreference</dd></div>
+</dl>

@@ -3,14 +3,16 @@
     ViewData["Title"] = "Claim an item";
 }
 
-<div class="form-page">
+<div class="claim-page">
     <a class="back-link" asp-controller="Items" asp-action="Details" asp-route-id="@Model.Item.Id">← Back to item</a>
 
-    <p class="eyebrow mt-4">Ownership claim</p>
     <h1>Claim @Model.Item.Title</h1>
-    <p class="text-muted">Describe details that confirm this item belongs to you. Your message is private to the claim review.</p>
+    <div class="claim-page__context">
+        <p><span class="badge badge-type">@Model.Item.Type</span> <partial name="_StatusBadge" model="Model.Item.Status" /></p>
+    </div>
+    <p class="claim-page__privacy">Describe details that confirm this item belongs to you. Your message is private to the claim review and does not appear in public discussion.</p>
 
-    <form asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id" method="post" class="form-card" novalidate>
+    <form asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id" method="post" class="form-card" data-claim-form novalidate>
         <partial name="_ValidationSummary" />
 
         <div class="mb-4">
@@ -25,6 +27,15 @@
             <span id="message-error" class="text-danger small">@Html.ValidationMessage("Message")</span>
         </div>
 
-        <button class="btn btn-primary" type="submit">Submit claim</button>
+        <button class="btn btn-primary" type="submit" data-claim-submit>Submit claim</button>
+        <span class="visually-hidden" role="status" aria-live="polite" data-claim-status></span>
     </form>
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/detail-report.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/claim.js" asp-append-version="true" defer></script>
+}

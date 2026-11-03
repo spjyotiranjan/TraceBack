@@ -1,5 +1,4 @@
 @model TraceBack.Controllers.ItemDetailPage
-@inject IConfiguration Configuration
 @using System.Security.Claims
 @{
     ViewData["Title"] = Model.Item.Title;
@@ -7,113 +6,52 @@
 
 <a class="back-link" asp-action="Index">← Back to results</a>
 
-<div class="row g-4 mt-1 mb-5">
-    <div class="col-lg-6">
-        @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
-        {
-            <img class="detail-image" src="@Model.Item.DisplayImageUrl" alt="@Model.Item.Title" />
-        }
-        else
-        {
-            <div class="detail-placeholder" aria-hidden="true">TB</div>
-        }
-    </div>
-
-    <div class="col-lg-6">
-        <div class="d-flex gap-2 mb-3">
-            <span class="badge badge-type">@Model.Item.Type</span>
-            <partial name="_StatusBadge" model="Model.Item.Status" />
-        </div>
-
-        <h1>@Model.Item.Title</h1>
-        <p class="lead text-muted">@Model.Item.Description</p>
-
-        <dl class="detail-list">
-            <div>
-                <dt>Category</dt>
-                <dd>@Model.Item.Category</dd>
-            </div>
-            <div>
-                <dt>Location</dt>
-                <dd>
-                    @if (TraceBack.Models.MapLocationRules.SafeStored(Model.Item.MapLocation) is { } point)
+<article class="detail-report">
+    <div class="detail-report__layout">
+        <figure class="detail-report__media">
+            @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
+            {
+                <img class="detail-image" src="@Model.Item.DisplayImageUrl" alt="@Model.Item.Title" />
+            }
+            else
+            {
+                <div class="detail-placeholder" aria-hidden="true">No photo</div>
+            }
+            <figcaption>@(string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl) ? "No photo was added to this report." : "Photo supplied with this report.")</figcaption>
+        </figure>
+        <div>
+            <header class="detail-report__heading">
+                <div class="d-flex gap-2 flex-wrap">
+                    <span class="badge badge-type">@Model.Item.Type</span>
+                    <partial name="_StatusBadge" model="Model.Item.Status" />
+                </div>
+                <h1>@Model.Item.Title</h1>
+                <p class="detail-report__description">@Model.Item.Description</p>
+            </header>
+            <partial name="_FactList" model="Model.Item" />
+            <partial name="_ClaimPanel" model="Model" />
+            @if (Model.IsOwner || Model.IsAdmin)
+            {
+                <div class="detail-report__actions">
+                    <h2 class="h5">Manage this report</h2>
+                    @if (Model.Item.Status == "Active")
                     {
-                        <strong class="d-block">Address unavailable for this pin.</strong>
-                        <span class="d-block">The pin is saved at the selected point.</span>
-                        <span class="d-block">Location description: @Model.Item.Location</span>
-                        <details class="map-coordinates">
-                            <summary>Show coordinates</summary>
-                            <span>@point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture), @point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)</span>
-                        </details>
-                        <a class="d-inline-block mt-2" href="@TraceBack.Models.MapLocationRules.GoogleMapsUrl(point)" target="_blank" rel="noopener noreferrer">View in Google Maps</a>
-                        <div class="map-preview" data-report-map="preview"
-                             data-latitude="@point.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
-                             data-longitude="@point.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)"
-                             data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
-                             data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
-                             data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")">
-                            <div class="map-canvas" data-map-canvas aria-hidden="true"></div>
-                            <p class="map-status" data-map-status role="status" aria-live="polite">Loading map preview…</p>
-                            <button class="btn btn-outline-primary" type="button" data-map-retry hidden>Retry map preview</button>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Item.Id">Edit report</a>
+                            <form asp-route="default" asp-route-controller="Items" asp-route-action="Resolve" asp-route-id="@Model.Item.Id" method="post">
+                                <button class="btn btn-outline-secondary" type="submit" data-confirm="Mark this report resolved?">Mark resolved</button>
+                            </form>
                         </div>
                     }
-                    else
-                    {
-                        <span class="d-block">Location description: @Model.Item.Location</span>
-                        <span class="d-block">Map location not added to this older report.</span>
-                    }
-                </dd>
-            </div>
-            <div>
-                <dt>Reported</dt>
-                <dd>@Model.Item.DateReported.ToString("d MMM yyyy")</dd>
-            </div>
-            <div>
-                <dt>Contact preference</dt>
-                <dd>@Model.Item.ContactPreference</dd>
-            </div>
-        </dl>
-
-        @if (Model.CanClaim)
-        {
-            <div class="action-panel">
-                <h2 class="h5">Think this is yours?</h2>
-                <p>Share details only the owner would know. Your message stays private.</p>
-                <a class="btn btn-primary" asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id">Submit a claim</a>
-            </div>
-        }
-        else if (User.Identity?.IsAuthenticated != true && Model.Item.Type == "Found" && Model.Item.Status == "Active")
-        {
-            <div class="action-panel">
-                <h2 class="h5">Think this is yours?</h2>
-                <p>Sign in to share private ownership details.</p>
-                <a class="btn btn-primary"
-                   asp-controller="Account"
-                   asp-action="Login"
-                   asp-route-returnUrl="@Url.RouteUrl("default", new { controller = "Claims", action = "Create", itemId = Model.Item.Id })">Sign in to claim</a>
-            </div>
-        }
-
-        @if ((Model.IsOwner || Model.IsAdmin) && Model.Item.Status == "Active")
-        {
-            <div class="d-flex gap-2 flex-wrap mt-4">
-                <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Item.Id">Edit report</a>
-                <form asp-route="default" asp-route-controller="Items" asp-route-action="Resolve" asp-route-id="@Model.Item.Id" method="post">
-                    <button class="btn btn-outline-secondary" type="submit" data-confirm="Mark this report resolved?">Mark resolved</button>
-                </form>
-            </div>
-        }
-
-        @if (Model.IsOwner || Model.IsAdmin)
-        {
-            <form asp-route="default" asp-route-controller="Items" asp-route-action="Delete" asp-route-id="@Model.Item.Id" method="post" class="mt-3">
-                <button class="btn btn-outline-danger"
-                        type="submit"
-                        data-confirm="Delete this report and all of its claims? This cannot be undone.">Delete report</button>
-            </form>
-        }
+                    <form asp-route="default" asp-route-controller="Items" asp-route-action="Delete" asp-route-id="@Model.Item.Id" method="post" class="mt-3">
+                        <button class="btn btn-outline-danger" type="submit"
+                                data-confirm="Delete this report and all of its claims? This cannot be undone.">Delete report</button>
+                    </form>
+                </div>
+            }
+        </div>
     </div>
-</div>
+</article>
 
 <section class="discussion" aria-labelledby="discussion-title" data-discussion
          data-comments-url="@Url.Content($"~/Items/{Model.Item.Id}/Comments")"
@@ -177,6 +115,7 @@
     <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
     <link rel="stylesheet" href="~/css/report-map.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/discussion.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/detail-report.css" asp-append-version="true" />
 }
 
 @section Scripts {

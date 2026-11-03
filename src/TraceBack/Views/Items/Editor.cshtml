@@ -8,14 +8,19 @@
 }
 
 <div class="form-page">
-    <p class="eyebrow">Share with your campus</p>
     <h1>@ViewData["Title"]</h1>
     <p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
+    <nav class="report-section-index" aria-label="Report form sections">
+        <a href="#report-details-heading">What happened</a>
+        <a href="#report-place-heading">Where and when</a>
+        <a href="#report-contact-heading">How to reconnect</a>
+        <a href="#report-image-heading">Image</a>
+    </nav>
 
-    <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card" novalidate>
+    <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card report-form" novalidate>
         <partial name="_ValidationSummary" />
 
-        <section class="form-section" aria-labelledby="report-details-heading">
+        <section class="form-section tb-form-section" aria-labelledby="report-details-heading">
             <h2 id="report-details-heading" class="h5">What happened</h2>
             <p class="form-section-intro">Describe the item so someone can recognize it.</p>
         @if (editing)
@@ -75,7 +80,7 @@
         </div>
         </section>
 
-        <section class="form-section" aria-labelledby="report-place-heading">
+        <section class="form-section tb-form-section" aria-labelledby="report-place-heading">
             <h2 id="report-place-heading" class="h5">Where and when</h2>
             <p class="form-section-intro">Give the location and date that best match the report.</p>
         <div class="mb-3">
@@ -146,7 +151,7 @@
         </div>
         </section>
 
-        <section class="form-section" aria-labelledby="report-contact-heading">
+        <section class="form-section tb-form-section" aria-labelledby="report-contact-heading">
             <h2 id="report-contact-heading" class="h5">How to reconnect</h2>
         <div class="mb-3">
             <label class="form-label" for="contact">Contact preference <span class="required">required</span></label>
@@ -162,14 +167,14 @@
         </section>
 
         <section class="form-section image-editor" data-image-editor data-editing="@(editing ? "true" : "false")" data-current-image-url="@Model.CurrentImageUrl" aria-labelledby="report-image-heading">
-            <h2 id="report-image-heading" class="h5">Add an image (optional)</h2>
+            <h2 id="report-image-heading" class="h5">Image</h2>
             <p id="image-help" class="form-section-intro">A clear photo helps others recognize the item. JPEG, PNG, GIF, or WebP; up to 5 MB.</p>
+            <label class="form-label" for="image">Add an image (optional)</label>
             <input id="image"
                    name="ImageFile"
                    type="file"
                    accept="image/jpeg,image/png,image/gif,image/webp"
                    class="form-control"
-                   aria-label="Upload image"
                    aria-describedby="image-help image-error" />
             <div class="image-choices" data-image-choices hidden>
                 <label class="btn btn-outline-primary" for="image">Upload image</label>
@@ -224,6 +229,7 @@
 @section Styles {
     <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
     <link rel="stylesheet" href="~/css/report-map.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/detail-report.css" asp-append-version="true" />
 }
 
 @section Scripts {
