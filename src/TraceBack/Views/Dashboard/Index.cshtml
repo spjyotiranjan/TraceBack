@@ -63,7 +63,7 @@
                         </h3>
                         <p class="small text-muted mb-0">Submitted @row.Claim.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</p>
                     </div>
-                    <span class="badge badge-status">@row.Claim.Status</span>
+                    <partial name="_StatusBadge" model="row.Claim.Status" />
                 </div>
             }
         </div>

@@ -1,6 +1,6 @@
 @model Item
 
-<article class="card item-card h-100">
+<article class="card item-card tb-catalog-row h-100">
     @if (!string.IsNullOrWhiteSpace(Model.DisplayImageUrl))
     {
         <img class="card-img-top item-image" src="@Model.DisplayImageUrl" alt="@Model.Title" loading="lazy" />
@@ -13,7 +13,7 @@
     <div class="card-body d-flex flex-column">
         <div class="d-flex gap-2 flex-wrap mb-2">
             <span class="badge badge-type">@Model.Type</span>
-            <span class="badge badge-status">@Model.Status</span>
+            <partial name="_StatusBadge" model="Model.Status" />
         </div>
 
         <h3 class="h5 card-title">

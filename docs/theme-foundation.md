@@ -1,0 +1,11 @@
+# Theme foundation (PAT-76)
+
+The shared Razor layout resolves `light`, `dark`, or `system` synchronously in the document head, before themed stylesheets. `system` is the default and follows `prefers-color-scheme`. A valid explicit choice is stored under `traceback.theme.v1`; blocked storage falls back to System. The root's resolved `data-theme` is always `light` or `dark`. The `data-theme-choice` attribute records the selected control value. Without JavaScript, the page remains readable in the light theme and hides the inactive theme control.
+
+Stylesheet order is Bootstrap, `fonts.css`, `theme.css`, `site.css`, then page styles. Source Sans 3 is self-hosted in `wwwroot/fonts` with its OFL license and a system sans fallback. The WOFF2 subsets came from Google Fonts' Source Sans 3 distribution.
+
+`theme.css` owns raw palette values and the public `--tb-*` API. Route and component styles should consume semantic roles rather than hex values. Color roles include canvas, surface, surface-muted, ink, ink-muted, divider, control-border, action, action-hover, on-action, accent, accent-surface, focus, danger, danger-surface, success, success-surface, status colors and surfaces, media ground and ink, map control, and shadow. Layout roles include 4–48px spacing steps, content and form widths, control and panel radii, feedback and emphasis durations, and easing.
+
+Reusable hooks are `tb-panel`, `tb-toolbar`, `tb-catalog-row`, `tb-fact-list`, `tb-status`, `tb-form-section`, `tb-decision-row`, `tb-empty-state`, `tb-notice`, and `tb-process-path`. Status text remains visible; its color only reinforces meaning. The theme control uses native radios in the shared navigation. Leaflet tiles are never filtered or inverted; only first-party shell and control surfaces are themed. The reduced-motion media query removes smooth scrolling and shortens transitions and animations.
+
+Future page work should retain existing route, authentication, validation, map, and discussion hooks while adopting these tokens and classes. Verify new states in both themes at mobile, tablet, and desktop widths, including keyboard focus and reduced motion.

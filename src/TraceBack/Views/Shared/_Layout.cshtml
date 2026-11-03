@@ -1,10 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light" data-theme-choice="system">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@ViewData["Title"] · TraceBack</title>
+    <script>
+        (() => {
+            document.documentElement.classList.add('tb-js');
+            let choice = 'system';
+            try {
+                const saved = localStorage.getItem('traceback.theme.v1');
+                if (saved === 'light' || saved === 'dark' || saved === 'system') choice = saved;
+            } catch { /* System preference remains available when storage is blocked. */ }
+            document.documentElement.dataset.themeChoice = choice;
+            document.documentElement.dataset.theme = choice === 'system'
+                ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+                : choice;
+        })();
+    </script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/fonts.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -14,7 +30,7 @@
     <header class="site-header">
         <nav class="navbar navbar-expand-md container" aria-label="Primary navigation">
             <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
-                <span class="brand-symbol" aria-hidden="true">↗</span> TraceBack
+                <span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M9 5h10v10" /></svg></span> TraceBack
             </a>
 
             <button class="navbar-toggler"
@@ -41,6 +57,7 @@
                 </ul>
 
                 <div class="d-flex align-items-md-center flex-column flex-md-row gap-2 py-2 py-md-0">
+                    <partial name="_ThemeControl" />
                     @if (User.Identity?.IsAuthenticated == true)
                     {
                         <a class="nav-link" asp-controller="Dashboard" asp-action="Index">My dashboard</a>
@@ -87,6 +104,7 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/theme.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
