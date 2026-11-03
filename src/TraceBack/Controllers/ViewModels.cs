@@ -8,6 +8,10 @@ public sealed record BrowsePage(
     bool HasNext,
     bool LoadFailed = false);
 
+public sealed record HomePage(List<Item> RecentItems, bool RecentLoadFailed = false);
+
+public sealed record FilterChip(string Label, string Value, string Url);
+
 public sealed record ItemDetailPage(
     Item Item,
     bool IsOwner,

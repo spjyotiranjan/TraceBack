@@ -5,18 +5,27 @@ using TraceBack.Services;
 
 namespace TraceBack.Controllers;
 
-public class HomeController(Func<IItemService> createItems) : Controller
+public class HomeController(Func<IItemService> createItems, ILogger<HomeController> logger) : Controller
 {
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public async Task<IActionResult> Index()
     {
         if (User.Identity?.IsAuthenticated != true)
         {
-            return View(new List<Item>());
+            return View(new HomePage([]));
         }
 
-        var recent = await createItems().SearchAsync(new ItemSearch());
-        return View(recent.Take(6).ToList());
+        try
+        {
+            var recent = await createItems().SearchAsync(new ItemSearch());
+            return View(new HomePage(recent.Take(6).ToList()));
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            logger.LogError(error, "Recent reports could not load on the home page");
+            Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            return View(new HomePage([], true));
+        }
     }
 
     public IActionResult Privacy()

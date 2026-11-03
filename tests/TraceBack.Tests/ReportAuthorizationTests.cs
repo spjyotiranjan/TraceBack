@@ -57,9 +57,10 @@ public sealed class ReportAuthorizationTests
         Assert.Equal(HttpStatusCode.OK, home.StatusCode);
         Assert.True(home.Headers.CacheControl?.NoStore);
         var markup = await home.Content.ReadAsStringAsync();
-        Assert.Contains("A better way back for your belongings.", markup);
+        Assert.Contains("Find what matters.", markup);
         Assert.Contains("Reports are available after sign-in.", markup);
         Assert.Contains("Create account", markup);
+        Assert.Contains("How TraceBack works", markup);
         Assert.DoesNotContain("Recent reports", markup);
         Assert.DoesNotContain("Browse all", markup);
         Assert.DoesNotContain("Browse lost", markup);
@@ -93,10 +94,10 @@ public sealed class ReportAuthorizationTests
             Assert.Contains(reports.Item.Title, markup);
             if (path == "/")
             {
-                Assert.Contains("Search belongings", markup);
-                Assert.Contains("Browse lost", markup);
+                Assert.Contains("Search reports", markup);
+                Assert.Contains("Browse reports", markup);
                 Assert.Contains("Recent reports", markup);
-                Assert.DoesNotContain("A better way back for your belongings.", markup);
+                Assert.DoesNotContain("Reports are available after sign-in.", markup);
             }
         }
 
@@ -109,6 +110,29 @@ public sealed class ReportAuthorizationTests
         using var api = await client.GetAsync("/api/items");
         Assert.Equal(HttpStatusCode.Unauthorized, api.StatusCode);
         Assert.True(reports.ReadCount >= 4);
+    }
+
+    [Fact]
+    public async Task Signed_in_home_and_browse_show_recoverable_errors_when_report_search_fails()
+    {
+        var reports = new FakeItemService { FailSearch = true };
+        using var factory = CreateFactory(reports);
+        using var client = CreateClient(factory);
+        AddCookie(client, factory);
+
+        using var home = await client.GetAsync("/");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, home.StatusCode);
+        var homeMarkup = await home.Content.ReadAsStringAsync();
+        Assert.Contains("Recent reports could not load", homeMarkup);
+        Assert.Contains("Retry", homeMarkup);
+        Assert.DoesNotContain(reports.Item.Title, homeMarkup);
+
+        using var browse = await client.GetAsync("/Items?Query=backpack");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, browse.StatusCode);
+        var browseMarkup = await browse.Content.ReadAsStringAsync();
+        Assert.Contains("Reports could not load", browseMarkup);
+        Assert.Contains("Query=backpack", browseMarkup);
+        Assert.DoesNotContain(reports.Item.Title, browseMarkup);
     }
 
     [Fact]
@@ -319,10 +343,15 @@ public sealed class ReportAuthorizationTests
 
         public int ReadCount => Volatile.Read(ref readCount);
         public int CreateCount => Volatile.Read(ref createCount);
+        public bool FailSearch { get; set; }
 
         public Task<List<Item>> SearchAsync(ItemSearch search)
         {
             Interlocked.Increment(ref readCount);
+            if (FailSearch)
+            {
+                return Task.FromException<List<Item>>(new InvalidOperationException("Fixture search failure"));
+            }
             return Task.FromResult(new List<Item> { Item });
         }
 

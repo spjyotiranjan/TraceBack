@@ -1,0 +1,37 @@
+@model TraceBack.Controllers.BrowsePage
+<form asp-controller="Items" asp-action="Index" method="get" class="browse-filters tb-toolbar" role="search">
+    <div class="browse-filter-grid">
+        <div class="browse-query">
+            <label for="query" class="form-label">Search words</label>
+            <input id="query" name="Query" class="form-control" value="@Model.Search.Query" placeholder="Item name or description" />
+        </div>
+        <div>
+            <label for="type" class="form-label">Type</label>
+            <select id="type" name="Type" class="form-select">
+                <option value="">All types</option>
+                <option value="Lost" selected="@(Model.Search.Type == "Lost")">Lost</option>
+                <option value="Found" selected="@(Model.Search.Type == "Found")">Found</option>
+            </select>
+        </div>
+        <div>
+            <label for="status" class="form-label">Status</label>
+            <select id="status" name="Status" class="form-select">
+                <option value="Active" selected="@(Model.Search.Status is null or "Active")">Active</option>
+                <option value="Resolved" selected="@(Model.Search.Status == "Resolved")">Resolved</option>
+                <option value="Claimed" selected="@(Model.Search.Status == "Claimed")">Claimed</option>
+            </select>
+        </div>
+        <div>
+            <label for="category" class="form-label">Category</label>
+            <input id="category" name="Category" class="form-control" value="@Model.Search.Category" placeholder="e.g. Electronics" />
+        </div>
+        <div>
+            <label for="location" class="form-label">Location</label>
+            <input id="location" name="Location" class="form-control" value="@Model.Search.Location" placeholder="e.g. Library" />
+        </div>
+    </div>
+    <div class="browse-filter-actions">
+        <button type="submit" class="btn btn-primary">Apply filters</button>
+        <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index">Clear filters</a>
+    </div>
+</form>

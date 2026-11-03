@@ -1,128 +1,104 @@
-@model List<Item>
+@model TraceBack.Controllers.HomePage
 @{
     ViewData["Title"] = "Find what matters";
+    var signedIn = User.Identity?.IsAuthenticated == true;
 }
 
-<section class="hero rounded-4 p-4 p-md-5 mb-5">
-    <div class="row align-items-center g-4">
-        <div class="col-lg-7">
-            <p class="eyebrow">Campus lost and found</p>
-            <h1 class="display-4 fw-bold">Find what matters.</h1>
-            <p class="lead">A simple place to report missing belongings, share what you found, and bring things back to their people.</p>
-
-            @if (User.Identity?.IsAuthenticated == true)
-            {
-            <form asp-controller="Items" asp-action="Index" method="get" class="d-flex gap-2 mt-4 hero-search" role="search">
-                <label class="visually-hidden" for="hero-search">Search belongings</label>
-                <input id="hero-search"
-                       name="Query"
-                       class="form-control"
-                       placeholder="Try keys, backpack, or library" />
-                <button class="btn btn-primary" type="submit">Search</button>
-            </form>
-
-            <div class="d-flex flex-wrap gap-2 mt-3">
-                <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index" asp-route-type="Lost">Browse lost</a>
-                <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index" asp-route-type="Found">Browse found</a>
-                <a class="btn btn-accent" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
-            </div>
-            }
-            else
-            {
-                <p class="mt-4 mb-2">Reports are available after sign-in.</p>
-                <a href="#how-title">See how it works</a>
-            }
-        </div>
-
-        <div class="col-lg-5">
-            <div class="hero-note">
-                <span class="hero-mark" aria-hidden="true">↗</span>
-                <p class="h4">Every report brings someone closer to home.</p>
-                <p class="mb-0 text-muted">Share clear details, check recent posts, and keep claims private.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-@if (User.Identity?.IsAuthenticated == true)
-{
-<section aria-labelledby="recent-title" class="mb-5">
-    <div class="section-heading">
-        <div>
-            <p class="eyebrow mb-1">Latest activity</p>
-            <h2 id="recent-title">Recent reports</h2>
-        </div>
-        <a asp-controller="Items" asp-action="Index">
-            Browse all <span aria-hidden="true">→</span>
-        </a>
-    </div>
-
-    @if (Model.Count == 0)
-    {
-        <div class="empty-state">
-            <p>No active reports yet.</p>
-            <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
-        </div>
-    }
-    else
-    {
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-            @foreach (var item in Model)
-            {
-                <div class="col">
-                    <partial name="_ItemCard" model="item" />
+<section class="home-hero" aria-labelledby="home-title">
+    <div class="home-hero-copy">
+        <h1 id="home-title">Find what matters.</h1>
+        <p class="home-hero-intro">A clear place for campus belongings that have been lost or found. Share a report, search what others have posted, and help an item find its way back.</p>
+        @if (signedIn)
+        {
+            <form asp-controller="Items" asp-action="Index" method="get" class="home-search" role="search">
+                <label for="home-query">Search reports</label>
+                <div class="home-search-fields">
+                    <input id="home-query" name="Query" class="form-control" placeholder="Item name or description" />
+                    <button class="btn btn-primary" type="submit">Search reports</button>
                 </div>
-            }
-        </div>
-    }
+            </form>
+            <div class="home-hero-actions">
+                <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index">Browse reports</a>
+                <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
+            </div>
+        }
+        else
+        {
+            <p class="home-access-note">Reports are available after sign-in.</p>
+            <div class="home-hero-actions">
+                <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Sign in</a>
+                <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Register">Create account</a>
+            </div>
+        }
+    </div>
+    <div class="home-hero-aside" aria-hidden="true">
+        <span class="home-aside-label">TraceBack / campus index</span>
+        <svg viewBox="0 0 300 190" fill="none" focusable="false">
+            <path d="M24 145h70V62h92v83h90" stroke="currentColor" stroke-width="2" />
+            <circle cx="24" cy="145" r="8" fill="currentColor" />
+            <circle cx="94" cy="62" r="8" fill="currentColor" />
+            <circle cx="186" cy="145" r="8" fill="currentColor" />
+            <circle cx="276" cy="145" r="8" fill="currentColor" />
+        </svg>
+        <span class="home-aside-caption">Every report is a useful place to start.</span>
+    </div>
 </section>
-}
-else
+
+@if (signedIn)
 {
-<section class="guest-welcome mb-5" aria-labelledby="welcome-title">
-    <p class="eyebrow">Campus lost and found</p>
-    <h2 id="welcome-title">A better way back for your belongings.</h2>
-    <p class="guest-welcome-intro">TraceBack brings campus lost and found into one place. Sign in to search reports, share what you found, and help belongings get home.</p>
-    <div class="row g-4 mt-1">
-        <div class="col-md-4">
-            <h3 class="h5">Search in one place</h3>
-            <p>Look through current lost and found reports when you sign in.</p>
+    <section class="home-recent" aria-labelledby="recent-title">
+        <div class="section-heading">
+            <div>
+                <h2 id="recent-title">Recent reports</h2>
+                <p>See what has been shared lately.</p>
+            </div>
+            <a asp-controller="Items" asp-action="Index">Browse all reports</a>
         </div>
-        <div class="col-md-4">
-            <h3 class="h5">Share useful details</h3>
-            <p>Post what you lost or found so others know what to look for.</p>
-        </div>
-        <div class="col-md-4">
-            <h3 class="h5">Keep claims private</h3>
-            <p>Confirm ownership through a claim before arranging a handoff.</p>
-        </div>
-    </div>
-    <div class="guest-welcome-actions mt-4">
-        <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Sign in</a>
-        <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Register">Create account</a>
-    </div>
-</section>
+        @if (Model.RecentLoadFailed)
+        {
+            <div class="tb-empty-state" role="alert">
+                <h3>Recent reports could not load</h3>
+                <p>Try this page again. Your report and account have not changed.</p>
+                <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Retry</a>
+            </div>
+        }
+        else if (Model.RecentItems.Count == 0)
+        {
+            <div class="tb-empty-state">
+                <h3>No active reports yet</h3>
+                <p>Share an item you lost or found to get the index started.</p>
+                <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
+            </div>
+        }
+        else
+        {
+            <div class="catalog-list">
+                @foreach (var item in Model.RecentItems)
+                {
+                    <partial name="_CatalogRow" model="item" />
+                }
+            </div>
+        }
+    </section>
 }
 
-<section class="how-it-works mb-5" aria-labelledby="how-title">
-    <p class="eyebrow">A clearer way back</p>
-    <h2 id="how-title" tabindex="-1">How it works</h2>
+<partial name="_ProcessPath" />
 
-    <div class="row g-4 mt-1">
-        <div class="col-md-4">
-            <span class="step">01</span>
-            <h3 class="h5">Report</h3>
-            <p>Tell the campus what you lost or found.</p>
-        </div>
-        <div class="col-md-4">
-            <span class="step">02</span>
-            <h3 class="h5">Match</h3>
-            <p>Search reports and share details to confirm ownership.</p>
-        </div>
-        <div class="col-md-4">
-            <span class="step">03</span>
-            <h3 class="h5">Reunite</h3>
-            <p>Arrange a safe handoff and close the report.</p>
-        </div>
-    </div>
-</section>
+@section Styles {
+    <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script>
+        const path = document.querySelector('.process-route');
+        if (path && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            const observer = new IntersectionObserver(entries => {
+                if (entries[0].isIntersecting) {
+                    path.classList.add('is-visible');
+                    observer.disconnect();
+                }
+            }, { threshold: 0.3 });
+            observer.observe(path);
+        }
+    </script>
+}
