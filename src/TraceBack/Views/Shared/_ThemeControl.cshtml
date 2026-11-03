@@ -1,6 +1,15 @@
-<fieldset class="tb-theme-control" data-theme-control>
-    <legend>Theme</legend>
-    <label><input type="radio" name="theme-choice" value="light" /> Light</label>
-    <label><input type="radio" name="theme-choice" value="dark" /> Dark</label>
-    <label><input type="radio" name="theme-choice" value="system" checked /> System</label>
-</fieldset>
+<div class="tb-appearance" data-theme-control>
+    <div class="tb-appearance__row">
+        <span class="tb-appearance__label">Appearance</span>
+        <label class="tb-appearance__switch">
+            <input type="checkbox" role="switch" aria-label="Dark appearance" aria-describedby="appearance-state" data-theme-switch />
+            <span class="tb-appearance__track" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" focusable="false"><circle cx="12" cy="12" r="4"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3M4 4l2 2m12 12 2 2M4 20l2-2M18 6l2-2"/></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" focusable="false"><path d="M20 15.5A9 9 0 0 1 8.5 4 9 9 0 1 0 20 15.5Z"/></svg>
+            </span>
+        </label>
+    </div>
+    <span id="appearance-state" class="visually-hidden" data-theme-state></span>
+    <span class="tb-appearance__source" data-theme-device>Following device appearance</span>
+    <button type="button" class="tb-appearance__reset" data-theme-reset hidden>Use device appearance</button>
+</div>

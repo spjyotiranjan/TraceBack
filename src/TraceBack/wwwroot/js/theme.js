@@ -1,24 +1,48 @@
 (() => {
   const key = 'traceback.theme.v1';
   const root = document.documentElement;
-  const choices = [...document.querySelectorAll('input[name="theme-choice"]')];
+  const toggle = document.querySelector('[data-theme-switch]');
+  const reset = document.querySelector('[data-theme-reset]');
+  const state = document.querySelector('[data-theme-state]');
+  const device = document.querySelector('[data-theme-device]');
   const media = window.matchMedia('(prefers-color-scheme: dark)');
-  let choice = root.dataset.themeChoice || 'system';
+  const normalize = value => ['light', 'dark', 'system'].includes(value) ? value : 'system';
+  let choice = normalize(root.dataset.themeChoice);
 
   const apply = () => {
+    const dark = choice === 'system' ? media.matches : choice === 'dark';
     root.dataset.themeChoice = choice;
-    root.dataset.theme = choice === 'system' ? (media.matches ? 'dark' : 'light') : choice;
-    choices.forEach(input => { input.checked = input.value === choice; });
+    root.dataset.theme = dark ? 'dark' : 'light';
+    if (toggle) toggle.checked = dark;
+    if (state) state.textContent = `${dark ? 'Dark' : 'Light'}${choice === 'system' ? ' from device' : ''}`;
+    if (reset) reset.hidden = choice === 'system';
+    if (device) device.hidden = choice !== 'system';
   };
-
-  choices.forEach(input => input.addEventListener('change', () => {
-    if (!input.checked) return;
-    choice = input.value;
+  let motionTimer;
+  const select = value => {
+    clearTimeout(motionTimer);
+    root.dataset.themeAnimate = 'true';
+    motionTimer = setTimeout(() => delete root.dataset.themeAnimate, 200);
+    choice = value;
     try { window.localStorage.setItem(key, choice); }
-    catch { choice = 'system'; }
+    catch { /* Keep the in-memory choice when persistence is unavailable. */ }
     apply();
-  }));
-
-  media.addEventListener('change', () => { if (choice === 'system') apply(); });
+  };
+  toggle?.addEventListener('change', () => select(toggle.checked ? 'dark' : 'light'));
+  reset?.addEventListener('click', () => {
+    select('system');
+    toggle?.focus();
+  });
+  media.addEventListener('change', () => {
+    delete root.dataset.themeAnimate;
+    if (choice === 'system') apply();
+  });
+  window.addEventListener('storage', event => {
+    if (event.key === key || event.key === null) {
+      delete root.dataset.themeAnimate;
+      choice = normalize(event.newValue);
+      apply();
+    }
+  });
   apply();
 })();

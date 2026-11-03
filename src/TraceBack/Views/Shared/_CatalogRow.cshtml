@@ -1,6 +1,6 @@
 @model Item
 
-<article class="catalog-row tb-catalog-row">
+<article class="catalog-row tb-catalog-row" data-record-id="@Model.Id">
     <div class="catalog-media">
         @if (!string.IsNullOrWhiteSpace(Model.DisplayImageUrl))
         {
@@ -23,7 +23,7 @@
             <span class="badge badge-type">@Model.Type</span>
             <partial name="_StatusBadge" model="Model.Status" />
         </div>
-        <h3>@Model.Title</h3>
+        <h3>@if (ViewData["RecordIndex"] is int index) { <span class="tb-catalog-index" aria-hidden="true">@index.ToString("00")</span> }@Model.Title</h3>
         @if (!string.IsNullOrWhiteSpace(Model.Category))
         {
             <p class="catalog-category">@Model.Category</p>

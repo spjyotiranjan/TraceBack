@@ -24,20 +24,7 @@
     }
 }
 
-<div class="browse-heading">
-    <div>
-        <h1>Browse reports</h1>
-        @if (!Model.LoadFailed)
-        {
-            <p class="browse-count">Showing @Model.Items.Count @(Model.Items.Count == 1 ? "report" : "reports") on page @Model.Search.Page</p>
-        }
-        else
-        {
-            <p class="browse-count">Reports are temporarily unavailable.</p>
-        }
-    </div>
-    <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
-</div>
+<partial name="_ResultBoard" model="Model" />
 
 <partial name="_SearchFilters" model="Model" />
 
@@ -82,9 +69,10 @@
     else
     {
         <div class="catalog-list">
+            @{ var reportIndex = 1; }
             @foreach (var item in Model.Items)
             {
-                <partial name="_CatalogRow" model="item" />
+                <partial name="_CatalogRow" model="item" view-data='new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData) { ["RecordIndex"] = reportIndex++ }' />
             }
         </div>
     }
@@ -97,6 +85,7 @@
 }
 
 @section Scripts {
+    <script src="~/js/record-graphics.js" asp-append-version="true" defer></script>
     <script>
         if (window.location.search) {
             document.getElementById('browse-results-title')?.focus();

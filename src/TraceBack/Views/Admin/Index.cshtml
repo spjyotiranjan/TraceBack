@@ -28,6 +28,10 @@
             @foreach (var row in pendingClaims)
             {
                 <article class="tb-decision-row">
+                    @if (!string.IsNullOrWhiteSpace(row.Item?.DisplayImageUrl))
+                    {
+                        <img class="tb-decision-row__thumbnail" src="@row.Item.DisplayImageUrl" alt="Photo for @row.Item.Title" width="120" height="90" loading="lazy" />
+                    }
                     <div class="tb-decision-row__heading">
                         <div>
                             <p class="tb-decision-row__label">Claim for</p>
