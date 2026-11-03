@@ -121,6 +121,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api")
+    && context.Request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase), branch =>
+    branch.UseStatusCodePagesWithReExecute("/Home/StatusCodePage", "?code={0}"));
 app.UseRouting();
 
 app.UseAuthentication();

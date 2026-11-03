@@ -1,79 +1,97 @@
 @model TraceBack.Controllers.AdminPage
 @{
     ViewData["Title"] = "Admin dashboard";
+    var pendingClaims = Model.Claims.Where(row => row.Claim.Status == "Pending").ToList();
 }
 
-<div class="page-heading">
-    <p class="eyebrow">Campus overview</p>
+<div class="page-heading tb-workspace-heading">
     <h1>Admin dashboard</h1>
-    <p>Review reports and ownership claims.</p>
+    <p>Review private ownership claims and recent reports.</p>
 </div>
 
-<div class="row g-3 mb-5">
-    <div class="col-sm-6">
-        <div class="stat-card">
-            <strong>@Model.ItemCount</strong>
-            <span>total reports</span>
-        </div>
+<section class="tb-workspace-section" aria-labelledby="review-claims">
+    <div class="tb-workspace-section__heading">
+        <h2 id="review-claims">Claims to review <span class="tb-section-count">@pendingClaims.Count pending</span></h2>
+        <p>Ownership messages are private. Approve or reject each claim after checking its details.</p>
     </div>
-    <div class="col-sm-6">
-        <div class="stat-card">
-            <strong>@Model.ClaimCount</strong>
-            <span>total claims</span>
-        </div>
-    </div>
-</div>
 
-<section class="mb-5" aria-labelledby="review-claims">
-    <h2 id="review-claims">Claims to review</h2>
-
-    @if (!Model.Claims.Any(x => x.Claim.Status == "Pending"))
+    @if (pendingClaims.Count == 0)
     {
-        <div class="empty-state">
-            <p>No pending claims.</p>
+        <div class="tb-empty-state tb-workspace-empty">
+            <h3>No pending claims</h3>
+            <p>New ownership requests will appear here for review.</p>
         </div>
     }
     else
     {
-        <div class="list-group">
-            @foreach (var row in Model.Claims.Where(x => x.Claim.Status == "Pending"))
+        <div class="tb-decision-list">
+            @foreach (var row in pendingClaims)
             {
-                <article class="list-group-item">
-                    <div class="d-flex justify-content-between gap-2 flex-wrap">
-                        <h3 class="h5">@(row.Item?.Title ?? "Removed item")</h3>
+                <article class="tb-decision-row">
+                    <div class="tb-decision-row__heading">
+                        <div>
+                            <p class="tb-decision-row__label">Claim for</p>
+                            <h3>@(row.Item?.Title ?? "Removed item")</h3>
+                        </div>
                         <partial name="_StatusBadge" model="row.Claim.Status" />
                     </div>
 
-                    <p class="mb-2">@row.Claim.Message</p>
-                    <p class="small text-muted">Submitted @row.Claim.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</p>
+                    <p class="tb-decision-row__message">@row.Claim.Message</p>
+                    <p class="tb-decision-row__date">Submitted @row.Claim.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</p>
 
-                    <div class="d-flex gap-2">
-                        <form asp-action="Decide" asp-route-id="@row.Claim.Id" method="post">
+                    <div class="tb-decision-row__actions">
+                        <form asp-action="Decide" asp-route-id="@row.Claim.Id" method="post" data-decision-form data-confirm="Approve the claim for @(row.Item?.Title ?? "the removed item")?">
                             <input type="hidden" name="approve" value="true" />
-                            <button class="btn btn-primary" type="submit" data-confirm="Approve this claim?">Approve</button>
+                            <button class="btn btn-primary" type="submit">Approve</button>
                         </form>
-                        <form asp-action="Decide" asp-route-id="@row.Claim.Id" method="post">
+                        <form asp-action="Decide" asp-route-id="@row.Claim.Id" method="post" data-decision-form data-confirm="Reject the claim for @(row.Item?.Title ?? "the removed item")?">
                             <input type="hidden" name="approve" value="false" />
-                            <button class="btn btn-outline-danger" type="submit" data-confirm="Reject this claim?">Reject</button>
+                            <button class="btn btn-outline-danger" type="submit">Reject</button>
                         </form>
                     </div>
+                    <span class="visually-hidden" role="status" aria-live="polite" data-decision-status></span>
                 </article>
             }
         </div>
     }
 </section>
 
-<section aria-labelledby="recent-reports">
-    <h2 id="recent-reports">Recent reports</h2>
-
-    <div class="list-group">
-        @foreach (var item in Model.Items)
-        {
-            <div class="list-group-item d-flex justify-content-between align-items-center gap-3 flex-wrap">
-                <a asp-controller="Items" asp-action="Details" asp-route-id="@item.Id">@item.Title</a>
-                <partial name="_StatusBadge" model="item.Status" />
-            </div>
-        }
-    </div>
+<section class="tb-workspace-section" aria-labelledby="campus-totals">
+    <h2 id="campus-totals">Campus totals</h2>
+    <dl class="tb-totals">
+        <div><dt>Total reports</dt><dd>@Model.ItemCount</dd></div>
+        <div><dt>Total claims</dt><dd>@Model.ClaimCount</dd></div>
+    </dl>
 </section>
+
+<section class="tb-workspace-section" aria-labelledby="recent-reports">
+    <h2 id="recent-reports">Recent reports</h2>
+    @if (Model.Items.Count == 0)
+    {
+        <div class="tb-empty-state tb-workspace-empty">
+            <h3>No reports yet</h3>
+            <p>Reports will appear here when members post them.</p>
+        </div>
+    }
+    else
+    {
+        <div class="tb-report-list">
+            @foreach (var item in Model.Items)
+            {
+                <article class="tb-report-row">
+                    <h3><a asp-controller="Items" asp-action="Details" asp-route-id="@item.Id">@item.Title</a></h3>
+                    <partial name="_StatusBadge" model="item.Status" />
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/admin.js" asp-append-version="true" defer></script>
+}
 

@@ -2,8 +2,12 @@
     ViewData["Title"] = "Access denied";
 }
 
-<div class="empty-state">
+<div class="tb-recovery tb-recovery--access">
     <h1>Access denied</h1>
-    <p>You do not have permission to open this page.</p>
-    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Go home</a>
+    <p>Your account does not have permission to open this page. You can return to the home page and continue with the areas available to you.</p>
+    <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Go to home page</a>
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
+}

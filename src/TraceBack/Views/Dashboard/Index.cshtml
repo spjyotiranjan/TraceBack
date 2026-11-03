@@ -3,55 +3,58 @@
     ViewData["Title"] = "My dashboard";
 }
 
-<div class="page-heading">
-    <p class="eyebrow">Your activity</p>
+<div class="page-heading tb-workspace-heading">
     <h1>My dashboard</h1>
     <p>Review your reports and follow your claims.</p>
 </div>
 
-<section class="mb-5" aria-labelledby="my-reports">
-    <div class="section-heading">
+<section class="tb-workspace-section" aria-labelledby="my-reports">
+    <div class="section-heading tb-workspace-section__heading">
         <h2 id="my-reports">My reports</h2>
         <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
     </div>
 
     @if (Model.Items.Count == 0)
     {
-        <div class="empty-state">
-            <p>You have not posted a report yet.</p>
+        <div class="tb-empty-state tb-workspace-empty">
+            <h3>No reports yet</h3>
+            <p>Post a lost or found item to start keeping track of it here.</p>
+            <a asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
         </div>
     }
     else
     {
-        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <div class="catalog-list">
             @foreach (var item in Model.Items)
             {
-                <div class="col">
-                    <partial name="_ItemCard" model="item" />
-                </div>
+                <partial name="_CatalogRow" model="item" />
             }
         </div>
     }
 </section>
 
-<section aria-labelledby="my-claims" class="mb-5">
-    <h2 id="my-claims">My claims</h2>
+<section aria-labelledby="my-claims" class="tb-workspace-section">
+    <div class="tb-workspace-section__heading">
+        <h2 id="my-claims">My claims</h2>
+        <p>Private ownership requests and their current decisions.</p>
+    </div>
 
     @if (Model.Claims.Count == 0)
     {
-        <div class="empty-state">
-            <p>You have not submitted a claim yet.</p>
+        <div class="tb-empty-state tb-workspace-empty">
+            <h3>No claims yet</h3>
+            <p>When you claim a found item, its status will appear here.</p>
             <a asp-controller="Items" asp-action="Index" asp-route-type="Found">Browse found items</a>
         </div>
     }
     else
     {
-        <div class="list-group">
+        <div class="tb-claim-list">
             @foreach (var row in Model.Claims)
             {
-                <div class="list-group-item d-flex justify-content-between align-items-start gap-3 flex-wrap">
-                    <div>
-                        <h3 class="h6 mb-1">
+                <article class="tb-claim-row">
+                    <div class="tb-claim-row__main">
+                        <h3>
                             @if (row.Item is not null)
                             {
                                 <a asp-controller="Items" asp-action="Details" asp-route-id="@row.Item.Id">@row.Item.Title</a>
@@ -61,11 +64,16 @@
                                 <span>Item no longer available</span>
                             }
                         </h3>
-                        <p class="small text-muted mb-0">Submitted @row.Claim.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</p>
+                        <p>Submitted @row.Claim.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</p>
                     </div>
                     <partial name="_StatusBadge" model="row.Claim.Status" />
-                </div>
+                </article>
             }
         </div>
     }
 </section>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
+}

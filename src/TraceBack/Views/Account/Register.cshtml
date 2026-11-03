@@ -3,12 +3,11 @@
     ViewData["Title"] = "Create account";
 }
 
-<div class="auth-page">
-    <p class="eyebrow">Join TraceBack</p>
+<div class="auth-page tb-account">
     <h1>Create an account</h1>
-    <p class="text-muted">Use your account to post reports and track claims.</p>
+    <p class="tb-account__intro">Use your account to post reports and track claims.</p>
 
-    <form asp-action="Register" method="post" class="form-card" novalidate>
+    <form asp-action="Register" method="post" class="form-card tb-account__form" novalidate>
         <partial name="_ValidationSummary" />
 
         <div class="mb-3">
@@ -32,10 +31,14 @@
         <button class="btn btn-primary w-100" type="submit">Create account</button>
     </form>
 
-    <p class="mt-3">
+    <p class="tb-account__switch">
         Already registered? <a asp-action="Login">Sign in</a>.
     </p>
 </div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
+}
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
