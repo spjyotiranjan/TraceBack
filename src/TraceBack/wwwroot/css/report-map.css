@@ -1,4 +1,8 @@
-.map-selection{font-weight:650;margin:.75rem 0}
+.map-selection{margin:.75rem 0;overflow-wrap:anywhere}
+.map-selection-help{font-weight:400;color:var(--muted)}
+.map-coordinates{margin:.5rem 0;overflow-wrap:anywhere}
+.map-coordinates summary{cursor:pointer;width:fit-content;min-height:44px;padding:.5rem 0;color:var(--bs-link-color)}
+.map-coordinates summary:focus-visible{outline:3px solid var(--bs-primary);outline-offset:2px}
 .map-editor,.map-preview{margin-top:1rem}
 .map-canvas{width:100%;height:320px;border:1px solid var(--line);border-radius:.6rem;background:#e8f0e9;overflow:hidden}
 .map-preview .map-canvas{height:240px}

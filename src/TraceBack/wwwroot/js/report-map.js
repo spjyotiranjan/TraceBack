@@ -9,6 +9,9 @@
   const latitudeInput = isEditor ? document.getElementById('latitude') : null;
   const longitudeInput = isEditor ? document.getElementById('longitude') : null;
   const selection = isEditor ? document.querySelector('[data-map-selection]') : null;
+  const selectionHelp = isEditor ? document.querySelector('[data-map-selection-help]') : null;
+  const coordinates = isEditor ? document.querySelector('[data-map-coordinates]') : null;
+  const coordinateValue = isEditor ? document.querySelector('[data-map-coordinate-value]') : null;
   const error = isEditor ? document.querySelector('[data-map-error]') : null;
   const clear = isEditor ? mapRoot.querySelector('[data-map-clear]') : null;
   const maxZoom = Math.min(19, Math.max(2, Number.parseInt(mapRoot.dataset.maxZoom, 10) || 18));
@@ -78,9 +81,13 @@
   }
 
   function showSelection(point) {
-    selection.textContent = point
-      ? `Selected location: ${point[0].toFixed(6)}, ${point[1].toFixed(6)}.`
-      : 'No map location selected.';
+    selection.textContent = point ? 'Address unavailable for this pin.' : 'No map location selected.';
+    selectionHelp.textContent = point
+      ? 'The pin is saved at the selected point.'
+      : 'Choose a point on the map or enter latitude and longitude.';
+    coordinates.hidden = !point;
+    coordinateValue.textContent = point ? `${point[0].toFixed(6)}, ${point[1].toFixed(6)}` : '';
+    if (!point) coordinates.open = false;
   }
 
   function showError(message, field) {
@@ -175,8 +182,9 @@
       input.addEventListener('input', () => {
         const value = readFields();
         if (value.point) setPoint(value.point);
-        else if (value.empty) showSelection(null);
-        else selection.textContent = 'Coordinates need correction before the pin can move.';
+        else selectionHelp.textContent = selectedPoint
+          ? 'Coordinates need correction before the pin can move.'
+          : 'Enter both valid coordinates to update the pin.';
         showError('');
       });
     }

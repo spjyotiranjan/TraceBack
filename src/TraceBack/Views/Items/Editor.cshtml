@@ -79,24 +79,33 @@
             <h2 id="report-place-heading" class="h5">Where and when</h2>
             <p class="form-section-intro">Give the location and date that best match the report.</p>
         <div class="mb-3">
-            <label class="form-label" for="location">Location <span class="required">required</span></label>
+            <label class="form-label" for="location">Location description <span class="required">required</span></label>
             <input id="location"
                    name="Location"
                    class="form-control"
                    value="@Model.Form.Location"
                    maxlength="120"
                    aria-describedby="location-help location-error" />
-            <div id="location-help" class="form-text">For example, North Library entrance.</div>
+            <div id="location-help" class="form-text">Add context people can recognize, such as the north library entrance. This is your description, not a verified pin address.</div>
             <span id="location-error" class="text-danger small">@Html.ValidationMessage("Location")</span>
         </div>
 
         <fieldset class="mb-3">
-            <legend class="form-label">Map coordinates @if (!editing) { <span class="required">required</span> }</legend>
-            <p class="form-text">This exact location is visible to signed-in report viewers. Choose a nearby public landmark for private places.</p>
+            <legend class="form-label">Choose a map location @if (!editing) { <span class="required">required</span> }</legend>
+            <p class="form-text">This pin is visible to signed-in report viewers. For a private place, choose a nearby public point instead.</p>
             @if (editing && Model.Form.MapLocation is null)
             {
-                <p class="form-text">Map location not added. You can save this older report without a pin.</p>
+                <p class="form-text">Map location not added to this older report. You can save it without a pin.</p>
             }
+            <div class="map-selection" role="status" aria-live="polite" aria-atomic="true">
+                <span class="d-block">Selected location</span>
+                <strong data-map-selection>@(hasPoint ? "Address unavailable for this pin." : "No map location selected.")</strong>
+                <span class="d-block map-selection-help" data-map-selection-help>@(hasPoint ? "The pin is saved at the selected point." : "Choose a point on the map or enter latitude and longitude.")</span>
+            </div>
+            <details class="map-coordinates" data-map-coordinates @(hasPoint ? "" : "hidden")>
+                <summary>Show coordinates</summary>
+                <span data-map-coordinate-value>@(hasPoint ? validPoint!.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + ", " + validPoint.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) : "")</span>
+            </details>
             <div class="row g-2">
                 <div class="col-sm-6">
                     <label class="form-label" for="latitude">Latitude @if (!editing) { <span class="required">required</span> }</label>
@@ -111,7 +120,6 @@
             </div>
             <p id="map-location-help" class="form-text">Enter both coordinates to place the pin by keyboard, or click or tap the map. Latitude: -90 to 90. Longitude: -180 to 180. Use at most six decimal places.</p>
             <span id="map-location-error" class="text-danger small d-block" role="alert"><span data-map-error></span>@Html.ValidationMessage("MapLocation")</span>
-            <p class="map-selection" data-map-selection role="status" aria-live="polite">@(hasPoint ? "Selected location: " + validPoint!.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + ", " + validPoint.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) : "No map location selected.")</p>
             <div class="map-editor" data-report-map="editor" data-point-required="@(!editing || hasPoint ? "true" : "false")"
                  data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
                  data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"

@@ -244,12 +244,17 @@ public sealed class ReportAuthorizationTests
         using var legacy = await client.GetAsync($"/Items/Details/{reports.Item.Id}");
         var legacyMarkup = await legacy.Content.ReadAsStringAsync();
         Assert.Contains("Library", legacyMarkup);
-        Assert.Contains("Map location not available", legacyMarkup);
+        Assert.Contains("Location description: Library", legacyMarkup);
+        Assert.Contains("Map location not added to this older report.", legacyMarkup);
         Assert.DoesNotContain("google.com/maps/search", legacyMarkup);
 
         reports.Item.MapLocation = new MapLocation { Latitude = 20.296058, Longitude = 85.824539 };
         using var mapped = await client.GetAsync($"/Items/Details/{reports.Item.Id}");
         var mappedMarkup = await mapped.Content.ReadAsStringAsync();
+        Assert.Contains("Address unavailable for this pin.", mappedMarkup);
+        Assert.Contains("Location description: Library", mappedMarkup);
+        Assert.Contains("<summary>Show coordinates</summary>", mappedMarkup);
+        Assert.DoesNotContain("Coordinates:", mappedMarkup);
         Assert.Contains("20.296058", mappedMarkup);
         Assert.Contains("google.com/maps/search/?api=1&amp;query=20.296058%2C85.824539", mappedMarkup);
         Assert.Contains("rel=\"noopener noreferrer\"", mappedMarkup);
