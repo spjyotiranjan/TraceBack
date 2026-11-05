@@ -4,7 +4,6 @@
   const toggle = document.querySelector('[data-theme-switch]');
   const reset = document.querySelector('[data-theme-reset]');
   const state = document.querySelector('[data-theme-state]');
-  const device = document.querySelector('[data-theme-device]');
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   const normalize = value => ['light', 'dark', 'system'].includes(value) ? value : 'system';
   let choice = normalize(root.dataset.themeChoice);
@@ -16,7 +15,6 @@
     if (toggle) toggle.checked = dark;
     if (state) state.textContent = `${dark ? 'Dark' : 'Light'}${choice === 'system' ? ' from device' : ''}`;
     if (reset) reset.hidden = choice === 'system';
-    if (device) device.hidden = choice !== 'system';
   };
   let motionTimer;
   const select = value => {

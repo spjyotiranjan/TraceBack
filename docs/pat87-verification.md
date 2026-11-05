@@ -85,3 +85,43 @@ Disposable scripts, captures, axe results and browser logs are under
 `check.cjs`, `supplement.cjs`, `map.cjs`, `results.json`,
 `supplement-results.json`, `map-results.json`, `axe-*.json`, and `metrics.jsonl`.
 Formal current-commit review by Grace and Patrick's acceptance remain separate.
+
+## Required theme-state fix (2026-11-06)
+
+Grace's finding on `2318b204b03b6306478d9c1133368628b85f12f0` is addressed by
+exposing the existing effective-state text in the existing compact source line.
+Explicit choices display Light or Dark; System displays Light from device or
+Dark from device. The switch retains its `aria-describedby` association. The
+redundant device-only text and its unused JavaScript hook are removed.
+
+The same primary physical checkout and worktree list were reconfirmed before
+editing: `D:\SDE Projects\TraceBack`, `PAT-87-modern-graphic-ui`, starting at
+`2318b204b03b6306478d9c1133368628b85f12f0`, initially clean. Verification ran
+against that commit plus these two product-file changes, before commit/push:
+
+- `dotnet build TraceBack.slnx -c Release --no-restore --nologo`: exit 0,
+  zero warnings/errors.
+- `dotnet test TraceBack.slnx -c Release --no-build --no-restore --nologo`:
+  exit 0, 51 passed, zero failed/skipped.
+- `dotnet format TraceBack.slnx --verify-no-changes --no-restore --verbosity quiet`,
+  `node --check src/TraceBack/wwwroot/js/theme.js`, `git diff --check`: exit 0.
+- Direct Chrome checks: 43 state/layout assertions across 320/768/1280px,
+  both themes, System and explicit selections, refresh, OS changes, keyboard
+  switch/reset, focus outline and return, mobile menu close/reopen, shared
+  home/login/register/privacy headers and reduced motion. Visible state text
+  is unclipped and within the viewport; no horizontal overflow or page errors.
+  Six scoped axe runs (three widths, both themes) report zero violations.
+- Six rendered screenshots captured; mobile/tablet/desktop appearance inspected.
+  This is a read-only guest-header check, launched from the primary checkout
+  in Development/Release on port 5213 with a unique command-line Mongo database
+  override and bootstrap credentials disabled. No form writes or account setup.
+
+Disposable script, results, screenshots and startup log are in the internal
+`tmp/pat87-theme-fix` directory. The first script run expected exactly zero
+transition duration; the inherited reduced-motion rule uses 0.01ms. Correcting
+that assertion to accept the existing negligible duration produced the passing
+run. No product motion change was needed. Impeccable engine remains unavailable;
+written guidance and rendered inspection used, with no detector pass claimed.
+The earlier broader flow evidence remains applicable; this change only exposes
+the existing state and removes the redundant display hook. Grace must review
+the changed SHA through the existing stage before Patrick acceptance/manual merge.
