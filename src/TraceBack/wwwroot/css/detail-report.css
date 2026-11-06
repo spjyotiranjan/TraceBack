@@ -9,6 +9,7 @@
 .detail-report__description { max-width: 68ch; white-space: pre-wrap; overflow-wrap: anywhere; }
 .detail-report .detail-list { margin-top: var(--tb-space-4); }
 .detail-report .detail-list > div { grid-template-columns: minmax(6rem, 8rem) minmax(0, 1fr); }
+.detail-report .detail-list > .tb-location-fact { grid-template-columns: 1fr; }
 .detail-report .detail-list dd > .map-preview { margin-top: 1rem; }
 .detail-report__actions { border-top: 1px solid var(--tb-divider); padding-top: var(--tb-space-3); margin-top: var(--tb-space-4); }
 .detail-report .action-panel { border-color: var(--tb-control-border); background: var(--tb-surface-muted); margin-top: var(--tb-space-4); }

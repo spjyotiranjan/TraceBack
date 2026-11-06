@@ -7,16 +7,11 @@
     ViewData["Title"] = editing ? "Edit report" : "Report an item";
 }
 
-<div class="form-page">
+<div class="form-page tb-report-editor">
     <h1>@ViewData["Title"]</h1>
     <p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
-    <nav class="report-section-index" aria-label="Report form sections">
-        <a href="#report-details-heading">What happened</a>
-        <a href="#report-place-heading">Where and when</a>
-        <a href="#report-contact-heading">How to reconnect</a>
-        <a href="#report-image-heading">Image</a>
-    </nav>
-
+    <div class="tb-report-composition">
+    <partial name="_DraftCanvas" model="Model" />
     <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card report-form" novalidate>
         <partial name="_ValidationSummary" />
 
@@ -224,6 +219,7 @@
             <span class="visually-hidden" role="status" aria-live="polite" data-submit-status></span>
         </div>
     </form>
+    </div>
 </div>
 
 @section Styles {
@@ -236,4 +232,5 @@
     <script src="~/js/report-image.js" asp-append-version="true" defer></script>
     <script src="~/lib/leaflet/leaflet.js" defer></script>
     <script src="~/js/report-map.js" asp-append-version="true" defer></script>
+    <script src="~/js/record-graphics.js" asp-append-version="true" defer></script>
 }

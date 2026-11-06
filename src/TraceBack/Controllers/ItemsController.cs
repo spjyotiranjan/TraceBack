@@ -9,7 +9,7 @@ namespace TraceBack.Controllers;
 
 [Authorize(AuthenticationSchemes = CookieAuthenticationDefaults.AuthenticationScheme)]
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-public class ItemsController(IItemService items, ILogger<ItemsController> logger) : Controller
+public class ItemsController(IItemService items, ILogger<ItemsController> logger, TimeProvider? clock = null) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Image(string id)
@@ -102,7 +102,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
     [HttpGet]
     public IActionResult Create()
     {
-        return View("Editor", new ItemEditorPage(new ItemForm(), null));
+        return View("Editor", new ItemEditorPage(new ItemForm(clock ?? TimeProvider.System), null));
     }
 
     [Authorize]

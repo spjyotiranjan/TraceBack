@@ -32,15 +32,12 @@
         }
     </div>
     <div class="home-hero-aside" aria-hidden="true">
-        <span class="home-aside-label">TraceBack / campus index</span>
-        <svg viewBox="0 0 300 190" fill="none" focusable="false">
-            <path d="M24 145h70V62h92v83h90" stroke="currentColor" stroke-width="2" />
-            <circle cx="24" cy="145" r="8" fill="currentColor" />
-            <circle cx="94" cy="62" r="8" fill="currentColor" />
-            <circle cx="186" cy="145" r="8" fill="currentColor" />
-            <circle cx="276" cy="145" r="8" fill="currentColor" />
-        </svg>
+        <partial name="_RecordAperture" />
         <span class="home-aside-caption">Every report is a useful place to start.</span>
+        @if (signedIn && Model.RecentItems.FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.DisplayImageUrl)) is { } recent)
+        {
+            <img class="home-record-photo" src="@recent.DisplayImageUrl" alt="" width="320" height="160" />
+        }
     </div>
 </section>
 
@@ -83,6 +80,16 @@
 }
 
 <partial name="_ProcessPath" />
+
+<nav class="home-route-art" aria-label="Find your next step">
+    <svg viewBox="0 0 800 140" fill="none" aria-hidden="true" focusable="false">
+        <path d="M32 70h200l80-40h176l80 80h200M232 70l80 40h176l80-80h200" stroke="currentColor" stroke-width="3" />
+        <circle cx="32" cy="70" r="10" fill="currentColor" /><circle cx="400" cy="30" r="10" fill="currentColor" /><circle cx="768" cy="110" r="10" fill="currentColor" />
+    </svg>
+    <a asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report what happened</a>
+    <a asp-controller="Items" asp-action="Index">Browse the index</a>
+    <a asp-controller="Dashboard" asp-action="Index">Follow your reports and claims</a>
+</nav>
 
 @section Styles {
     <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />

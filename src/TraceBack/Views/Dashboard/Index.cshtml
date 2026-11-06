@@ -10,7 +10,7 @@
 
 <section class="tb-workspace-section" aria-labelledby="my-reports">
     <div class="section-heading tb-workspace-section__heading">
-        <h2 id="my-reports">My reports</h2>
+        <h2 id="my-reports">My reports <span class="tb-section-count">@Model.Items.Count</span></h2>
         <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
     </div>
 
@@ -24,6 +24,12 @@
     }
     else
     {
+        <div class="tb-photo-ribbon" aria-label="Your report photos">
+            @foreach (var item in Model.Items.Where(item => !string.IsNullOrWhiteSpace(item.DisplayImageUrl)).Take(3))
+            {
+                <a asp-controller="Items" asp-action="Details" asp-route-id="@item.Id" aria-label="View report: @item.Title"><img src="@item.DisplayImageUrl" alt="" width="110" height="72" loading="lazy" /></a>
+            }
+        </div>
         <div class="catalog-list">
             @foreach (var item in Model.Items)
             {
@@ -35,7 +41,7 @@
 
 <section aria-labelledby="my-claims" class="tb-workspace-section">
     <div class="tb-workspace-section__heading">
-        <h2 id="my-claims">My claims</h2>
+        <h2 id="my-claims">My claims <span class="tb-section-count">@Model.Claims.Count</span></h2>
         <p>Private ownership requests and their current decisions.</p>
     </div>
 

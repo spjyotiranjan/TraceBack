@@ -8,6 +8,10 @@
 
     <h1>Claim @Model.Item.Title</h1>
     <div class="claim-page__context">
+        @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
+        {
+            <img class="claim-page__thumbnail" src="@Model.Item.DisplayImageUrl" alt="Photo for @Model.Item.Title" width="120" height="90" />
+        }
         <p><span class="badge badge-type">@Model.Item.Type</span> <partial name="_StatusBadge" model="Model.Item.Status" /></p>
     </div>
     <p class="claim-page__privacy">Describe details that confirm this item belongs to you. Your message is private to the claim review and does not appear in public discussion.</p>

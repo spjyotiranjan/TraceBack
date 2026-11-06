@@ -22,6 +22,91 @@ namespace TraceBack.Tests;
 
 public sealed class MapLocationIntegrationTests
 {
+    [Theory]
+    [InlineData("2026-11-05T20:00:00Z", 330)]
+    [InlineData("2026-11-06T01:00:00Z", -480)]
+    public async Task Report_dates_survive_mvc_and_api_round_trips_at_utc_boundaries(string instant, int offsetMinutes)
+    {
+        var mongoUri = Environment.GetEnvironmentVariable("TRACEBACK_TEST_MONGO_URI");
+        if (string.IsNullOrWhiteSpace(mongoUri)) return;
+
+        var databaseName = $"tb_pat90_{Guid.NewGuid():N}"[..33];
+        var clock = new ReportDateTests.ReportClock(instant, offsetMinutes);
+        var today = clock.GetUtcNow().UtcDateTime.Date;
+        using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
+                new Dictionary<string, string?>
+                {
+                    ["Mongo:ConnectionString"] = mongoUri,
+                    ["Mongo:Database"] = databaseName,
+                    ["BootstrapAdmin:Email"] = "",
+                    ["BootstrapAdmin:Password"] = ""
+                }));
+            builder.ConfigureTestServices(services => services.AddSingleton<TimeProvider>(clock));
+        });
+        try
+        {
+            using var mvc = MvcClient(factory, "owner");
+            using var editor = await mvc.GetAsync("/Items/Create");
+            Assert.Equal(HttpStatusCode.OK, editor.StatusCode);
+            var html = await editor.Content.ReadAsStringAsync();
+            var date = Regex.Match(html, "name=\"DateReported\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
+            Assert.Equal(today.ToString("yyyy-MM-dd"), date);
+            var token = ExtractToken(html);
+            mvc.DefaultRequestHeaders.Add("Cookie", editor.Headers.GetValues("Set-Cookie")
+                .First(value => value.StartsWith(".AspNetCore.Antiforgery", StringComparison.Ordinal)).Split(';')[0]);
+            using var created = await mvc.PostAsync("/Items/Create", MvcForm(token, "20.296058", "85.824539", date));
+            Assert.Equal(HttpStatusCode.Redirect, created.StatusCode);
+            var id = created.Headers.Location!.ToString().Split('/').Last();
+            var store = factory.Services.GetRequiredService<MongoStore>();
+            var stored = await store.Items.Find(x => x.Id == id).FirstAsync();
+            Assert.Equal(today, stored.DateReported);
+            Assert.Equal(DateTimeKind.Utc, stored.DateReported.Kind);
+
+            var tomorrow = today.AddDays(1).ToString("yyyy-MM-dd");
+            foreach (var route in new[] { "/Items/Create", $"/Items/Edit/{id}" })
+            {
+                using var future = await mvc.PostAsync(route, MvcForm(token, "20.296058", "85.824539", tomorrow));
+                Assert.Equal(HttpStatusCode.OK, future.StatusCode);
+                Assert.Contains("Report date cannot be in the future.", await future.Content.ReadAsStringAsync());
+            }
+            Assert.Equal(1, await store.Items.CountDocumentsAsync(_ => true));
+            var selected = today.AddDays(-2);
+            using var edited = await mvc.PostAsync($"/Items/Edit/{id}",
+                MvcForm(token, "20.296058", "85.824539", selected.ToString("yyyy-MM-dd")));
+            Assert.Equal(HttpStatusCode.Redirect, edited.StatusCode);
+            Assert.Equal(selected, (await store.Items.Find(x => x.Id == id).FirstAsync()).DateReported);
+            using var reloaded = await mvc.GetAsync($"/Items/Edit/{id}");
+            Assert.Matches($"name=\"DateReported\"[^>]*value=\"{selected:yyyy-MM-dd}\"", await reloaded.Content.ReadAsStringAsync());
+
+            using var api = ApiClient(factory, "owner");
+            var form = Form();
+            form.MapLocation = new() { Latitude = 20.296058, Longitude = 85.824539 };
+            form.DateReported = today;
+            using var apiCreated = await api.PostAsJsonAsync("/api/items", form);
+            Assert.Equal(HttpStatusCode.Created, apiCreated.StatusCode);
+            form.DateReported = today.AddDays(1);
+            using var apiFuture = await api.PostAsJsonAsync("/api/items", form);
+            Assert.Equal(HttpStatusCode.BadRequest, apiFuture.StatusCode);
+            using var apiFutureEdit = await api.PutAsJsonAsync($"/api/items/{id}", form);
+            Assert.Equal(HttpStatusCode.BadRequest, apiFutureEdit.StatusCode);
+
+            // Exercise date-only JSON, which binds with an unspecified DateTime kind.
+            var payload = JsonSerializer.SerializeToNode(form, new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+            payload["dateReported"] = selected.ToString("yyyy-MM-dd");
+            using var apiEdited = await api.PutAsJsonAsync($"/api/items/{id}", payload);
+            Assert.Equal(HttpStatusCode.OK, apiEdited.StatusCode);
+            Assert.Equal(selected, (await store.Items.Find(x => x.Id == id).FirstAsync()).DateReported);
+            using var apiReloaded = await api.GetAsync($"/api/items/{id}");
+            Assert.Contains($"{selected:yyyy-MM-dd}T00:00:00Z", await apiReloaded.Content.ReadAsStringAsync());
+        }
+        finally
+        {
+            await new MongoClient(mongoUri).DropDatabaseAsync(databaseName);
+        }
+    }
+
     [Fact]
     public async Task Mvc_and_api_create_edit_and_reload_against_isolated_mongo()
     {
@@ -219,7 +304,7 @@ public sealed class MapLocationIntegrationTests
     private static string ExtractToken(string markup) => WebUtility.HtmlDecode(
         Regex.Match(markup, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
 
-    private static FormUrlEncodedContent MvcForm(string token, string? latitude, string? longitude)
+    private static FormUrlEncodedContent MvcForm(string token, string? latitude, string? longitude, string? date = null)
     {
         var fields = new Dictionary<string, string>
         {
@@ -230,7 +315,7 @@ public sealed class MapLocationIntegrationTests
             ["Category"] = "Keys",
             ["Location"] = "Library",
             ["ContactPreference"] = "Help desk",
-            ["DateReported"] = DateTime.UtcNow.Date.ToString("yyyy-MM-dd")
+            ["DateReported"] = date ?? DateTime.UtcNow.Date.ToString("yyyy-MM-dd")
         };
         if (latitude is not null) fields["MapLocation.Latitude"] = latitude;
         if (longitude is not null) fields["MapLocation.Longitude"] = longitude;
