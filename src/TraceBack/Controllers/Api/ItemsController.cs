@@ -5,7 +5,7 @@ using TraceBack.Services;
 namespace TraceBack.Controllers.Api;
 
 [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-public sealed class ItemsController(IItemService items, ILogger<ItemsController> logger) : ApiControllerBase
+public sealed class ItemsController(IItemService items, ILogger<ItemsController> logger, TimeProvider? clock = null) : ApiControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ItemResponse>>> Search([FromQuery] ItemSearch search)
@@ -187,11 +187,11 @@ public sealed class ItemsController(IItemService items, ILogger<ItemsController>
         return deleted ? NoContent() : NotFound();
     }
 
-    private static bool ValidForm(ItemForm form) =>
+    private bool ValidForm(ItemForm form) =>
         !string.IsNullOrWhiteSpace(form.Title) &&
         !string.IsNullOrWhiteSpace(form.Description) &&
         !string.IsNullOrWhiteSpace(form.Category) &&
         !string.IsNullOrWhiteSpace(form.Location) &&
         !string.IsNullOrWhiteSpace(form.ContactPreference) &&
-        form.DateReported.Date <= DateTime.UtcNow.Date;
+        form.DateReported.Date <= (clock ?? TimeProvider.System).GetUtcNow().UtcDateTime.Date;
 }
