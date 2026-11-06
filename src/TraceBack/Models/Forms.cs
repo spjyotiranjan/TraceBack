@@ -64,6 +64,7 @@ public sealed class ItemForm : IValidatableObject
 
     [Required]
     [StringLength(120)]
+    [Display(Name = "Contact preference")]
     public string ContactPreference { get; set; } = string.Empty;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
