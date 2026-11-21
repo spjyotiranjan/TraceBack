@@ -13,7 +13,12 @@
     <div class="tb-report-composition">
     <partial name="_DraftCanvas" model="Model" />
     <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card report-form" novalidate>
-        <partial name="_ValidationSummary" />
+        <partial name="_ValidationSummary" model='@(new Dictionary<string, string?>
+        {
+            ["Type"] = editing ? null : "type", ["Title"] = "title", ["Category"] = "category",
+            ["Description"] = "description", ["Location"] = "location", ["MapLocation"] = "latitude",
+            ["DateReported"] = "date", ["ContactPreference"] = "contact", ["ImageFile"] = "image"
+        })' />
 
         <section class="form-section tb-form-section" aria-labelledby="report-details-heading">
             <h2 id="report-details-heading" class="h5">What happened</h2>
