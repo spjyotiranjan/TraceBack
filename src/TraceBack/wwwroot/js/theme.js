@@ -32,5 +32,6 @@
     }
   });
   apply();
-  if (control) control.hidden = false;
+  const disclosure = control?.closest('[data-theme-disclosure]');
+  if (disclosure) disclosure.hidden = false;
 })();

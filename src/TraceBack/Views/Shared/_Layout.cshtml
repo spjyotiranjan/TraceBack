@@ -2,10 +2,10 @@
     var routeArt = ViewData["RouteArt"] as string;
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="@(User.Identity?.IsAuthenticated == true ? "tb-member-shell" : null)">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>@ViewData["Title"] · TraceBack</title>
     <script>
         (() => {
@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/shared-controls.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shell.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/record-graphics.css" asp-append-version="true" />
     @if (routeArt is not null)
     {
@@ -40,63 +41,49 @@
     }
     <a class="skip-link" href="#main-content">Skip to content</a>
 
-    <header class="site-header">
-        <nav class="navbar navbar-expand-md container" aria-label="Primary navigation">
-            <a class="navbar-brand fw-bold" aria-label="TraceBack Home" asp-controller="Home" asp-action="Index">
-                <svg class="brand-symbol" viewBox="0 0 120 120" width="24" height="24" aria-hidden="true" focusable="false">
-                    <use href="@Url.Content("~/icons/traceback-mark.svg")#reunion"></use>
-                </svg> TraceBack
-            </a>
-
-            <button class="navbar-toggler"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#site-nav"
-                    aria-controls="site-nav"
-                    aria-expanded="false"
-                    aria-label="Menu">
-                <partial name="_Icon" model='"menu"' />
-            </button>
-
-            <div class="collapse navbar-collapse" id="site-nav">
-                <ul class="navbar-nav mx-md-auto gap-md-3">
-                    @if (User.Identity?.IsAuthenticated == true)
-                    {
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="Items" asp-action="Index">Browse</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
-                    </li>
-                    }
-                </ul>
-
-                <div class="d-flex align-items-md-center flex-column flex-md-row gap-2 py-2 py-md-0">
-                    <partial name="_ThemeControl" />
-                    @if (User.Identity?.IsAuthenticated == true)
-                    {
-                        <a class="nav-link" asp-controller="Dashboard" asp-action="Index">My dashboard</a>
-
-                        @if (User.IsInRole("Admin"))
-                        {
-                            <a class="nav-link" asp-controller="Admin" asp-action="Index">Admin</a>
-                        }
-
-                        <form asp-controller="Account" asp-action="Logout" method="post">
-                            <button class="btn btn-outline-primary" type="submit">Sign out</button>
-                        </form>
-                    }
-                    else
-                    {
-                        <a class="nav-link" asp-controller="Account" asp-action="Login">Sign in</a>
-                        <a class="btn btn-primary" asp-controller="Account" asp-action="Register">Create account</a>
-                    }
-                </div>
+    @{
+        var member = User.Identity?.IsAuthenticated == true;
+        var controller = ViewContext.RouteData.Values["controller"] as string;
+        var action = ViewContext.RouteData.Values["action"] as string;
+    }
+    <header class="site-header tb-glass">
+        <a class="tb-brand" aria-label="TraceBack Home" aria-current="@(controller == "Home" && action == "Index" ? "page" : null)" asp-controller="Home" asp-action="Index">
+            <svg class="brand-symbol" viewBox="0 0 120 120" width="24" height="24" aria-hidden="true" focusable="false">
+                <use href="@Url.Content("~/icons/traceback-mark.svg")#reunion"></use>
+            </svg> TraceBack
+        </a>
+        @if (member)
+        {
+            <nav class="tb-desktop-nav" aria-label="Member navigation">
+                <partial name="_MemberDestinations" model="false" />
+            </nav>
+        }
+        <div class="tb-shell-actions">
+            <partial name="_ThemeControl" />
+            <div class="tb-desktop-actions">
+                <partial name="_ShellAccountActions" />
             </div>
-        </nav>
+            <details class="tb-disclosure tb-mobile-menu" data-shell-disclosure>
+                <summary class="tb-shell-trigger" aria-label="Menu">
+                    <span class="tb-trigger-open"><partial name="_Icon" model='"menu"' /></span>
+                    <span class="tb-trigger-close"><partial name="_Icon" model='"x"' /></span>
+                </summary>
+                <div class="tb-shell-panel">
+                    <p class="tb-shell-panel-title">Menu</p>
+                    <partial name="_ShellAccountActions" />
+                </div>
+            </details>
+        </div>
     </header>
 
-    <main id="main-content" class="container main-content">
+    @if (member)
+    {
+        <nav class="tb-member-dock tb-glass" aria-label="Member navigation">
+            <partial name="_MemberDestinations" model="true" />
+        </nav>
+    }
+
+    <main id="main-content" class="container main-content" tabindex="-1">
         <partial name="_TempDataNotices" />
         @RenderBody()
     </main>
@@ -104,13 +91,14 @@
     <footer class="site-footer">
         <div class="container d-flex justify-content-between flex-wrap gap-3">
             <p class="mb-0">TraceBack helps campus belongings find their way home.</p>
-            <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+            <a aria-current="@(controller == "Home" && action == "Privacy" ? "page" : null)" asp-controller="Home" asp-action="Privacy">Privacy</a>
         </div>
     </footer>
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/theme.js" asp-append-version="true"></script>
+    <script src="~/js/shell.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
     <script src="~/js/shared-controls.js" asp-append-version="true" defer></script>
