@@ -1,0 +1,33 @@
+@model UiButton
+@{
+    var tone = Model.Tone.ToString().ToLowerInvariant();
+    var iconOnly = Model.IconOnly && !string.IsNullOrWhiteSpace(Model.Icon);
+    var classes = $"btn tb-button tb-button--{tone}" + (iconOnly ? " tb-button--icon" : "") + (Model.FullWidth ? " w-100" : "");
+    var title = iconOnly ? Model.Label : null;
+}
+@if (Model.Href is { } destination)
+{
+    if (Model.Disabled || !Url.IsLocalUrl(destination))
+    {
+        <span class="@classes" role="link" aria-disabled="true" title="@title">
+            @if (Model.Icon is not null) { <partial name="_Icon" model="Model.Icon" /> }
+            <span class="@(iconOnly ? "visually-hidden" : null)">@Model.Label</span>
+        </span>
+    }
+    else
+    {
+        <a class="@classes" href="@Url.Content(destination)" title="@title">
+            @if (Model.Icon is not null) { <partial name="_Icon" model="Model.Icon" /> }
+            <span class="@(iconOnly ? "visually-hidden" : null)">@Model.Label</span>
+        </a>
+    }
+}
+else
+{
+    <button class="@classes" type="@(Model.Submit ? "submit" : "button")" disabled="@Model.Disabled"
+            name="@Model.Name" value="@Model.Value" title="@title"
+            data-tb-pending="@(Model.Submit && !Model.Disabled ? Model.PendingText : null)">
+        @if (Model.Icon is not null) { <partial name="_Icon" model="Model.Icon" /> }
+        <span class="@(iconOnly ? "visually-hidden" : null)">@Model.Label</span>
+    </button>
+}
