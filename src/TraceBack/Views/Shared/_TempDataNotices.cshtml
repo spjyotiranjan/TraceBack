@@ -1,0 +1,8 @@
+@if (TempData["Success"] is string success && !string.IsNullOrWhiteSpace(success))
+{
+    <partial name="_Notice" model="@(new UiNotice(success, NoticeTone.Success))" />
+}
+@if (TempData["Error"] is string error && !string.IsNullOrWhiteSpace(error))
+{
+    <partial name="_Notice" model="@(new UiNotice(error, NoticeTone.Error))" />
+}

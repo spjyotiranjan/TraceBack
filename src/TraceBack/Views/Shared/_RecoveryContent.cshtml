@@ -1,0 +1,42 @@
+@model RecoveryContent
+@{
+    var icon = Model.Art switch
+    {
+        RecoveryArt.Reports => "file-text",
+        RecoveryArt.Claims => "package-check",
+        RecoveryArt.Access => "lock-keyhole",
+        RecoveryArt.Service => "triangle-alert",
+        _ => "search-x"
+    };
+}
+<div class="tb-recovery-content @(Model.FullPage ? "tb-recovery-content--page" : null)">
+    <div class="tb-recovery-content__art tb-recovery-content__art--@Model.Art.ToString().ToLowerInvariant()" aria-hidden="true">
+        <svg class="tb-recovery-content__orbit" viewBox="0 0 144 104" fill="none" focusable="false">
+            <ellipse cx="72" cy="52" rx="67" ry="34" stroke="currentColor" stroke-dasharray="3 6" transform="rotate(-16 72 52)" />
+            <circle cx="72" cy="52" r="34" fill="var(--tb-surface-muted)" stroke="var(--tb-control-border)" />
+            <circle cx="19" cy="72" r="4" fill="var(--tb-accent)" />
+            <circle cx="126" cy="33" r="3" fill="currentColor" />
+        </svg>
+        <partial name="_Icon" model="icon" />
+    </div>
+    @if (Model.FullPage)
+    {
+        <h1>@Model.Heading</h1>
+    }
+    else
+    {
+        <h2>@Model.Heading</h2>
+    }
+    <p>@Model.Help</p>
+    @if (Model.Primary is not null || Model.Secondary is not null)
+    {
+        <div class="tb-recovery-content__actions">
+            @if (Model.Primary is not null) { <partial name="_Button" model="Model.Primary" /> }
+            @if (Model.Secondary is not null) { <partial name="_Button" model="Model.Secondary" /> }
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.Reference))
+    {
+        <p class="tb-recovery-content__reference">Reference: <code>@Model.Reference</code></p>
+    }
+</div>

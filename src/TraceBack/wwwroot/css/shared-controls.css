@@ -1,0 +1,132 @@
+.tb-button {
+  --tb-button-ink: var(--tb-action);
+  --tb-button-fill: var(--tb-surface);
+  --tb-button-border: var(--tb-action);
+  --tb-button-hover-ink: var(--tb-action-hover);
+  --tb-button-hover-fill: var(--tb-surface-muted);
+  --tb-button-hover-border: var(--tb-button-hover-ink);
+  --bs-btn-color: var(--tb-button-ink);
+  --bs-btn-bg: var(--tb-button-fill);
+  --bs-btn-border-color: var(--tb-button-border);
+  --bs-btn-hover-color: var(--tb-button-hover-ink);
+  --bs-btn-hover-bg: var(--tb-button-hover-fill);
+  --bs-btn-hover-border-color: var(--tb-button-hover-border);
+  --bs-btn-active-color: var(--tb-button-hover-ink);
+  --bs-btn-active-bg: var(--tb-button-hover-fill);
+  --bs-btn-active-border-color: var(--tb-button-hover-border);
+  --bs-btn-disabled-color: var(--tb-ink-muted);
+  --bs-btn-disabled-bg: var(--tb-surface-muted);
+  --bs-btn-disabled-border-color: var(--tb-control-border);
+  --bs-btn-disabled-opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  /* Avoid interpolating foreground and fill through low-contrast midpoint colors. */
+  transition-property: border-color;
+}
+.tb-button--primary {
+  --tb-button-ink: var(--tb-on-action);
+  --tb-button-fill: var(--tb-action);
+  --tb-button-hover-ink: var(--tb-on-action);
+  --tb-button-hover-fill: var(--tb-action-hover);
+  --tb-button-hover-border: var(--tb-action-hover);
+}
+.tb-button--quiet { --tb-button-border: transparent; --tb-button-fill: transparent; }
+.tb-button--destructive {
+  --tb-button-ink: var(--tb-danger);
+  --tb-button-fill: var(--tb-danger-surface);
+  --tb-button-border: var(--tb-danger);
+  --tb-button-hover-ink: var(--tb-surface);
+  --tb-button-hover-fill: var(--tb-danger);
+  --tb-button-hover-border: var(--tb-danger);
+}
+.tb-button--icon { inline-size: 44px; padding-inline: 0; }
+.tb-button[aria-disabled='true']:not([data-tb-is-pending]) {
+  color: var(--bs-btn-disabled-color);
+  background: var(--bs-btn-disabled-bg);
+  border-color: var(--bs-btn-disabled-border-color);
+}
+[data-tb-is-pending] { cursor: progress; }
+.tb-pending-status { display: block; color: var(--tb-ink-muted); font: var(--tb-type-helper); }
+.tb-pending-status:not(:empty) { margin-block-start: .5rem; }
+
+.tb-field { display: grid; min-inline-size: 0; gap: .375rem; }
+.tb-field > :where(label, legend) { font: var(--tb-type-label); margin: 0; }
+fieldset.tb-field > legend { float: none; }
+.tb-field__control { display: flex; align-items: center; gap: .5rem; }
+.tb-field__control > :where(input, select, textarea) { flex: 1; min-inline-size: 0; }
+.tb-field__hint, .tb-field__error { font: var(--tb-type-helper); margin: 0; }
+.tb-field__hint { color: var(--tb-ink-muted); }
+.tb-field__error { color: var(--tb-danger); }
+.tb-field__error:empty, .tb-field__error.field-validation-valid { display: none; }
+.tb-field :where(.form-control, .form-select):disabled {
+  opacity: 1;
+  cursor: not-allowed;
+  border-color: var(--tb-control-border);
+}
+.tb-field .form-control[readonly], .tb-field__locked {
+  background: var(--tb-surface-muted);
+  border: 1px dashed var(--tb-control-border);
+}
+.tb-field__locked { margin: 0; min-block-size: 44px; padding: .55rem .75rem; border-radius: var(--tb-radius-control); }
+.tb-field__choice { display: flex; align-items: center; gap: .5rem; min-block-size: 44px; cursor: pointer; }
+.tb-field__choice input { accent-color: var(--tb-action); }
+.tb-field__choice:has(input:disabled) { color: var(--tb-ink-muted); cursor: not-allowed; }
+.tb-field__choice:has([aria-invalid='true']) { text-decoration: underline dotted var(--tb-danger); }
+
+.tb-feedback {
+  --tb-feedback-ink: var(--tb-ink);
+  --tb-feedback-surface: var(--tb-surface-muted);
+  display: grid;
+  justify-items: start;
+  gap: .5rem;
+  margin-block-end: 1rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--tb-feedback-ink);
+  border-radius: var(--tb-radius-control);
+  color: var(--tb-feedback-ink);
+  background: var(--tb-feedback-surface);
+  overflow-wrap: anywhere;
+}
+.tb-feedback[hidden] { display: none; }
+.tb-feedback--success { --tb-feedback-ink: var(--tb-success); --tb-feedback-surface: var(--tb-success-surface); }
+.tb-feedback--error { --tb-feedback-ink: var(--tb-danger); --tb-feedback-surface: var(--tb-danger-surface); }
+.tb-feedback__message { display: flex; align-items: flex-start; gap: .5rem; }
+.tb-feedback__message .tb-icon { margin-block-start: .125rem; }
+.tb-validation-summary ul { margin: 0; padding-inline-start: 1.5rem; }
+.tb-validation-summary a { color: inherit; }
+.tb-validation-summary:focus { outline: 3px solid var(--tb-focus); outline-offset: 3px; }
+
+.tb-recovery-content {
+  display: grid;
+  justify-items: center;
+  gap: .75rem;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-divider);
+  border-radius: var(--tb-radius-panel);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.tb-recovery-content--page { max-inline-size: 42rem; margin: clamp(1rem, 5vw, 3rem) auto; }
+.tb-recovery-content :where(h1, h2, p) { margin: 0; }
+.tb-recovery-content p { max-inline-size: 48ch; color: var(--tb-ink-muted); }
+.tb-recovery-content__art { position: relative; display: grid; place-items: center; color: var(--tb-action); }
+.tb-recovery-content__orbit { width: 9rem; }
+.tb-recovery-content__art .tb-icon { position: absolute; width: 2rem; height: 2rem; }
+.tb-recovery-content--page .tb-recovery-content__art {
+  width: 4rem; height: 4rem;
+  border-radius: var(--tb-radius-panel);
+  color: var(--tb-action);
+  background: var(--tb-surface-muted);
+}
+.tb-recovery-content--page .tb-recovery-content__art--service { color: var(--tb-danger); background: var(--tb-danger-surface); }
+.tb-recovery-content--page .tb-recovery-content__orbit { display: none; }
+.tb-recovery-content__actions { display: flex; justify-content: center; flex-wrap: wrap; gap: .75rem; max-inline-size: 100%; margin-block-start: .5rem; }
+.tb-recovery-content__reference { font: var(--tb-type-helper); }
+.tb-recovery-content__reference code { color: var(--tb-ink); }
