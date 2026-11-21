@@ -1,0 +1,43 @@
+@{
+    Layout = "_Layout";
+    ViewData["RouteArt"] = "auth";
+}
+
+<div class="tb-auth">
+    <header class="tb-auth__context">
+        <h1 id="auth-heading">@ViewData["Title"]</h1>
+        <p id="auth-description">@ViewData["AuthDescription"]</p>
+    </header>
+
+    <form asp-controller="Account" asp-action="@(ViewData["AuthAction"] as string)"
+          asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" class="form-card tb-auth__form"
+          aria-labelledby="auth-heading" aria-describedby="auth-description" novalidate>
+        @if (IsSectionDefined("Feedback"))
+        {
+            @await RenderSectionAsync("Feedback")
+        }
+        else
+        {
+            <partial name="_ValidationSummary" />
+        }
+
+        <div class="tb-auth__fields">
+            @RenderBody()
+        </div>
+
+        <div class="tb-auth__submit">
+            <partial name="_Button" model='@(new UiButton((string)ViewData["AuthSubmit"]!, Submit: true, PendingText: "Submitting…", FullWidth: true))' />
+            <partial name="_PendingStatus" />
+        </div>
+
+        <p class="tb-auth__alternate">@await RenderSectionAsync("AlternateAccount")</p>
+    </form>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/auth-layout.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

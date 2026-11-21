@@ -1,46 +1,30 @@
 @model RegisterForm
 @{
-    ViewData["Title"] = "Create account";
-    ViewData["RouteArt"] = "auth";
+    Layout = "~/Views/Account/_AuthLayout.cshtml";
+    ViewData["Title"] = "Create an account";
+    ViewData["AuthDescription"] = "Use your account to post reports and track claims.";
+    ViewData["AuthAction"] = "Register";
+    ViewData["AuthSubmit"] = "Create account";
 }
 
-<div class="auth-page tb-account">
-    <h1>Create an account</h1>
-    <p class="tb-account__intro">Use your account to post reports and track claims.</p>
-
-    <form asp-action="Register" method="post" class="form-card tb-account__form" novalidate>
-        <partial name="_ValidationSummary" />
-
-        <div class="mb-3">
-            <label asp-for="Name" class="form-label">Full name</label>
-            <input asp-for="Name" aria-describedby="Name-error" class="form-control" autocomplete="name" />
-            <span id="Name-error" asp-validation-for="Name" class="text-danger small"></span>
-        </div>
-
-        <div class="mb-3">
-            <label asp-for="Email" class="form-label">Email address</label>
-            <input asp-for="Email" aria-describedby="Email-error" class="form-control" autocomplete="email" />
-            <span id="Email-error" asp-validation-for="Email" class="text-danger small"></span>
-        </div>
-
-        <div class="mb-4">
-            <label asp-for="Password" class="form-label">Password (at least 8 characters)</label>
-            <input asp-for="Password" aria-describedby="Password-error" type="password" class="form-control" autocomplete="new-password" />
-            <span id="Password-error" asp-validation-for="Password" class="text-danger small"></span>
-        </div>
-
-        <button class="btn btn-primary w-100" type="submit">Create account</button>
-    </form>
-
-    <p class="tb-account__switch">
-        Already registered? <a asp-action="Login">Sign in</a>.
-    </p>
+<div class="tb-field">
+    <label asp-for="Name" class="form-label">Full name</label>
+    <input asp-for="Name" tb-field tb-error="Name-validation" class="form-control" autocomplete="name" />
+    <span id="Name-validation" asp-validation-for="Name" class="tb-field__error"></span>
 </div>
 
-@section Styles {
-    <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
-}
+<div class="tb-field">
+    <label asp-for="Email" class="form-label">Email address</label>
+    <input asp-for="Email" tb-field tb-error="Email-validation" class="form-control" autocomplete="email" />
+    <span id="Email-validation" asp-validation-for="Email" class="tb-field__error"></span>
+</div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+<div class="tb-field">
+    <label asp-for="Password" class="form-label">Password (at least 8 characters)</label>
+    <input asp-for="Password" tb-field tb-error="Password-validation" type="password" class="form-control" autocomplete="new-password" />
+    <span id="Password-validation" asp-validation-for="Password" class="tb-field__error"></span>
+</div>
+
+@section AlternateAccount {
+    Already registered? <a asp-controller="Account" asp-action="Login">Sign in</a>.
 }
