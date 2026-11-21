@@ -20,6 +20,56 @@ public sealed class ReportAuthorizationTests
 {
     private static readonly byte[] ImageBytes = [1, 2, 3, 4];
 
+    [Theory]
+    [InlineData("/", "home-guest", 200)]
+    [InlineData("/Account/Login", "auth", 200)]
+    [InlineData("/Account/Register", "auth", 200)]
+    [InlineData("/Account/Denied", "denied", 200)]
+    [InlineData("/no-such-route/fixture", "not-found", 404)]
+    [InlineData("/Home/Error", "error", 200)]
+    [InlineData("/Home/Privacy", "privacy", 200)]
+    public async Task Public_views_select_their_decorative_route_art(string path, string variant, int expectedStatus)
+    {
+        using var factory = CreateFactory(null);
+        using var client = CreateClient(factory);
+        client.DefaultRequestHeaders.Accept.ParseAdd("text/html");
+        using var response = await client.GetAsync(path);
+        Assert.Equal(expectedStatus, (int)response.StatusCode);
+        AssertRouteArt(await response.Content.ReadAsStringAsync(), variant);
+    }
+
+    [Fact]
+    public async Task Member_views_select_route_art_including_shared_create_and_edit()
+    {
+        var reports = new FakeItemService();
+        reports.Item.PostedByUserId = "test-user";
+        using var factory = CreateFactory(reports);
+        using var client = CreateClient(factory);
+        AddCookie(client, factory);
+        foreach (var (path, variant, status) in new[]
+        {
+            ("/", "home-member", 200),
+            ("/Items", "browse", 200),
+            ($"/Items/Details/{reports.Item.Id}", "details", 200),
+            ("/Items/Create", "editor", 200),
+            ($"/Items/Edit/{reports.Item.Id}", "editor", 200),
+            ($"/Items/Details/{MongoDB.Bson.ObjectId.GenerateNewId()}", "not-found", 404)
+        })
+        {
+            using var response = await client.GetAsync(path);
+            Assert.Equal(status, (int)response.StatusCode);
+            AssertRouteArt(await response.Content.ReadAsStringAsync(), variant);
+        }
+    }
+
+    private static void AssertRouteArt(string markup, string variant)
+    {
+        var art = markup.IndexOf("data-route-art=\"", StringComparison.Ordinal);
+        Assert.True(art >= 0, "Missing route-art layer.");
+        Assert.Contains($"data-route-art=\"{variant}\" aria-hidden=\"true\"", markup);
+        Assert.True(art < markup.IndexOf("<main", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Anonymous_requests_cannot_read_report_pages_images_or_api_data()
     {

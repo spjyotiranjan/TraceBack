@@ -1,6 +1,7 @@
 @model TraceBack.Controllers.BrowsePage
 @{
     ViewData["Title"] = "Browse reports";
+    ViewData["RouteArt"] = "browse";
     var chips = new List<TraceBack.Controllers.FilterChip>();
     if (!string.IsNullOrWhiteSpace(Model.Search.Query))
     {

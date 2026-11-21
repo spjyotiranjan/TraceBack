@@ -1,0 +1,51 @@
+.tb-route-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.tb-route-art {
+  position: absolute;
+  inset: 0 0 auto;
+  width: min(100%, 1800px);
+  max-height: 100%;
+  aspect-ratio: var(--tb-route-art-ratio, 1440 / 1040);
+  margin-inline: auto;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.tb-route-art::before,
+.tb-route-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-repeat: no-repeat;
+  background-position: center top;
+  background-size: 100% auto;
+}
+
+.tb-route-art::before { background-image: var(--tb-route-art-a, none); }
+.tb-route-art::after { display: none; }
+
+/* One quiet A → B → A pass. No looping, JS, or second image for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  :is([data-route-art^="home-"], [data-route-art="auth"], [data-route-art="browse"],
+      [data-route-art="details"], [data-route-art="editor"], [data-route-art="dashboard"])::before {
+    animation: tb-route-phase-a 4.8s ease-in-out;
+  }
+  :is([data-route-art^="home-"], [data-route-art="auth"], [data-route-art="browse"],
+      [data-route-art="details"], [data-route-art="editor"], [data-route-art="dashboard"])::after {
+    display: block;
+    background-image: var(--tb-route-art-b, none);
+    opacity: 0;
+    animation: tb-route-phase-b 4.8s ease-in-out;
+  }
+}
+
+@keyframes tb-route-phase-a { 50% { opacity: .35; } }
+@keyframes tb-route-phase-b { 50% { opacity: .65; } }
+
+@media (forced-colors: active), print {
+  .tb-route-art { display: none; }
+}

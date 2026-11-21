@@ -9,6 +9,7 @@
     var latitudeInvalid = pairInvalid || ViewData.ModelState["MapLocation.Latitude"]?.Errors.Count > 0;
     var longitudeInvalid = pairInvalid || ViewData.ModelState["MapLocation.Longitude"]?.Errors.Count > 0;
     ViewData["Title"] = editing ? "Edit report" : "Report an item";
+    ViewData["RouteArt"] = "editor";
 }
 
 <div class="form-page tb-report-editor">

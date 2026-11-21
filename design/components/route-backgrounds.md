@@ -8,6 +8,8 @@
 
 **Current integration** — [wwwroot/css/home-browse.css](../../src/TraceBack/wwwroot/css/home-browse.css) · [wwwroot/css/detail-report.css](../../src/TraceBack/wwwroot/css/detail-report.css) · [wwwroot/css/site.css](../../src/TraceBack/wwwroot/css/site.css)
 
+**Campus Signal artwork implementation** — [Route variant API, export provenance and parity gaps](../../docs/route-art.md).
+
 **Page plans** — [Home](../pages/01-home.md) · [Sign in](../pages/02-sign-in.md) · [Create account](../pages/03-create-account.md) · [Browse reports](../pages/04-browse.md) · [Item Details](../pages/05-item-details.md) · [Report an Item](../pages/06-report-an-item.md) · [My Dashboard](../pages/07-my-dashboard.md) · [Edit Report](../pages/09-edit-report.md) · [Access Denied](../pages/10-access-denied.md) · [Item Not Found](../pages/11-item-not-found.md) · [Something Went Wrong](../pages/12-something-went-wrong.md) · [Privacy](../pages/13-privacy.md)
 
 ## FigCraft references

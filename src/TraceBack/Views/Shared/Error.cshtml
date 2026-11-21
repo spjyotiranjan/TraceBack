@@ -3,6 +3,7 @@
 @{
     const string heading = "Something went wrong";
     ViewData["Title"] = heading;
+    ViewData["RouteArt"] = "error";
     var original = Context.Features.Get<IExceptionHandlerPathFeature>();
     var retryUrl = HttpMethods.IsGet(Context.Request.Method) && original is not null
         ? Context.Request.PathBase.ToUriComponent() + new PathString(original.Path).ToUriComponent() + Context.Request.QueryString.ToUriComponent()
