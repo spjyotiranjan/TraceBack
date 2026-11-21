@@ -21,6 +21,7 @@
     <link rel="stylesheet" href="~/css/fonts.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/shared-controls.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/record-graphics.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 </head>
@@ -84,16 +85,7 @@
     </header>
 
     <main id="main-content" class="container main-content">
-        @if (TempData["Success"] is string success)
-        {
-            <div class="alert alert-success" role="status">@success</div>
-        }
-
-        @if (TempData["Error"] is string error)
-        {
-            <div class="alert alert-danger" role="alert">@error</div>
-        }
-
+        <partial name="_TempDataNotices" />
         @RenderBody()
     </main>
 
@@ -109,5 +101,6 @@
     <script src="~/js/theme.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/js/shared-controls.js" asp-append-version="true" defer></script>
 </body>
 </html>
