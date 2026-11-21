@@ -1,12 +1,11 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light" data-theme-choice="system">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@ViewData["Title"] · TraceBack</title>
     <script>
         (() => {
-            document.documentElement.classList.add('tb-js');
             let choice = 'system';
             try {
                 const saved = localStorage.getItem('traceback.theme.v1');
@@ -30,8 +29,10 @@
 
     <header class="site-header">
         <nav class="navbar navbar-expand-md container" aria-label="Primary navigation">
-            <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
-                <span class="brand-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M9 5h10v10" /></svg></span> TraceBack
+            <a class="navbar-brand fw-bold" aria-label="TraceBack Home" asp-controller="Home" asp-action="Index">
+                <svg class="brand-symbol" viewBox="0 0 120 120" width="24" height="24" aria-hidden="true" focusable="false">
+                    <use href="@Url.Content("~/icons/traceback-mark.svg")#reunion"></use>
+                </svg> TraceBack
             </a>
 
             <button class="navbar-toggler"
@@ -40,8 +41,8 @@
                     data-bs-target="#site-nav"
                     aria-controls="site-nav"
                     aria-expanded="false"
-                    aria-label="Open menu">
-                <span class="navbar-toggler-icon"></span>
+                    aria-label="Menu">
+                <partial name="_Icon" model='"menu"' />
             </button>
 
             <div class="collapse navbar-collapse" id="site-nav">

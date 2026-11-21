@@ -8,7 +8,10 @@
   border-bottom: 1px solid var(--tb-divider);
 }
 .home-hero-copy { min-width: 0; }
-.home-hero h1 { max-width: 11ch; margin: 0 0 1.25rem; font-size: clamp(2.25rem, 4vw, 3.25rem); line-height: 1.08; }
+.home-hero h1 { max-width: 11ch; margin: 0 0 1.25rem; font: var(--tb-type-display); }
+@media (max-width: 575px) {
+  .home-hero h1 { font: var(--tb-type-heading-1); }
+}
 .home-hero-intro { max-width: 55ch; margin: 0; color: var(--tb-ink-muted); font-size: 1.15rem; }
 .home-search { max-width: 650px; margin-top: 2rem; }
 .home-search label { display: block; margin-bottom: .45rem; font-weight: 700; }
