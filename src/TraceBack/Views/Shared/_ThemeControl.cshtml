@@ -1,10 +1,19 @@
-<fieldset class="tb-appearance" data-theme-control hidden>
-    <legend class="visually-hidden">Appearance</legend>
-    <div class="tb-appearance__options">
-        @foreach (var (value, label, icon) in new[] { ("system", "System", "monitor"), ("light", "Light", "sun"), ("dark", "Dark", "moon") })
-        {
-            <input class="visually-hidden" type="radio" name="tb-appearance" value="@value" id="appearance-@value" />
-            <label for="appearance-@value"><partial name="_Icon" model="icon" />@label</label>
-        }
+<details class="tb-disclosure" data-shell-disclosure data-theme-disclosure hidden>
+    <summary class="tb-shell-trigger" aria-label="Appearance" title="Appearance">
+        <span data-theme-icon="system"><partial name="_Icon" model='"monitor"' /></span>
+        <span data-theme-icon="light"><partial name="_Icon" model='"sun"' /></span>
+        <span data-theme-icon="dark"><partial name="_Icon" model='"moon"' /></span>
+    </summary>
+    <div class="tb-shell-panel">
+        <fieldset class="tb-appearance" data-theme-control>
+            <legend class="tb-shell-panel-title">Appearance</legend>
+            <div class="tb-appearance__options">
+                @foreach (var (value, label, icon) in new[] { ("light", "Light", "sun"), ("dark", "Dark", "moon"), ("system", "System", "monitor") })
+                {
+                    <input class="visually-hidden" type="radio" name="tb-appearance" value="@value" id="appearance-@value" />
+                    <label for="appearance-@value"><partial name="_Icon" model="icon" />@label</label>
+                }
+            </div>
+        </fieldset>
     </div>
-</fieldset>
+</details>

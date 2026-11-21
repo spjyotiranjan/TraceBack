@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.TestHost;
@@ -22,10 +24,11 @@ using Microsoft.IdentityModel.Tokens;
 using TraceBack.Controllers;
 using TraceBack.Models;
 using TraceBack.Services;
+using Xunit.Abstractions;
 
 namespace TraceBack.Tests;
 
-public sealed class ReportAuthorizationTests
+public sealed class ReportAuthorizationTests(ITestOutputHelper output)
 {
     private static readonly byte[] ImageBytes = [1, 2, 3, 4];
 
@@ -103,6 +106,86 @@ public sealed class ReportAuthorizationTests
         }
 
         Assert.Equal(0, reports.ReadCount);
+    }
+
+    [Fact]
+    public async Task Shared_navigation_exposes_guest_routes_and_marks_the_current_page()
+    {
+        using var factory = CreateFactory(null);
+        using var client = CreateClient(factory);
+        var markup = await client.GetStringAsync("/account/login");
+
+        Assert.Matches("<a[^>]*href=\"/Items\"[^>]*>\\s*Browse\\s*</a>", markup);
+        Assert.Matches("<a[^>]*aria-current=\"page\"[^>]*href=\"/Account/Login\"[^>]*>", markup);
+        Assert.DoesNotContain("aria-label=\"Member navigation\"", markup);
+        Assert.DoesNotContain("/Account/Logout", markup);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Shared_member_navigation_marks_browse_and_gates_admin_actions(bool admin)
+    {
+        using var factory = CreateFactory(new FakeItemService());
+        using var client = CreateClient(factory);
+        AddCookie(client, factory, admin);
+
+        var markup = await client.GetStringAsync("/items?Query=backpack");
+        Assert.Contains("aria-label=\"Member navigation\"", markup);
+        Assert.Equal(2, System.Text.RegularExpressions.Regex.Matches(markup,
+            "<a[^>]*aria-current=\"page\"[^>]*href=\"/Items\"[^>]*>").Count);
+        Assert.Equal(admin, markup.Contains("href=\"/Admin\""));
+        Assert.Contains("action=\"/Account/Logout\"", markup);
+        Assert.Contains("name=\"__RequestVerificationToken\"", markup);
+    }
+
+    [BrowserFact]
+    public async Task Shared_shell_in_browser()
+    {
+        var reports = new FakeItemService();
+        reports.Item.ImageKey = null;
+        using var factory = CreateFactory(reports);
+        factory.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
+        using var client = factory.CreateClient();
+
+        var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        foreach (var script in new[] { "shell-check.cjs", "theme-check.cjs" })
+        {
+            var start = new ProcessStartInfo("node")
+            {
+                WorkingDirectory = root,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            };
+            start.ArgumentList.Add(Path.Combine(root, "tests", "ui", script));
+            start.Environment["TRACEBACK_URL"] = client.BaseAddress!.GetLeftPart(UriPartial.Authority);
+            using var process = Process.Start(start)!;
+            var stdout = process.StandardOutput.ReadToEndAsync();
+            var stderr = process.StandardError.ReadToEndAsync();
+            await process.StandardInput.WriteAsync(JsonSerializer.Serialize(new
+            {
+                @base = start.Environment["TRACEBACK_URL"],
+                member = CreateCookie(factory, false),
+                admin = CreateCookie(factory, true)
+            }));
+            process.StandardInput.Close();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+            try { await process.WaitForExitAsync(timeout.Token); }
+            catch (OperationCanceledException) { process.Kill(entireProcessTree: true); throw; }
+            output.WriteLine(await stdout);
+            Assert.True(process.ExitCode == 0, await stderr);
+        }
+    }
+
+    private sealed class BrowserFactAttribute : FactAttribute
+    {
+        public BrowserFactAttribute()
+        {
+            if (Environment.GetEnvironmentVariable("TRACEBACK_BROWSER") != "1")
+                Skip = "Set TRACEBACK_BROWSER=1 and make Playwright/Chromium available to Node.";
+        }
     }
 
     [Fact]
@@ -526,6 +609,8 @@ public sealed class ReportAuthorizationTests
                     services.RemoveAll<ICommentService>();
                     services.AddSingleton<ICommentService>(new FakeCommentService());
                 }
+                services.RemoveAll<IDataProtectionProvider>();
+                services.AddSingleton<IDataProtectionProvider, EphemeralDataProtectionProvider>();
                 services.RemoveAll<IItemService>();
                 if (reports is not null)
                 {
@@ -536,15 +621,24 @@ public sealed class ReportAuthorizationTests
     private static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
 
-    private static void AddCookie(HttpClient client, WebApplicationFactory<Program> factory)
+    private static void AddCookie(HttpClient client, WebApplicationFactory<Program> factory, bool admin = false)
+    {
+        var (name, value) = CreateCookie(factory, admin);
+        client.DefaultRequestHeaders.Add("Cookie", $"{name}={value}");
+    }
+
+    private static BrowserCookie CreateCookie(WebApplicationFactory<Program> factory, bool admin)
     {
         var options = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
         var principal = Principal();
+        if (admin)
+            ((ClaimsIdentity)principal.Identity!).AddClaim(new System.Security.Claims.Claim(ClaimTypes.Role, "Admin"));
         var ticket = new AuthenticationTicket(principal, CookieAuthenticationDefaults.AuthenticationScheme);
-        var value = options.TicketDataFormat.Protect(ticket);
-        client.DefaultRequestHeaders.Add("Cookie", $"{options.Cookie.Name}={value}");
+        return new BrowserCookie(options.Cookie.Name!, options.TicketDataFormat.Protect(ticket));
     }
+
+    private sealed record BrowserCookie(string name, string value);
 
     private static void AddBearerToken(HttpClient client, WebApplicationFactory<Program> factory)
     {
