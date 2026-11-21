@@ -1,18 +1,4 @@
 (() => {
-  const records = [...document.querySelectorAll('[data-record-id]')];
-  const highlight = (record, active) => {
-    records.filter(other => other.dataset.recordId === record.dataset.recordId)
-      .forEach(other => other.classList.toggle('is-linked', active));
-  };
-  records.forEach(record => {
-    record.addEventListener('pointerenter', () => highlight(record, true));
-    record.addEventListener('pointerleave', () => highlight(record, record.contains(document.activeElement)));
-    record.addEventListener('focusin', () => highlight(record, true));
-    record.addEventListener('focusout', event => {
-      if (!record.contains(event.relatedTarget)) highlight(record, false);
-    });
-  });
-
   const draft = document.querySelector('[data-draft-canvas]');
   const form = document.querySelector('.report-form');
   if (!draft || !form) return;

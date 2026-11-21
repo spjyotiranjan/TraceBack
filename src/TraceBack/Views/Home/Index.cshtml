@@ -12,9 +12,8 @@
         @if (signedIn)
         {
             <form asp-controller="Items" asp-action="Index" method="get" class="home-search" role="search">
-                <label for="home-query">Search reports</label>
+                <partial name="_ReportSearchField" model='new ReportSearchField("home-query", "Search reports")' />
                 <div class="home-search-fields">
-                    <input id="home-query" name="Query" class="form-control" placeholder="Item name or description" />
                     <button class="btn btn-primary" type="submit">Search reports</button>
                 </div>
             </form>
@@ -66,10 +65,10 @@
         }
         else
         {
-            <div class="catalog-list">
+            <div class="tb-report-grid tb-report-grid--home">
                 @foreach (var item in Model.RecentItems)
                 {
-                    <partial name="_CatalogRow" model="item" />
+                    <partial name="_ItemCard" model="new ReportCard(item, ReportCardVariant.Home)" />
                 }
             </div>
         }
@@ -93,6 +92,8 @@
 }
 
 @section Scripts {
+    <script src="~/js/report-search.js" asp-append-version="true" defer></script>
+    <script src="~/js/report-photo.js" asp-append-version="true" defer></script>
     <script>
         const path = document.querySelector('.process-route');
         if (path && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {

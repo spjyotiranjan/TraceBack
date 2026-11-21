@@ -2,8 +2,7 @@
 <form asp-controller="Items" asp-action="Index" method="get" class="browse-filters tb-toolbar" role="search">
     <div class="browse-filter-grid">
         <div class="browse-query">
-            <label for="query" class="form-label">Search words</label>
-            <input id="query" name="Query" class="form-control" value="@Model.Search.Query" placeholder="Item name or description" />
+            <partial name="_ReportSearchField" model='new ReportSearchField("query", "Search words", Model.Search.Query)' />
         </div>
         <div>
             <label for="type" class="form-label">Type</label>
