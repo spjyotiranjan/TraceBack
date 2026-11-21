@@ -1,0 +1,10 @@
+@model TraceBack.Models.ReportSearchField
+<label for="@Model.Id" class="form-label">@Model.Label</label>
+<div class="tb-search-field" data-search-field>
+    <span class="tb-search-field__icon"><partial name="_Icon" model='"search"' /></span>
+    <input type="search" id="@Model.Id" name="Query" value="@Model.Query" class="form-control"
+           placeholder="Item name or description" />
+    <button type="button" class="tb-search-field__clear" aria-label="Clear search words" hidden>
+        <partial name="_Icon" model='"x"' />
+    </button>
+</div>

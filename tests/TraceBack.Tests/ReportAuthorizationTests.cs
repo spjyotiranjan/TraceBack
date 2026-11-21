@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
@@ -5,12 +6,20 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using TraceBack.Controllers;
 using TraceBack.Models;
 using TraceBack.Services;
 
@@ -160,6 +169,89 @@ public sealed class ReportAuthorizationTests
         using var api = await client.GetAsync("/api/items");
         Assert.Equal(HttpStatusCode.Unauthorized, api.StatusCode);
         Assert.True(reports.ReadCount >= 4);
+    }
+
+    [Fact]
+    public async Task Search_controls_send_native_get_fields_and_only_browse_carries_filters()
+    {
+        var reports = new FakeItemService();
+        using var factory = CreateFactory(reports);
+        using var client = CreateClient(factory);
+        AddCookie(client, factory);
+
+        var home = await client.GetStringAsync("/?Query=stale&Type=Lost&Page=9");
+        var homeForm = SearchForm(home);
+        Assert.Contains("action=\"/Items\"", homeForm);
+        Assert.Contains("method=\"get\"", homeForm);
+        Assert.Contains("name=\"Query\"", homeForm);
+        Assert.Contains("aria-label=\"Clear search words\"", homeForm);
+        Assert.DoesNotContain("stale", homeForm);
+        foreach (var name in new[] { "Type", "Status", "Category", "Location", "Page" })
+        {
+            Assert.DoesNotContain($"name=\"{name}\"", homeForm);
+        }
+
+        var browse = await client.GetStringAsync("/Items?Query=bag&Type=Found&Status=Claimed&Category=Gear&Location=Hall&Page=3");
+        var browseForm = SearchForm(browse);
+        Assert.Contains("aria-label=\"Clear search words\"", browseForm);
+        Assert.Contains("value=\"bag\"", browseForm);
+        Assert.Contains("value=\"Found\" selected=", browseForm);
+        Assert.Contains("value=\"Claimed\" selected=", browseForm);
+        Assert.Contains("value=\"Gear\"", browseForm);
+        Assert.Contains("value=\"Hall\"", browseForm);
+        Assert.DoesNotContain("name=\"Page\"", browseForm);
+        Assert.Equal(3, reports.LastSearch?.Page);
+
+        await client.GetStringAsync("/Items?Query=case&Type=Found&Status=Claimed&Category=Gear&Location=Hall");
+        var search = Assert.IsType<ItemSearch>(reports.LastSearch);
+        Assert.Equal(("case", "Found", "Claimed", "Gear", "Hall", 1),
+            (search.Query, search.Type, search.Status, search.Category, search.Location, search.Page));
+    }
+
+    private static string SearchForm(string markup) => System.Text.RegularExpressions.Regex
+        .Match(markup, "<form\\b[^>]*role=\"search\"[^>]*>.*?</form>", System.Text.RegularExpressions.RegexOptions.Singleline).Value;
+
+    [Theory]
+    [InlineData("/", true)]
+    [InlineData("/Items", true)]
+    [InlineData("/Items", false)]
+    public async Task Report_cards_link_to_the_real_item_and_only_request_configured_photos(string path, bool hasPhoto)
+    {
+        var reports = new FakeItemService();
+        reports.Item.Type = "Found";
+        reports.Item.Status = "Claimed";
+        if (!hasPhoto)
+        {
+            reports.Item.ImageKey = null;
+        }
+
+        using var factory = CreateFactory(reports);
+        using var client = CreateClient(factory);
+        AddCookie(client, factory);
+        var markup = await client.GetStringAsync(path);
+
+        var card = System.Text.RegularExpressions.Regex.Match(markup,
+            $"<article\\b[^>]*data-record-id=\"{reports.Item.Id}\"[^>]*>.*?</article>",
+            System.Text.RegularExpressions.RegexOptions.Singleline).Value;
+        Assert.NotEmpty(card);
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(card, "<a\\b"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(markup, $"href=\"/Items/Details/{reports.Item.Id}\""));
+        Assert.Contains(reports.Item.Title, card);
+        Assert.Contains(">Found</span>", card);
+        Assert.Contains(">Claimed</span>", card);
+
+        if (hasPhoto)
+        {
+            Assert.Contains($"src=\"/Items/Image/{reports.Item.Id}\"", card);
+            Assert.Contains("Photo unavailable", card);
+            Assert.DoesNotContain("No photo provided", card);
+        }
+        else
+        {
+            Assert.Contains("No photo provided", card);
+            Assert.DoesNotContain("<img", card);
+            Assert.DoesNotContain("Photo unavailable", card);
+        }
     }
 
     [Fact]
@@ -334,10 +426,106 @@ public sealed class ReportAuthorizationTests
         Assert.Contains("rel=\"noopener noreferrer\"", mappedMarkup);
     }
 
-    private static WebApplicationFactory<Program> CreateFactory(FakeItemService? reports) =>
+    [ReportBrowserFact]
+    public async Task Report_components_pass_the_browser_matrix()
+    {
+        var reports = new FakeItemService();
+        reports.Item.Type = "Found";
+        reports.Item.Title = "Oversized navy travel backpack with a zippered pocket and a removable reflective name tag attached to the shoulder strap";
+        reports.Item.Location = "North Engineering Building second-floor study area near the pedestrian bridge and across from the library reception desk";
+        reports.AdditionalItems.AddRange([
+            new Item { Title = "Keys", Location = "Hall", Type = "Lost", Status = "Claimed", Category = "Gear" },
+            new Item { Title = "Notebook", Location = "Library", Type = "Found", Status = "Resolved", ImageKey = "missing.png" },
+            new Item { Title = "Gloves", Location = "Library", Type = "Found", Status = "Active", ImageKey = "invalid.png" }
+        ]);
+        reports.ServeValidImage = true;
+
+        // Use the real routes, Razor views and static assets on loopback. The Dashboard
+        // model is supplied by a test-only filter so no Mongo/R2 account is required.
+        using var factory = CreateFactory(reports, new BrowserDashboardFixture(reports));
+        factory.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
+        using var client = CreateClient(factory);
+        AddCookie(client, factory);
+        DirectoryInfo? root = new(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "TraceBack.slnx"))) root = root.Parent;
+        Assert.NotNull(root);
+        var info = new ProcessStartInfo("node")
+        {
+            WorkingDirectory = root.FullName,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        info.ArgumentList.Add("tests/ui/report-components-check.cjs");
+        foreach (var name in info.Environment.Keys.Where(name =>
+            new[] { "MONGO", "JWT", "R2", "BOOTSTRAP" }.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))).ToList())
+        {
+            info.Environment.Remove(name);
+        }
+        info.Environment["TRACEBACK_URL"] = factory.Services.GetRequiredService<IServer>()
+            .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
+        info.Environment["TRACEBACK_TEST_COOKIE"] = client.DefaultRequestHeaders.GetValues("Cookie").Single();
+        using var browser = Process.Start(info)!;
+        var stdout = browser.StandardOutput.ReadToEndAsync();
+        var stderr = browser.StandardError.ReadToEndAsync();
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
+        try
+        {
+            await browser.WaitForExitAsync(timeout.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            browser.Kill(entireProcessTree: true);
+            throw;
+        }
+        var output = $"{await stdout}\n{await stderr}";
+        Assert.True(browser.ExitCode == 0, output);
+        Console.WriteLine(output);
+    }
+
+    private sealed class ReportBrowserFactAttribute : FactAttribute
+    {
+        public ReportBrowserFactAttribute()
+        {
+            if (Environment.GetEnvironmentVariable("TRACEBACK_BROWSER_TESTS") != "1")
+            {
+                Skip = "Set TRACEBACK_BROWSER_TESTS=1 to run with Playwright and Chromium.";
+            }
+        }
+    }
+
+    private sealed class BrowserDashboardFixture(FakeItemService reports) : IResourceFilter
+    {
+        public void OnResourceExecuting(ResourceExecutingContext context)
+        {
+            if (context.RouteData.Values["controller"] as string != "Dashboard") return;
+            var claims = new[] { "Pending", "Approved", "Rejected" }
+                .Select(status => new ClaimRow(new TraceBack.Models.Claim { Status = status }, null)).ToList();
+            context.Result = new ViewResult
+            {
+                ViewName = "Index",
+                ViewData = new ViewDataDictionary(new EmptyModelMetadataProvider(), context.ModelState)
+                {
+                    Model = new DashboardPage([reports.Item, .. reports.AdditionalItems], claims)
+                }
+            };
+        }
+
+        public void OnResourceExecuted(ResourceExecutedContext context) { }
+    }
+
+    private static WebApplicationFactory<Program> CreateFactory(FakeItemService? reports, IResourceFilter? dashboardFixture = null) =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
             {
+                if (dashboardFixture is not null)
+                {
+                    services.Configure<MvcOptions>(options => options.Filters.Add(dashboardFixture));
+                    var worker = services.Single(service => service.ServiceType == typeof(IHostedService)
+                        && service.ImplementationType == typeof(ImageCleanupWorker));
+                    services.Remove(worker);
+                    services.RemoveAll<ICommentService>();
+                    services.AddSingleton<ICommentService>(new FakeCommentService());
+                }
                 services.RemoveAll<IItemService>();
                 if (reports is not null)
                 {
@@ -394,27 +582,35 @@ public sealed class ReportAuthorizationTests
         public int ReadCount => Volatile.Read(ref readCount);
         public int CreateCount => Volatile.Read(ref createCount);
         public bool FailSearch { get; set; }
+        public ItemSearch? LastSearch { get; private set; }
+        public List<Item> AdditionalItems { get; } = [];
+        public bool ServeValidImage { get; set; }
 
         public Task<List<Item>> SearchAsync(ItemSearch search)
         {
             Interlocked.Increment(ref readCount);
+            LastSearch = search;
             if (FailSearch)
             {
                 return Task.FromException<List<Item>>(new InvalidOperationException("Fixture search failure"));
             }
-            return Task.FromResult(new List<Item> { Item });
+            return Task.FromResult(new List<Item> { Item }.Concat(AdditionalItems).ToList());
         }
 
         public Task<Item?> GetAsync(string id)
         {
             Interlocked.Increment(ref readCount);
-            return Task.FromResult(id == Item.Id ? Item : null);
+            return Task.FromResult(id == Item.Id ? Item : AdditionalItems.Find(item => item.Id == id));
         }
 
         public Task<StoredImage?> GetImageAsync(string id, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref readCount);
-            return Task.FromResult<StoredImage?>(id == Item.Id ? new StoredImage(ImageBytes, "image/png") : null);
+            var bytes = ServeValidImage && id == Item.Id
+                ? Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAADAAAAAkCAIAAABAJy5dAAAAaklEQVR4nO3OQQ3AIABDUXxgAzPThhHOmOCAgNmYBEhoAytN/vnnhVz6UYXtAoMMMugHoJieYXeDqCYVEM8kBCKZtEAMkxwIblIEYU2iIKDpPFBtL6oZ03AiDYKY1EHrJjxoMYMMMqiSQR9CcNyk4n86hQAAAABJRU5ErkJggg==")
+                : ImageBytes;
+            var hasImage = id == Item.Id || AdditionalItems.Any(item => item.Id == id && item.ImageKey == "invalid.png");
+            return Task.FromResult<StoredImage?>(hasImage ? new StoredImage(bytes, "image/png") : null);
         }
 
         public Task<List<Item>> MineAsync(string userId) => throw new NotSupportedException();

@@ -6,7 +6,7 @@
 
 - Submit to GET /Items using Query, allow Enter, and distinguish clearing the text input from submitting. On Browse preserve other filter values and reset Page. Home begins a fresh search. Show label, Lucide Search and named clear action. Make the control keyboard-friendly without presenting a custom combobox.
 
-**Current integration** — [Views/Home/Index.cshtml](../../src/TraceBack/Views/Home/Index.cshtml) · [Views/Shared/_SearchFilters.cshtml](../../src/TraceBack/Views/Shared/_SearchFilters.cshtml)
+**Current integration** — [Views/Shared/_ReportSearchField.cshtml](../../src/TraceBack/Views/Shared/_ReportSearchField.cshtml) · [Views/Home/Index.cshtml](../../src/TraceBack/Views/Home/Index.cshtml) · [Views/Shared/_SearchFilters.cshtml](../../src/TraceBack/Views/Shared/_SearchFilters.cshtml)
 
 **Page plans** — [Home](../pages/01-home.md) · [Browse reports](../pages/04-browse.md)
 

@@ -70,16 +70,11 @@ h3 { font: var(--tb-type-heading-3); }
 .hero .lead { max-width: 42rem; color: var(--tb-ink-muted); }
 .hero-note { border: 1px solid var(--tb-divider); background: var(--tb-surface); border-radius: var(--tb-radius-panel); padding: 2rem; transform: rotate(2deg); }
 .hero-mark { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 50%; background: var(--tb-accent-surface); color: var(--tb-accent-ink); font-size: 2rem; margin-bottom: 1.7rem; }
-.item-card { border: 1px solid var(--tb-divider); border-radius: var(--tb-radius-panel); overflow: hidden; box-shadow: none; }
-.item-card .card-body { min-height: 180px; }
-.item-card .card-title a { color: var(--tb-ink); }
-.item-card .card-title a:hover { color: var(--tb-action); }
-.item-image, .item-placeholder { width: 100%; height: 205px; object-fit: cover; background: var(--tb-media-ground); }
-.item-placeholder, .detail-placeholder { display: grid; place-items: center; color: var(--tb-media-ink); font-weight: 700; font-size: 2.8rem; }
+.detail-placeholder { display: grid; place-items: center; color: var(--tb-media-ink); font-weight: 700; font-size: 2.8rem; }
 .badge { font-size: .75rem; padding: .45em .7em; border-radius: 100rem; }
-.badge-type { background: var(--tb-accent-surface); color: var(--tb-accent-ink); }
-.tb-status, .badge-status { background: var(--tb-status-active-surface); color: var(--tb-status-active); }
-.tb-status { border: 1px solid var(--tb-divider); }
+.tb-status { border: 1px solid var(--tb-divider); background: var(--tb-status-active-surface); color: var(--tb-status-active); }
+.tb-status[data-status='found'] { background: var(--tb-accent-surface); color: var(--tb-accent-ink); }
+.tb-status[data-status='lost'] { background: var(--tb-surface-muted); color: var(--tb-ink); }
 .tb-status[data-status='claimed'], .tb-status[data-status='resolved'] { background: var(--tb-status-resolved-surface); color: var(--tb-status-resolved); }
 .tb-status[data-status='pending'] { background: var(--tb-status-pending-surface); color: var(--tb-status-pending); }
 .tb-status[data-status='approved'] { background: var(--tb-status-approved-surface); color: var(--tb-status-approved); }
