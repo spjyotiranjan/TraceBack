@@ -21,7 +21,8 @@ public sealed record ItemDetailPage(
 public sealed record ItemEditorPage(
     ItemForm Form,
     string? Id,
-    string? CurrentImageUrl = null);
+    string? CurrentImageUrl = null,
+    bool HasSavedPin = false);
 
 public sealed record ClaimPage(
     Item Item,

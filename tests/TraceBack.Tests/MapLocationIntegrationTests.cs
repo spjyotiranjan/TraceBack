@@ -216,7 +216,14 @@ public sealed class MapLocationIntegrationTests
             Assert.Equal(HttpStatusCode.OK, invalidMvc.StatusCode);
             Assert.Contains("at most six decimal places", await invalidMvc.Content.ReadAsStringAsync());
 
-            using var mvcCreated = await ownerMvc.PostAsync("/Items/Create", MvcForm(token, "20.296058", "85.824539"));
+            using var malformedMvc = await ownerMvc.PostAsync("/Items/Create", MvcForm(token, "not-a-coordinate", "85.824539"));
+            Assert.Equal(HttpStatusCode.OK, malformedMvc.StatusCode);
+            var malformedHtml = await malformedMvc.Content.ReadAsStringAsync();
+            Assert.Matches("name=\"MapLocation.Latitude\"[^>]*value=\"not-a-coordinate\"", malformedHtml);
+            Assert.Contains("data-valmsg-for=\"MapLocation.Latitude\"", malformedHtml);
+
+            // A trailing zero does not change the numeric precision. The server is authoritative.
+            using var mvcCreated = await ownerMvc.PostAsync("/Items/Create", MvcForm(token, "20.2960580", "85.824539"));
             Assert.Equal(HttpStatusCode.Redirect, mvcCreated.StatusCode);
             var mvcId = mvcCreated.Headers.Location!.ToString().Split('/').Last();
             Assert.Equal(20.296058, (await store.Items.Find(x => x.Id == mvcId).FirstAsync()).MapLocation?.Latitude);
@@ -231,12 +238,19 @@ public sealed class MapLocationIntegrationTests
 
             using var legacyEditor = await ownerMvc.GetAsync($"/Items/Edit/{legacy.Id}");
             Assert.Equal(HttpStatusCode.OK, legacyEditor.StatusCode);
-            var legacyToken = ExtractToken(await legacyEditor.Content.ReadAsStringAsync());
+            var legacyMarkup = await legacyEditor.Content.ReadAsStringAsync();
+            Assert.Contains("You can save it without a pin.", legacyMarkup);
+            var legacyToken = ExtractToken(legacyMarkup);
             using var legacyEdit = await ownerMvc.PostAsync($"/Items/Edit/{legacy.Id}", MvcForm(legacyToken, null, null));
             Assert.Equal(HttpStatusCode.Redirect, legacyEdit.StatusCode);
             var legacyReloaded = await store.Items.Find(x => x.Id == legacy.Id).FirstAsync();
             Assert.Null(legacyReloaded.MapLocation);
             Assert.Equal("Library", legacyReloaded.Location);
+            using var legacyDetail = await ownerMvc.GetAsync($"/Items/Details/{legacy.Id}");
+            var legacyDetailMarkup = await legacyDetail.Content.ReadAsStringAsync();
+            Assert.Contains("Map location not added to this older report.", legacyDetailMarkup);
+            Assert.DoesNotContain("data-report-map=\"preview\"", legacyDetailMarkup);
+            Assert.DoesNotContain("View in Google Maps", legacyDetailMarkup);
 
             using var otherMvc = MvcClient(factory, "other-user");
             using var otherEditor = await otherMvc.GetAsync($"/Items/Edit/{mvcId}");
