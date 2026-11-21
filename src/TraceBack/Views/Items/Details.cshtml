@@ -1,5 +1,6 @@
 @model TraceBack.Controllers.ItemDetailPage
 @using System.Security.Claims
+@using TraceBack.Models
 @{
     ViewData["Title"] = Model.Item.Title;
     ViewData["RouteArt"] = "details";
@@ -9,17 +10,32 @@
 
 <article class="detail-report">
     <div class="detail-report__layout">
-        <figure class="detail-report__media">
-            @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
-            {
-                <img class="detail-image" src="@Model.Item.DisplayImageUrl" alt="@Model.Item.Title" />
-            }
-            else
-            {
-                <div class="detail-placeholder" aria-hidden="true">No photo</div>
-            }
-            <figcaption>@(string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl) ? "No photo was added to this report." : "Photo supplied with this report.")</figcaption>
-        </figure>
+        <div class="detail-report__media-column">
+            <figure class="detail-report__media">
+                @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
+                {
+                    <img class="detail-image" src="@Model.Item.DisplayImageUrl" alt="@Model.Item.Title" />
+                }
+                else
+                {
+                    <div class="detail-placeholder" aria-hidden="true">No photo</div>
+                }
+                <figcaption>@(string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl) ? "No photo was added to this report." : "Photo supplied with this report.")</figcaption>
+            </figure>
+            <section class="detail-report__map" aria-labelledby="report-map-heading">
+                @if (MapLocationRules.SafeStored(Model.Item.MapLocation) is { } point)
+                {
+                    <h2 id="report-map-heading" class="h5 d-flex align-items-center gap-2"><partial name="_Icon" model='"map-pin"' /> Saved map pin</h2>
+                    <p class="form-text mb-2">Address unavailable for this pin. It marks the reporter’s selected point.</p>
+                    <partial name="_ReportMap" model="(false, (MapLocation?)point)" />
+                }
+                else
+                {
+                    <h2 id="report-map-heading" class="h5">Location</h2>
+                    <p class="mb-0">Map location not added to this older report.</p>
+                }
+            </section>
+        </div>
         <div>
             <header class="detail-report__heading">
                 <div class="d-flex gap-2 flex-wrap">
