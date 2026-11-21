@@ -47,6 +47,31 @@ public class SharedControlsTests : IClassFixture<SharedControlsFactory>
     }
 
     [Fact]
+    public async Task RegistrationRedisplaysMultipleServerErrorsWithoutEchoingPassword()
+    {
+        var form = await _client.GetStringAsync("/Account/Register");
+        var csrf = Regex.Match(form, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value;
+        Assert.NotEmpty(csrf);
+        using var response = await _client.PostAsync("/ui-controls-test/invalid-register", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = csrf, ["Name"] = "Q", ["Email"] = "invalid-email", ["Password"] = "short!"
+        }));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await response.Content.ReadAsStringAsync();
+        foreach (var field in new[] { "Name", "Email", "Password" })
+        {
+            var input = Regex.Match(page, $"<input[^>]*id=\"{field}\"[^>]*>").Value;
+            Assert.Contains("aria-invalid=\"true\"", input);
+            Assert.Contains($"aria-describedby=\"{field}-validation\"", input);
+            Assert.Contains($"href=\"#{field}\"", page);
+        }
+        Assert.Contains("value=\"Q\"", page);
+        Assert.Contains("value=\"invalid-email\"", page);
+        Assert.DoesNotContain("short!", page);
+        Assert.Contains("action=\"/Account/Register\"", page);
+    }
+
+    [Fact]
     public async Task FailedGetOffersAnExplicitContextPreservingGetLink()
     {
         using var response = await _client.GetAsync("/ui-controls-test/failure?q=blue%20bag&page=2");
@@ -97,10 +122,14 @@ public class SharedControlsFactory : WebApplicationFactory<Program>
 public class SharedControlsBrowserTests
 {
     [SharedControlsBrowserFact]
-    public async Task SharedControlsInChromium()
-    {
-        var script = Environment.GetEnvironmentVariable("SHARED_CONTROLS_BROWSER_SCRIPT")!;
+    public Task SharedControlsInChromium() => RunBrowserAsync("SHARED_CONTROLS_BROWSER_SCRIPT");
 
+    [SharedControlsBrowserFact("AUTH_LAYOUT_BROWSER_SCRIPT")]
+    public Task AuthLayoutInChromium() => RunBrowserAsync("AUTH_LAYOUT_BROWSER_SCRIPT");
+
+    private static async Task RunBrowserAsync(string scriptVariable)
+    {
+        var script = Environment.GetEnvironmentVariable(scriptVariable)!;
         using var factory = new SharedControlsFactory();
         factory.UseKestrel(0);
         using var client = factory.CreateClient();
@@ -127,10 +156,10 @@ public class SharedControlsBrowserTests
 
 public sealed class SharedControlsBrowserFactAttribute : FactAttribute
 {
-    public SharedControlsBrowserFactAttribute()
+    public SharedControlsBrowserFactAttribute(string scriptVariable = "SHARED_CONTROLS_BROWSER_SCRIPT")
     {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SHARED_CONTROLS_BROWSER_SCRIPT")))
-            Skip = "Set SHARED_CONTROLS_BROWSER_SCRIPT to run Chromium checks.";
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(scriptVariable)))
+            Skip = $"Set {scriptVariable} to run Chromium checks.";
     }
 }
 
@@ -141,6 +170,10 @@ public class SharedControlsTestController : Controller
     [HttpPost("invalid-login")]
     [ValidateAntiForgeryToken]
     public IActionResult InvalidLogin(LoginForm form) => View("~/Views/Account/Login.cshtml", form);
+
+    [HttpPost("invalid-register")]
+    [ValidateAntiForgeryToken]
+    public IActionResult InvalidRegister(RegisterForm form) => View("~/Views/Account/Register.cshtml", form);
 
     [AcceptVerbs("GET", "POST", Route = "failure")]
     public IActionResult Failure() => throw new InvalidOperationException("Test recovery rendering");

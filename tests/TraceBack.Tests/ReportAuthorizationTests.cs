@@ -7,12 +7,12 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.TestHost;
@@ -600,6 +600,8 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
             builder.ConfigureTestServices(services =>
             {
+                services.RemoveAll<IDataProtectionProvider>();
+                services.AddSingleton<IDataProtectionProvider, EphemeralDataProtectionProvider>();
                 if (dashboardFixture is not null)
                 {
                     services.Configure<MvcOptions>(options => options.Filters.Add(dashboardFixture));
@@ -609,8 +611,6 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
                     services.RemoveAll<ICommentService>();
                     services.AddSingleton<ICommentService>(new FakeCommentService());
                 }
-                services.RemoveAll<IDataProtectionProvider>();
-                services.AddSingleton<IDataProtectionProvider, EphemeralDataProtectionProvider>();
                 services.RemoveAll<IItemService>();
                 if (reports is not null)
                 {
