@@ -6,7 +6,7 @@
 
 - Input report ID, title, status/type, date/location and optional photo. Build Browse grid, Home and Dashboard variants with consistent image aspect and aligned metadata. Browse reserves two lines each for title and location, full values via Details. Distinguish no image from image error. Use one principal item link and avoid nested interactive controls. Treat the sample photos as prototype data.
 
-**Current integration** — [Views/Shared/_ItemCard.cshtml](../../src/TraceBack/Views/Shared/_ItemCard.cshtml) · [Views/Shared/_CatalogRow.cshtml](../../src/TraceBack/Views/Shared/_CatalogRow.cshtml)
+**Current integration** — [Views/Shared/_ItemCard.cshtml](../../src/TraceBack/Views/Shared/_ItemCard.cshtml)
 
 **Page plans** — [Home](../pages/01-home.md) · [Browse reports](../pages/04-browse.md) · [My Dashboard](../pages/07-my-dashboard.md) · [Submit a Claim](../pages/08-submit-a-claim.md)
 

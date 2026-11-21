@@ -69,11 +69,10 @@
     }
     else
     {
-        <div class="catalog-list">
-            @{ var reportIndex = 1; }
+        <div class="tb-report-grid">
             @foreach (var item in Model.Items)
             {
-                <partial name="_CatalogRow" model="item" view-data='new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData) { ["RecordIndex"] = reportIndex++ }' />
+                <partial name="_ItemCard" model="new ReportCard(item, ReportCardVariant.Browse)" />
             }
         </div>
     }
@@ -86,7 +85,8 @@
 }
 
 @section Scripts {
-    <script src="~/js/record-graphics.js" asp-append-version="true" defer></script>
+    <script src="~/js/report-search.js" asp-append-version="true" defer></script>
+    <script src="~/js/report-photo.js" asp-append-version="true" defer></script>
     <script>
         if (window.location.search) {
             document.getElementById('browse-results-title')?.focus();

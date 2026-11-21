@@ -25,16 +25,10 @@
     }
     else
     {
-        <div class="tb-photo-ribbon" aria-label="Your report photos">
-            @foreach (var item in Model.Items.Where(item => !string.IsNullOrWhiteSpace(item.DisplayImageUrl)).Take(3))
-            {
-                <a asp-controller="Items" asp-action="Details" asp-route-id="@item.Id" aria-label="View report: @item.Title"><img src="@item.DisplayImageUrl" alt="" width="110" height="72" loading="lazy" /></a>
-            }
-        </div>
-        <div class="catalog-list">
+        <div class="tb-report-grid">
             @foreach (var item in Model.Items)
             {
-                <partial name="_CatalogRow" model="item" />
+                <partial name="_ItemCard" model="new ReportCard(item, ReportCardVariant.Dashboard)" />
             }
         </div>
     }
@@ -83,4 +77,8 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/report-photo.js" asp-append-version="true" defer></script>
 }
