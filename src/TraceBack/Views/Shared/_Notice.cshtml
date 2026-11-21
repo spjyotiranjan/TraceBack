@@ -1,0 +1,21 @@
+@model UiNotice
+@{
+    var tone = Model.Tone.ToString().ToLowerInvariant();
+    var role = Model.Tone == NoticeTone.Error ? "alert" : "status";
+    var icon = Model.Tone switch
+    {
+        NoticeTone.Error => "triangle-alert",
+        NoticeTone.Success => "circle-check",
+        _ => "info"
+    };
+}
+<div class="tb-feedback tb-feedback--@tone">
+    <div class="tb-feedback__message" role="@role">
+        <partial name="_Icon" model="icon" />
+        <span>@Model.Message</span>
+    </div>
+    @if (Model.Action is not null)
+    {
+        <partial name="_Button" model="Model.Action" />
+    }
+</div>

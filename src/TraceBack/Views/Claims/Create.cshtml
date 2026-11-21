@@ -17,7 +17,7 @@
     <p class="claim-page__privacy">Describe details that confirm this item belongs to you. Your message is private to the claim review and does not appear in public discussion.</p>
 
     <form asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id" method="post" class="form-card" data-claim-form novalidate>
-        <partial name="_ValidationSummary" />
+        <partial name="_ValidationSummary" model='@(new Dictionary<string, string?> { ["Message"] = "message" })' />
 
         <div class="mb-4">
             <label for="message" class="form-label">Ownership details <span class="required">required</span></label>
