@@ -1,9 +1,13 @@
 @model TraceBack.Controllers.ItemEditorPage
-@inject IConfiguration Configuration
+@using System.Globalization
+@using TraceBack.Models
 @{
     var editing = Model.Id is not null;
-    TraceBack.Models.MapLocationRules.TryNormalize(Model.Form.MapLocation, out var validPoint, out _);
+    MapLocationRules.TryNormalize(Model.Form.MapLocation, out var validPoint, out _);
     var hasPoint = validPoint is not null;
+    var pairInvalid = ViewData.ModelState["MapLocation"]?.Errors.Count > 0;
+    var latitudeInvalid = pairInvalid || ViewData.ModelState["MapLocation.Latitude"]?.Errors.Count > 0;
+    var longitudeInvalid = pairInvalid || ViewData.ModelState["MapLocation.Longitude"]?.Errors.Count > 0;
     ViewData["Title"] = editing ? "Edit report" : "Report an item";
 }
 
@@ -97,46 +101,45 @@
 
         <fieldset class="mb-3">
             <legend class="form-label">Choose a map location @if (!editing) { <span class="required">required</span> }</legend>
-            <p class="form-text">This pin is visible to signed-in report viewers. For a private place, choose a nearby public point instead.</p>
-            @if (editing && Model.Form.MapLocation is null)
+            <p class="form-text">Anyone who can view this report can see the pin. For a private place, choose a nearby public point instead.</p>
+            @if (editing && !Model.HasSavedPin)
             {
                 <p class="form-text">Map location not added to this older report. You can save it without a pin.</p>
             }
+            else if (editing)
+            {
+                <p class="form-text">Leave both coordinates blank to keep the saved pin unchanged.</p>
+            }
             <div class="map-selection" role="status" aria-live="polite" aria-atomic="true">
                 <span class="d-block">Selected location</span>
-                <strong data-map-selection>@(hasPoint ? "Address unavailable for this pin." : "No map location selected.")</strong>
-                <span class="d-block map-selection-help" data-map-selection-help>@(hasPoint ? "The pin is saved at the selected point." : "Choose a point on the map or enter latitude and longitude.")</span>
+                <strong data-map-selection>@(hasPoint ? "Map pin selected." : "No map location selected.")</strong>
+                <span class="d-block map-selection-help" data-map-selection-help>@(hasPoint ? "The pin marks the selected point, not a verified address." : "Choose a point on the map or enter latitude and longitude.")</span>
             </div>
-            <details class="map-coordinates" data-map-coordinates @(hasPoint ? "" : "hidden")>
+            <details class="map-coordinates" data-map-coordinates hidden="@(!hasPoint)">
                 <summary>Show coordinates</summary>
-                <span data-map-coordinate-value>@(hasPoint ? validPoint!.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) + ", " + validPoint.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture) : "")</span>
+                <span data-map-coordinate-value>@(hasPoint ? validPoint!.Latitude.ToString("F6", CultureInfo.InvariantCulture) + ", " + validPoint.Longitude.ToString("F6", CultureInfo.InvariantCulture) : "")</span>
             </details>
             <div class="row g-2">
                 <div class="col-sm-6">
                     <label class="form-label" for="latitude">Latitude @if (!editing) { <span class="required">required</span> }</label>
-                    <input id="latitude" name="MapLocation.Latitude" type="text" inputmode="decimal" class="form-control"
-                           value="@Model.Form.MapLocation?.Latitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-help map-location-error" />
+                    @Html.TextBox("MapLocation.Latitude", Model.Form.MapLocation?.Latitude?.ToString(CultureInfo.InvariantCulture) ?? "",
+                        new { id = "latitude", inputmode = "decimal", @class = "form-control", aria_describedby = "map-location-help map-location-error latitude-error", aria_invalid = latitudeInvalid ? "true" : "false", data_map_latitude = "" })
+                    <span id="latitude-error" class="text-danger small">@Html.ValidationMessage("MapLocation.Latitude")</span>
                 </div>
                 <div class="col-sm-6">
                     <label class="form-label" for="longitude">Longitude @if (!editing) { <span class="required">required</span> }</label>
-                    <input id="longitude" name="MapLocation.Longitude" type="text" inputmode="decimal" class="form-control"
-                           value="@Model.Form.MapLocation?.Longitude?.ToString(System.Globalization.CultureInfo.InvariantCulture)" aria-describedby="map-location-help map-location-error" />
+                    @Html.TextBox("MapLocation.Longitude", Model.Form.MapLocation?.Longitude?.ToString(CultureInfo.InvariantCulture) ?? "",
+                        new { id = "longitude", inputmode = "decimal", @class = "form-control", aria_describedby = "map-location-help map-location-error longitude-error", aria_invalid = longitudeInvalid ? "true" : "false", data_map_longitude = "" })
+                    <span id="longitude-error" class="text-danger small">@Html.ValidationMessage("MapLocation.Longitude")</span>
                 </div>
             </div>
-            <p id="map-location-help" class="form-text">Enter both coordinates to place the pin by keyboard, or click or tap the map. Latitude: -90 to 90. Longitude: -180 to 180. Use at most six decimal places.</p>
-            <span id="map-location-error" class="text-danger small d-block" role="alert"><span data-map-error></span>@Html.ValidationMessage("MapLocation")</span>
-            <div class="map-editor" data-report-map="editor" data-point-required="@(!editing || hasPoint ? "true" : "false")"
-                 data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
-                 data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
-                 data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")">
-                <div class="map-canvas" data-map-canvas aria-label="Choose a location on the map"></div>
-                <p class="map-status" data-map-status role="status" aria-live="polite">Loading map…</p>
-                <div class="map-actions">
-                    <button class="btn btn-outline-primary" type="button" data-map-retry hidden>Retry map</button>
-                    <button class="btn btn-outline-primary" type="button" data-map-change>Change pin</button>
-                    <button class="btn btn-outline-primary" type="button" data-map-clear @(editing && hasPoint ? "hidden" : "")>Clear selection</button>
-                </div>
-            </div>
+            <p id="map-location-help" class="form-text">Click or tap the map to place a pin; click another point or drag the pin to move it. Or enter both coordinates. Latitude: -90 to 90. Longitude: -180 to 180. Use at most six decimal places.</p>
+            <span id="map-location-error" class="text-danger small d-block" role="alert">@Html.ValidationMessage("MapLocation")</span>
+            <partial name="_ReportMap" model="(true, (MapLocation?)null)" />
+            @if (!Model.HasSavedPin)
+            {
+                <button class="btn btn-outline-secondary mt-2" type="button" data-map-clear hidden>Clear selection</button>
+            }
         </fieldset>
 
         <div class="mb-3">

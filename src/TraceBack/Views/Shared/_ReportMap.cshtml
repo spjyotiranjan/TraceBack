@@ -1,0 +1,28 @@
+@model (bool Editor, TraceBack.Models.MapLocation? Point)
+@inject IConfiguration Configuration
+@using System.Globalization
+@{
+    var label = Model.Editor ? "Choose a location on the map" : "Saved report map";
+}
+<div class="@(Model.Editor ? "map-editor" : "map-preview")" data-report-map="@(Model.Editor ? "editor" : "preview")"
+     data-latitude="@Model.Point?.Latitude.ToString("F6", CultureInfo.InvariantCulture)"
+     data-longitude="@Model.Point?.Longitude.ToString("F6", CultureInfo.InvariantCulture)"
+     data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
+     data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
+     data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")"
+     data-leaflet-src="@Url.Content("~/lib/leaflet/leaflet.js")">
+    <div class="map-canvas" data-map-canvas role="region" aria-label="@label" tabindex="-1"></div>
+    <p class="map-status" data-map-status role="status">@(Model.Editor ? "The map needs JavaScript. Enter coordinates instead." : "JavaScript is off or the map script did not load. The saved coordinates are still available.")</p>
+    <button class="btn btn-outline-primary map-retry" type="button" data-map-retry hidden>@(Model.Editor ? "Retry map" : "Retry map preview")</button>
+    @if (!Model.Editor && Model.Point is { } point)
+    {
+        <div class="map-actions">
+            <details class="map-coordinates">
+                <summary>Show coordinates</summary>
+                <span>@point.Latitude.ToString("F6", CultureInfo.InvariantCulture), @point.Longitude.ToString("F6", CultureInfo.InvariantCulture)</span>
+            </details>
+            <a class="map-external-link" href="@TraceBack.Models.MapLocationRules.GoogleMapsUrl(point)" target="_blank" rel="noopener noreferrer">View in Google Maps</a>
+        </div>
+        <p class="form-text mb-0">This preview requests tiles from a third-party tile provider. Opening Google Maps shares the coordinates with Google.</p>
+    }
+</div>

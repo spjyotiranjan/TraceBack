@@ -198,7 +198,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
             ContactPreference = item.ContactPreference
         };
 
-        return View("Editor", new ItemEditorPage(form, id, item.DisplayImageUrl));
+        return View("Editor", new ItemEditorPage(form, id, item.DisplayImageUrl, MapLocationRules.SafeStored(item.MapLocation) is not null));
     }
 
     [Authorize]
@@ -211,6 +211,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         if (existingItem is null) return NotFound();
         if (!CanManage(existingItem)) return Forbid();
 
+        var editor = new ItemEditorPage(form, id, existingItem.DisplayImageUrl, MapLocationRules.SafeStored(existingItem.MapLocation) is not null);
         ImageUpload? upload = null;
         if (imageFile is not null)
         {
@@ -220,7 +221,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
 
         if (!ModelState.IsValid)
         {
-            return View("Editor", new ItemEditorPage(form, id, existingItem.DisplayImageUrl));
+            return View("Editor", editor);
         }
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -234,7 +235,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         catch (ArgumentException error)
         {
             ModelState.AddModelError(nameof(form.MapLocation), error.Message);
-            return View("Editor", new ItemEditorPage(form, id, existingItem.DisplayImageUrl));
+            return View("Editor", editor);
         }
         catch (ItemUpdateConflictException)
         {
