@@ -13,6 +13,10 @@
 .map-editor .leaflet-control-attribution,.map-preview .leaflet-control-attribution{font-size:11px;max-width:100%;white-space:normal}
 .map-editor .leaflet-bar a,.map-preview .leaflet-bar a{background:var(--tb-map-control);color:var(--tb-ink);border-color:var(--tb-control-border)}
 .map-editor .leaflet-bar a:hover,.map-preview .leaflet-bar a:hover{background:var(--tb-surface-muted);color:var(--tb-action)}
+/* Keep zoom targets distinct and focus visible against their opaque control surface. */
+.map-editor .leaflet-control-zoom,.map-preview .leaflet-control-zoom{display:flex;flex-direction:column;gap:8px;border:0;box-shadow:none}
+.map-editor .leaflet-control-zoom a,.map-preview .leaflet-control-zoom a{width:44px;height:44px;line-height:42px;border:1px solid var(--tb-control-border);border-radius:4px}
+.map-editor .leaflet-control-zoom a:focus-visible,.map-preview .leaflet-control-zoom a:focus-visible{outline-offset:-4px}
 .map-editor .leaflet-control-attribution,.map-preview .leaflet-control-attribution{background:var(--tb-map-control);color:var(--tb-ink)}
 .map-editor .leaflet-control-attribution a,.map-preview .leaflet-control-attribution a{color:var(--tb-action)}
 @media(max-width:575px){.map-canvas{height:280px}.map-preview .map-canvas{height:180px}.map-actions .btn{width:100%}}

@@ -121,14 +121,18 @@
   async function load(list, parentId, cursor) {
     const status = node('li', 'discussion-loading', parentId ? 'Loading replies…' : 'Loading discussion…');
     list.append(status);
+    let failureMessage = 'Comments could not be loaded. Check your connection and try again.';
     try {
       const pageUrl = new URL(url, location.origin);
       pageUrl.searchParams.set('limit', '20');
       if (parentId) pageUrl.searchParams.set('parentId', parentId);
       if (cursor) pageUrl.searchParams.set('cursor', cursor);
       const response = await fetch(pageUrl, { credentials: 'same-origin' });
-      if (!response.ok) throw new Error(await message(response));
-      if (response.redirected) throw new Error('Session expired. Sign in again.');
+      if (response.status === 401 || response.status === 403 || response.redirected) {
+        failureMessage = 'Session expired. Sign in again.';
+        throw new Error(failureMessage);
+      }
+      if (!response.ok) throw new Error('Comments request failed.');
       const page = await response.json();
       status.remove();
       for (const comment of page.comments) list.append(render(comment));
@@ -142,9 +146,9 @@
         }));
         list.append(more);
       }
-    } catch (failure) {
+    } catch {
       status.className = 'discussion-error';
-      status.textContent = failure.message + ' ';
+      status.textContent = failureMessage + ' ';
       status.append(button('Retry', () => { status.remove(); load(list, parentId, cursor); }));
     } finally { if (!parentId) root.setAttribute('aria-busy', 'false'); }
   }

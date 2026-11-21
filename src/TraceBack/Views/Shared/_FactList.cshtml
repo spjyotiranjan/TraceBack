@@ -3,7 +3,7 @@
 
 <dl class="detail-list tb-fact-list" aria-label="Report facts">
     <div><dt>Category</dt><dd>@Model.Category</dd></div>
-    <div>
+    <div class="tb-location-fact">
         <dt>Location</dt>
         <dd>
             <p class="mb-2">Location description: @Model.Location <span class="d-block form-text">Written by the reporter; this is not a verified address.</span></p>
@@ -21,7 +21,7 @@
                      data-tile-url="@(Configuration["MapTiles:UrlTemplate"] ?? "https://tile.openstreetmap.org/{z}/{x}/{y}.png")"
                      data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
                      data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")">
-                    <div class="map-canvas" data-map-canvas aria-hidden="true"></div>
+                    <div class="map-canvas" data-map-canvas role="region" aria-label="Saved report map"></div>
                     <p class="map-status" data-map-status role="status" aria-live="polite">Loading map preview…</p>
                     <button class="btn btn-outline-primary" type="button" data-map-retry hidden>Retry map preview</button>
                 </div>

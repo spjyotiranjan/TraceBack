@@ -34,6 +34,18 @@ public class HomeController(Func<IItemService> createItems, ILogger<HomeControll
     }
 
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult StatusCodePage(int code)
+    {
+        if (code != StatusCodes.Status404NotFound)
+        {
+            return StatusCode(code);
+        }
+
+        Response.StatusCode = StatusCodes.Status404NotFound;
+        return View("NotFound");
+    }
+
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
         return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });

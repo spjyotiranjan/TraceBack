@@ -1,0 +1,254 @@
+.tb-account {
+  margin-top: clamp(1rem, 5vw, 3rem);
+}
+
+.tb-account h1,
+.tb-recovery h1,
+.tb-prose h1 {
+  margin-bottom: .4rem;
+}
+
+.tb-account__intro {
+  max-width: 40ch;
+  margin-bottom: 1.5rem;
+  color: var(--tb-ink-muted);
+}
+
+.tb-account__form {
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+.tb-account__form .form-label {
+  font-weight: 600;
+}
+
+.tb-account__switch {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--tb-divider);
+}
+
+.tb-workspace-heading {
+  max-width: 68ch;
+}
+
+.tb-workspace-section {
+  margin-top: 2.5rem;
+}
+
+.tb-workspace-section__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.tb-workspace-section__heading h2,
+.tb-workspace-section > h2 {
+  margin: 0;
+}
+
+.tb-workspace-section__heading p {
+  flex-basis: 100%;
+  margin: -.4rem 0 0;
+  color: var(--tb-ink-muted);
+}
+
+.tb-workspace-empty {
+  text-align: left;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+
+.tb-workspace-empty h3 {
+  font-size: 1.2rem;
+}
+
+.tb-workspace-empty p {
+  margin-bottom: .6rem;
+  color: var(--tb-ink-muted);
+}
+
+.tb-claim-list,
+.tb-decision-list,
+.tb-report-list {
+  border-top: 1px solid var(--tb-divider);
+}
+
+.tb-claim-row,
+.tb-report-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem 1.5rem;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--tb-divider);
+  overflow-wrap: anywhere;
+}
+
+.tb-claim-row__main {
+  min-width: 0;
+}
+
+.tb-claim-row h3,
+.tb-report-row h3 {
+  margin: 0 0 .3rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.tb-claim-row p {
+  margin: 0;
+  font-size: .9rem;
+  color: var(--tb-ink-muted);
+}
+
+.tb-claim-row .tb-status,
+.tb-report-row .tb-status {
+  flex-shrink: 0;
+}
+
+.tb-section-count {
+  display: inline-block;
+  margin-left: .4rem;
+  padding: .15rem .5rem;
+  border-radius: 100rem;
+  background: var(--tb-status-pending-surface);
+  color: var(--tb-status-pending);
+  font-size: .85rem;
+  font-weight: 600;
+  vertical-align: middle;
+  letter-spacing: normal;
+}
+
+.tb-decision-row {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--tb-divider);
+  overflow-wrap: anywhere;
+}
+
+.tb-decision-row__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem 1rem;
+}
+
+.tb-decision-row__label,
+.tb-decision-row__date {
+  margin: 0;
+  color: var(--tb-ink-muted);
+  font-size: .9rem;
+}
+
+.tb-decision-row h3 {
+  margin: .15rem 0 0;
+  font-size: 1.25rem;
+}
+
+.tb-decision-row__message {
+  max-width: 70ch;
+  margin: 1rem 0 .75rem;
+  white-space: pre-wrap;
+}
+
+.tb-decision-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: 1.25rem;
+}
+
+.tb-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2rem;
+  margin: 1rem 0 0;
+  padding: 1rem 0;
+  border-block: 1px solid var(--tb-divider);
+}
+
+.tb-totals div {
+  display: flex;
+  align-items: baseline;
+  gap: .65rem;
+}
+
+.tb-totals dt {
+  color: var(--tb-ink-muted);
+  font-weight: 400;
+}
+
+.tb-totals dd {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tb-report-list {
+  margin-top: 1rem;
+}
+
+.tb-recovery {
+  max-width: 680px;
+  margin: clamp(1rem, 5vw, 3rem) 0;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  border: 1px solid var(--tb-divider);
+  border-radius: var(--tb-radius-panel);
+  background: var(--tb-surface);
+}
+
+.tb-recovery p {
+  max-width: 65ch;
+  color: var(--tb-ink-muted);
+}
+
+.tb-recovery__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-top: 1.5rem;
+}
+
+.tb-recovery__reference {
+  margin: 1.5rem 0 0;
+  font-size: .9rem;
+  overflow-wrap: anywhere;
+}
+
+.tb-recovery__reference code {
+  color: var(--tb-ink);
+  overflow-wrap: anywhere;
+}
+
+.tb-prose {
+  max-width: 70ch;
+}
+
+.tb-prose p {
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 575px) {
+  .tb-account__form {
+    padding: 1.25rem;
+  }
+
+  .tb-workspace-section__heading {
+    align-items: flex-start;
+  }
+
+  .tb-workspace-section__heading .btn,
+  .tb-decision-row__actions form,
+  .tb-decision-row__actions .btn,
+  .tb-recovery__actions .btn {
+    width: 100%;
+  }
+
+  .tb-claim-row,
+  .tb-report-row {
+    flex-wrap: wrap;
+  }
+}

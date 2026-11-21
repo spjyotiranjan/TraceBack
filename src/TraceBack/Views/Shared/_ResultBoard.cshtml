@@ -1,0 +1,38 @@
+@model TraceBack.Controllers.BrowsePage
+<div class="tb-result-board" data-result-board>
+    <div class="tb-result-board__intro">
+        <h1>Browse reports</h1>
+        <p class="browse-count">@(Model.LoadFailed ? "Reports are temporarily unavailable." : $"Showing {Model.Items.Count} {(Model.Items.Count == 1 ? "report" : "reports")} on page {Model.Search.Page}")</p>
+        @if (!string.IsNullOrWhiteSpace(Model.Search.Query))
+        {
+            <p class="tb-result-board__query">Search: <strong>@Model.Search.Query</strong></p>
+        }
+        <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
+    </div>
+    <div class="tb-result-board__windows" data-window-count="@Math.Min(Model.Items.Count, 3)">
+        @if (Model.LoadFailed || Model.Items.Count == 0)
+        {
+            <div class="tb-result-board__empty"><partial name="_RecordAperture" /><span>@(Model.LoadFailed ? "The index could not load" : "Room for the next report")</span></div>
+        }
+        else
+        {
+            @for (var index = 0; index < Math.Min(Model.Items.Count, 3); index++)
+            {
+                var item = Model.Items[index];
+                <a class="tb-record-window" asp-controller="Items" asp-action="Details" asp-route-id="@item.Id" data-record-id="@item.Id">
+                    <div class="tb-record-window__media">
+                        @if (!string.IsNullOrWhiteSpace(item.DisplayImageUrl))
+                        {
+                            <img src="@item.DisplayImageUrl" alt="" width="400" height="300" loading="@(index == 0 ? "eager" : "lazy")" />
+                        }
+                        else
+                        {
+                            <partial name="_RecordAperture" /><span>No photo</span>
+                        }
+                    </div>
+                    <span class="tb-record-window__caption"><span class="tb-record-window__index" aria-hidden="true">@((index + 1).ToString("00"))</span><span>@item.Type · @item.Title</span></span>
+                </a>
+            }
+        }
+    </div>
+</div>

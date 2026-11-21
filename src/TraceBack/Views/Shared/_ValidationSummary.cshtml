@@ -1,5 +1,4 @@
-@if (!ViewData.ModelState.IsValid)
-{
+@{
     var fieldIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["DateReported"] = "date",
@@ -17,9 +16,12 @@
         ["Name"] = "Name"
     };
 
-    <div class="alert alert-danger" role="alert" tabindex="-1" id="form-errors">
-        <strong>Please correct the following:</strong>
-        <ul class="mb-0 mt-2">
+}
+<div class="alert alert-danger" role="alert" tabindex="-1" id="form-errors" hidden="@ViewData.ModelState.IsValid">
+    <strong>Please correct the following:</strong>
+    <ul class="mb-0 mt-2">
+        @if (!ViewData.ModelState.IsValid)
+        {
             @foreach (var entry in ViewData.ModelState)
             {
                 foreach (var error in entry.Value.Errors)
@@ -36,6 +38,6 @@
                     </li>
                 }
             }
-        </ul>
-    </div>
-}
+        }
+    </ul>
+</div>

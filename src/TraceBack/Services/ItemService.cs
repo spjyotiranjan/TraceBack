@@ -189,7 +189,8 @@ public sealed class ItemService(MongoStore store, ItemImageService images) : IIt
         item.Category = form.Category.Trim();
         item.Location = form.Location.Trim();
         item.MapLocation = point;
-        item.DateReported = form.DateReported.Date;
+        // A report date is a calendar label, not a local instant to convert.
+        item.DateReported = DateTime.SpecifyKind(form.DateReported.Date, DateTimeKind.Utc);
         item.ContactPreference = form.ContactPreference.Trim();
         item.UpdatedAt = DateTime.UtcNow;
         return item;

@@ -29,6 +29,13 @@ public sealed class LoginForm
 
 public sealed class ItemForm : IValidatableObject
 {
+    public ItemForm() : this(TimeProvider.System) { }
+
+    public ItemForm(TimeProvider clock)
+    {
+        DateReported = clock.GetUtcNow().UtcDateTime.Date;
+    }
+
     [Required]
     [StringLength(120)]
     public string Title { get; set; } = string.Empty;
@@ -53,10 +60,11 @@ public sealed class ItemForm : IValidatableObject
 
     [Required]
     [DataType(DataType.Date)]
-    public DateTime DateReported { get; set; } = DateTime.Today;
+    public DateTime DateReported { get; set; }
 
     [Required]
     [StringLength(120)]
+    [Display(Name = "Contact preference")]
     public string ContactPreference { get; set; } = string.Empty;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
@@ -91,7 +99,8 @@ public sealed class ItemForm : IValidatableObject
             yield return new ValidationResult("Contact preference is required.", [nameof(ContactPreference)]);
         }
 
-        if (DateReported.Date > DateTime.UtcNow.Date)
+        var clock = validationContext.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
+        if (DateReported.Date > clock.GetUtcNow().UtcDateTime.Date)
         {
             yield return new ValidationResult("Report date cannot be in the future.", [nameof(DateReported)]);
         }

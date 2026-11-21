@@ -19,6 +19,8 @@
 html[data-theme='light'] {
   color-scheme: light;
   --tb-canvas: #f6f3ec;
+  --tb-record-ground: #eee9dd;
+  --tb-appearance-track: #fff1d8;
   --tb-surface: #ffffff;
   --tb-surface-muted: #eaefe9;
   --tb-ink: #182923;
@@ -57,6 +59,8 @@ html[data-theme='light'] {
 html[data-theme='dark'] {
   color-scheme: dark;
   --tb-canvas: #0e1718;
+  --tb-record-ground: #203136;
+  --tb-appearance-track: #203b38;
   --tb-surface: #172326;
   --tb-surface-muted: #203136;
   --tb-ink: #f3f4ec;

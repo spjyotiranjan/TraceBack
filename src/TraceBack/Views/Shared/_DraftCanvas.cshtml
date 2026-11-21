@@ -1,0 +1,22 @@
+@model TraceBack.Controllers.ItemEditorPage
+<aside class="tb-draft" aria-label="Report preview and sections" data-draft-canvas>
+    <div class="tb-draft__canvas" aria-hidden="true">
+        <div class="tb-draft__media">
+            <div data-draft-aperture><partial name="_RecordAperture" /><span>Add a photo to see it here</span></div>
+            <img data-draft-image alt="" width="400" height="300" hidden />
+        </div>
+        <div class="tb-draft__caption">
+            <span class="tb-draft__mark">Draft</span>
+            <span data-draft-type>@Model.Form.Type</span>
+            <h2 data-draft-title>@(string.IsNullOrWhiteSpace(Model.Form.Title) ? "Your report preview" : Model.Form.Title)</h2>
+            <p>Location you entered<br /><span data-draft-location>@Model.Form.Location</span></p>
+            <strong>Preview, not published</strong>
+        </div>
+    </div>
+    <nav class="tb-draft__sections" aria-label="Report form sections">
+        <a href="#report-details-heading"><span aria-hidden="true">01</span> What happened</a>
+        <a href="#report-place-heading"><span aria-hidden="true">02</span> Where and when</a>
+        <a href="#report-contact-heading"><span aria-hidden="true">03</span> How to reconnect</a>
+        <a href="#report-image-heading"><span aria-hidden="true">04</span> Image</a>
+    </nav>
+</aside>

@@ -23,6 +23,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
         }));
 
 // 3. Register Data Store and Application Services
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<MongoStore>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ItemService>();
@@ -121,6 +122,9 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+app.UseWhen(context => !context.Request.Path.StartsWithSegments("/api")
+    && context.Request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase), branch =>
+    branch.UseStatusCodePagesWithReExecute("/Home/StatusCodePage", "?code={0}"));
 app.UseRouting();
 
 app.UseAuthentication();
