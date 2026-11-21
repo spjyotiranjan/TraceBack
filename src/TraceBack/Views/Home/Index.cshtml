@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "Find what matters";
     var signedIn = User.Identity?.IsAuthenticated == true;
+    ViewData["RouteArt"] = signedIn ? "home-member" : "home-guest";
 }
 
 <section class="home-hero" aria-labelledby="home-title">
@@ -32,12 +33,8 @@
         }
     </div>
     <div class="home-hero-aside" aria-hidden="true">
-        <partial name="_RecordAperture" />
-        <span class="home-aside-caption">Every report is a useful place to start.</span>
-        @if (signedIn && Model.RecentItems.FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.DisplayImageUrl)) is { } recent)
-        {
-            <img class="home-record-photo" src="@recent.DisplayImageUrl" alt="" width="320" height="160" />
-        }
+        <img class="tb-home-illustration" src="~/art/home-hero.svg" asp-append-version="true"
+             alt="" width="480" height="480" />
     </div>
 </section>
 

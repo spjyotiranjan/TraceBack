@@ -1,3 +1,6 @@
+@{
+    var routeArt = ViewData["RouteArt"] as string;
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,9 +25,18 @@
     <link rel="stylesheet" href="~/css/theme.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/record-graphics.css" asp-append-version="true" />
+    @if (routeArt is not null)
+    {
+        <link rel="stylesheet" href="~/css/route-art.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/route-art-assets.css" asp-append-version="true" />
+    }
     @await RenderSectionAsync("Styles", required: false)
 </head>
-<body>
+<body class="@(routeArt is null ? null : "tb-route-shell")">
+    @if (routeArt is not null)
+    {
+        <div class="tb-route-art" data-route-art="@routeArt" aria-hidden="true"></div>
+    }
     <a class="skip-link" href="#main-content">Skip to content</a>
 
     <header class="site-header">

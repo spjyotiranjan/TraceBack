@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" fill="none">
+<defs><radialGradient id="g0"><stop offset="0" stop-color="#aab6ff" stop-opacity="0.22"/><stop offset="1" stop-color="#aab6ff" stop-opacity="0"/></radialGradient><radialGradient id="g1"><stop offset="0" stop-color="#ff9b8f" stop-opacity="0.14"/><stop offset="1" stop-color="#ff9b8f" stop-opacity="0"/></radialGradient></defs>
+<ellipse cx="265" cy="265" rx="265" ry="265" fill="url(#g0)" transform="translate(80 -80)"/>
+<ellipse cx="280" cy="280" rx="280" ry="280" fill="url(#g1)" transform="translate(-260 390)"/>
+<path d="M0 262C28.37 196.82 75.13 194.26 101.97 108.63C128.8 23 166.37 0 230 0" stroke="#aab6ff" stroke-width="1.7" stroke-linecap="round" opacity="0.1" transform="translate(138 65)"/>
+<path d="M0 262C28.37 196.82 75.13 194.26 101.97 108.63C128.8 23 166.37 0 230 0" stroke="#aab6ff" stroke-width="1.7" stroke-linecap="round" opacity="0.08" transform="translate(167 97)"/>
+<path d="M0 262C28.37 196.82 75.13 194.26 101.97 108.63C128.8 23 166.37 0 230 0" stroke="#aab6ff" stroke-width="1.7" stroke-linecap="round" opacity="0.07" transform="translate(196 129)"/>
+<path d="M0 0C109 0 79.13 111 165.52 111L218 111" stroke="#ff9b8f" stroke-width="1.7" stroke-linecap="round" opacity="0.15" transform="translate(-111 624)"/>
+</svg>

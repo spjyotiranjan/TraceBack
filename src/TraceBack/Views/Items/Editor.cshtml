@@ -5,6 +5,7 @@
     TraceBack.Models.MapLocationRules.TryNormalize(Model.Form.MapLocation, out var validPoint, out _);
     var hasPoint = validPoint is not null;
     ViewData["Title"] = editing ? "Edit report" : "Report an item";
+    ViewData["RouteArt"] = "editor";
 }
 
 <div class="form-page tb-report-editor">
