@@ -28,7 +28,7 @@ using Xunit.Abstractions;
 
 namespace TraceBack.Tests;
 
-public sealed class ReportAuthorizationTests(ITestOutputHelper output)
+public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
 {
     private static readonly byte[] ImageBytes = [1, 2, 3, 4];
 
@@ -202,7 +202,7 @@ public sealed class ReportAuthorizationTests(ITestOutputHelper output)
         Assert.Contains("Find what matters.", markup);
         Assert.Contains("Reports are available after sign-in.", markup);
         Assert.Contains("Create account", markup);
-        Assert.Contains("How TraceBack works", markup);
+        Assert.Contains("A little help. A way back.", markup);
         Assert.DoesNotContain("Recent reports", markup);
         Assert.DoesNotContain("Browse all", markup);
         Assert.DoesNotContain("Browse lost", markup);
@@ -676,6 +676,7 @@ public sealed class ReportAuthorizationTests(ITestOutputHelper output)
         public int ReadCount => Volatile.Read(ref readCount);
         public int CreateCount => Volatile.Read(ref createCount);
         public bool FailSearch { get; set; }
+        public bool EmptySearch { get; set; }
         public ItemSearch? LastSearch { get; private set; }
         public List<Item> AdditionalItems { get; } = [];
         public bool ServeValidImage { get; set; }
@@ -688,7 +689,7 @@ public sealed class ReportAuthorizationTests(ITestOutputHelper output)
             {
                 return Task.FromException<List<Item>>(new InvalidOperationException("Fixture search failure"));
             }
-            return Task.FromResult(new List<Item> { Item }.Concat(AdditionalItems).ToList());
+            return Task.FromResult(EmptySearch ? [] : new List<Item> { Item }.Concat(AdditionalItems).ToList());
         }
 
         public Task<Item?> GetAsync(string id)
