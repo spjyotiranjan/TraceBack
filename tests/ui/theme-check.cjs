@@ -20,6 +20,10 @@ const open = async page => {
   assert.equal((await page.goto(`${base}/Account/Login`)).status(), 200);
 };
 async function verify(page, mode) {
+  // The Appearance menu can close with the pointer over a field behind it.
+  // Measure the resting border, not the hover or focus border.
+  await page.mouse.move(0, 0);
+  await page.locator('.form-control').first().blur();
   const data = await page.evaluate(roles => {
     const root = getComputedStyle(document.documentElement);
     const field = getComputedStyle(document.querySelector('.form-control'));

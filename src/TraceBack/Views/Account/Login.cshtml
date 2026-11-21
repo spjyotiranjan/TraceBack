@@ -1,41 +1,24 @@
 @model LoginForm
 @{
+    Layout = "~/Views/Account/_AuthLayout.cshtml";
     ViewData["Title"] = "Sign in";
-    ViewData["RouteArt"] = "auth";
+    ViewData["AuthDescription"] = "Return to your reports and claims.";
+    ViewData["AuthAction"] = "Login";
+    ViewData["AuthSubmit"] = "Sign in";
 }
 
-<div class="auth-page tb-account">
-    <h1>Sign in</h1>
-    <p class="tb-account__intro">Return to your reports and claims.</p>
-
-    <form asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" class="form-card tb-account__form" novalidate>
-        <partial name="_ValidationSummary" />
-
-        <div class="tb-field mb-3">
-            <label asp-for="Email" class="form-label">Email address</label>
-            <input asp-for="Email" tb-field tb-error="Email-validation" class="form-control" autocomplete="email" />
-            <span id="Email-validation" asp-validation-for="Email" class="tb-field__error"></span>
-        </div>
-
-        <div class="tb-field mb-4">
-            <label asp-for="Password" class="form-label">Password</label>
-            <input asp-for="Password" tb-field tb-error="Password-validation" type="password" class="form-control" autocomplete="current-password" />
-            <span id="Password-validation" asp-validation-for="Password" class="tb-field__error"></span>
-        </div>
-
-        <partial name="_Button" model='@(new UiButton("Sign in", Submit: true, PendingText: "Submitting…", FullWidth: true))' />
-        <partial name="_PendingStatus" />
-    </form>
-
-    <p class="tb-account__switch">
-        New here? <a asp-action="Register">Create an account</a>.
-    </p>
+<div class="tb-field">
+    <label asp-for="Email" class="form-label">Email address</label>
+    <input asp-for="Email" tb-field tb-error="Email-validation" class="form-control" autocomplete="email" />
+    <span id="Email-validation" asp-validation-for="Email" class="tb-field__error"></span>
 </div>
 
-@section Styles {
-    <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
-}
+<div class="tb-field">
+    <label asp-for="Password" class="form-label">Password</label>
+    <input asp-for="Password" tb-field tb-error="Password-validation" type="password" class="form-control" autocomplete="current-password" />
+    <span id="Password-validation" asp-validation-for="Password" class="tb-field__error"></span>
+</div>
 
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
+@section AlternateAccount {
+    New here? <a asp-controller="Account" asp-action="Register">Create an account</a>.
 }

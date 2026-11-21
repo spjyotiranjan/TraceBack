@@ -1,0 +1,49 @@
+.tb-auth {
+  --tb-auth-gutter: max(20px, env(safe-area-inset-left), env(safe-area-inset-right));
+  display: grid;
+  gap: 1rem;
+  inline-size: min(21.875rem, 100%, calc(100vw - 2 * var(--tb-auth-gutter)));
+  margin-inline: auto;
+  margin-block: clamp(.75rem, 3vw, 2.5rem);
+  overflow-wrap: anywhere;
+}
+
+.tb-auth__context, .tb-auth__form {
+  min-inline-size: 0;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-divider);
+  border-radius: var(--tb-radius-panel);
+}
+
+.tb-auth__context h1 { margin-block: 0 .5rem; }
+.tb-auth__context p { margin: 0; color: var(--tb-ink-muted); }
+.tb-auth__form { box-shadow: var(--tb-shadow); }
+.tb-auth__fields { display: grid; gap: 1rem; }
+.tb-auth__submit { margin-block-start: 1.5rem; }
+.tb-auth__alternate {
+  margin: 1rem 0 0;
+  padding-block-start: .5rem;
+  border-block-start: 1px solid var(--tb-divider);
+  color: var(--tb-ink-muted);
+}
+.tb-auth__alternate a {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+  max-inline-size: 100%;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Match the shared navigation breakpoint. Keep vertical overflow in the document. */
+@media (min-width: 56rem) {
+  .tb-auth {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 27.5rem);
+    gap: clamp(2rem, 6vw, 6rem);
+    align-items: start;
+    inline-size: min(100%, 61rem);
+    margin-block: clamp(2rem, 8vh, 6rem);
+  }
+  .tb-auth__context { margin-block-start: clamp(1rem, 4vw, 3rem); }
+}
