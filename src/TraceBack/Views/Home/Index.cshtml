@@ -1,39 +1,43 @@
+@using Microsoft.AspNetCore.Http.Extensions
 @model TraceBack.Controllers.HomePage
 @{
     ViewData["Title"] = "Find what matters";
     var signedIn = User.Identity?.IsAuthenticated == true;
     ViewData["RouteArt"] = signedIn ? "home-member" : "home-guest";
+    var browseUrl = Url.Action("Index", "Items");
+    var createUrl = Url.RouteUrl("default", new { controller = "Items", action = "Create" });
 }
 
 <section class="home-hero" aria-labelledby="home-title">
+    <h1 id="home-title">Find what matters.</h1>
+    <div class="home-hero-aside" aria-hidden="true">
+        <img class="tb-home-illustration" src="~/art/home-hero.svg" asp-append-version="true"
+             alt="" width="480" height="480" />
+    </div>
     <div class="home-hero-copy">
-        <h1 id="home-title">Find what matters.</h1>
-        <p class="home-hero-intro">A clear place for campus belongings that have been lost or found. Share a report, search what others have posted, and help an item find its way back.</p>
         @if (signedIn)
         {
+            <p class="home-hero-intro">Search reports shared by your campus, or tell others what you lost or found.</p>
             <form asp-controller="Items" asp-action="Index" method="get" class="home-search" role="search">
                 <partial name="_ReportSearchField" model='new ReportSearchField("home-query", "Search reports")' />
                 <div class="home-search-fields">
-                    <button class="btn btn-primary" type="submit">Search reports</button>
+                    <partial name="_Button" model='new UiButton("Search reports", Submit: true)' />
                 </div>
             </form>
             <div class="home-hero-actions">
-                <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index">Browse reports</a>
-                <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
+                <partial name="_Button" model='new UiButton("Browse reports", ButtonTone.Secondary, Href: browseUrl)' />
+                <partial name="_Button" model='new UiButton("Report an item", Href: createUrl)' />
             </div>
         }
         else
         {
-            <p class="home-access-note">Reports are available after sign-in.</p>
+            <p class="home-hero-intro">A clear place for campus belongings that have been lost or found. Share a report, search what others have posted, and help an item find its way back.</p>
             <div class="home-hero-actions">
-                <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Sign in</a>
-                <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Register">Create account</a>
+                <partial name="_Button" model='new UiButton("Sign in", Href: Url.Action("Login", "Account"))' />
+                <partial name="_Button" model='new UiButton("Create account", ButtonTone.Secondary, Href: Url.Action("Register", "Account"))' />
             </div>
+            <p class="home-access-note">Reports are available after sign-in.</p>
         }
-    </div>
-    <div class="home-hero-aside" aria-hidden="true">
-        <img class="tb-home-illustration" src="~/art/home-hero.svg" asp-append-version="true"
-             alt="" width="480" height="480" />
     </div>
 </section>
 
@@ -49,19 +53,15 @@
         </div>
         @if (Model.RecentLoadFailed)
         {
-            <div class="tb-empty-state" role="alert">
-                <h3>Recent reports could not load</h3>
-                <p>Try this page again. Your report and account have not changed.</p>
-                <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Retry</a>
-            </div>
+            <partial name="_RecoveryContent" model='new RecoveryContent(
+                "Recent reports could not load", "Try this page again, or open Browse to search the index.", RecoveryArt.Service,
+                new UiButton("Retry", Href: Context.Request.GetEncodedPathAndQuery()))' />
         }
         else if (Model.RecentItems.Count == 0)
         {
-            <div class="tb-empty-state">
-                <h3>No active reports yet</h3>
-                <p>Share an item you lost or found to get the index started.</p>
-                <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
-            </div>
+            <partial name="_RecoveryContent" model='new RecoveryContent(
+                "No active reports yet", "Share an item you lost or found to get the index started.", RecoveryArt.Reports,
+                new UiButton("Report an item", Href: createUrl))' />
         }
         else
         {
@@ -76,16 +76,6 @@
 }
 
 <partial name="_ProcessPath" />
-
-<nav class="home-route-art" aria-label="Find your next step">
-    <svg viewBox="0 0 800 140" fill="none" aria-hidden="true" focusable="false">
-        <path d="M32 70h200l80-40h176l80 80h200M232 70l80 40h176l80-80h200" stroke="currentColor" stroke-width="3" />
-        <circle cx="32" cy="70" r="10" fill="currentColor" /><circle cx="400" cy="30" r="10" fill="currentColor" /><circle cx="768" cy="110" r="10" fill="currentColor" />
-    </svg>
-    <a asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report what happened</a>
-    <a asp-controller="Items" asp-action="Index">Browse the index</a>
-    <a asp-controller="Dashboard" asp-action="Index">Follow your reports and claims</a>
-</nav>
 
 @section Styles {
     <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />
