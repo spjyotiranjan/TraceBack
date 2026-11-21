@@ -1,27 +1,4 @@
 (() => {
-  const mapRoot = document.querySelector('[data-report-map]');
-  if (!mapRoot) return;
-
-  const canvas = mapRoot.querySelector('[data-map-canvas]');
-  const status = mapRoot.querySelector('[data-map-status]');
-  const retry = mapRoot.querySelector('[data-map-retry]');
-  const isEditor = mapRoot.dataset.reportMap === 'editor';
-  const latitudeInput = isEditor ? document.getElementById('latitude') : null;
-  const longitudeInput = isEditor ? document.getElementById('longitude') : null;
-  const selection = isEditor ? document.querySelector('[data-map-selection]') : null;
-  const selectionHelp = isEditor ? document.querySelector('[data-map-selection-help]') : null;
-  const coordinates = isEditor ? document.querySelector('[data-map-coordinates]') : null;
-  const coordinateValue = isEditor ? document.querySelector('[data-map-coordinate-value]') : null;
-  const error = isEditor ? document.querySelector('[data-map-error]') : null;
-  const clear = isEditor ? mapRoot.querySelector('[data-map-clear]') : null;
-  const maxZoom = Math.min(19, Math.max(2, Number.parseInt(mapRoot.dataset.maxZoom, 10) || 18));
-  const tileUrl = mapRoot.dataset.tileUrl;
-  const attribution = safeAttributionHtml(mapRoot.dataset.tileAttribution || '');
-  let map;
-  let marker;
-  let tileLayer;
-  let selectedPoint;
-
   function safeAttributionHtml(value) {
     const source = document.createElement('template');
     source.innerHTML = value;
@@ -55,177 +32,217 @@
     return safe.innerHTML;
   }
 
-  function parsedCoordinate(value, min, max) {
-    const text = value.trim();
-    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text)) return null;
-    if ((text.split('.')[1] || '').length > 6) return null;
+  const tileTimeoutMs = 12000;
+  let leafletLoad;
+
+  function reloadLeaflet(src) {
+    // The originally deferred local asset could fail independently of the tiles.
+    leafletLoad ??= new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      const timer = setTimeout(() => {
+        script.remove();
+        reject(new Error('Leaflet load timed out'));
+      }, tileTimeoutMs);
+      script.onload = () => { clearTimeout(timer); resolve(); };
+      script.onerror = () => {
+        clearTimeout(timer);
+        script.remove();
+        reject(new Error('Leaflet load failed'));
+      };
+      document.head.append(script);
+    }).finally(() => { leafletLoad = undefined; });
+    return leafletLoad;
+  }
+
+  function coordinate(value, limit) {
+    const text = value?.trim() || '';
+    if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(text)) return null;
     const number = Number(text);
-    return Number.isFinite(number) && number >= min && number <= max ? number : null;
+    const rounded = Number(number.toFixed(6));
+    return Math.abs(number) <= limit && Math.abs(number - rounded) <= 1e-9 ? rounded : null;
   }
 
-  function readFields() {
-    const latitudeText = latitudeInput.value.trim();
-    const longitudeText = longitudeInput.value.trim();
-    if (!latitudeText && !longitudeText) return { empty: true };
-    const latitude = parsedCoordinate(latitudeText, -90, 90);
-    const longitude = parsedCoordinate(longitudeText, -180, 180);
-    return latitude === null || longitude === null
-      ? { invalid: true, field: latitude === null ? latitudeInput : longitudeInput }
-      : { point: [latitude, longitude] };
+  function readPoint(latitude, longitude) {
+    const lat = coordinate(latitude, 90);
+    const lng = coordinate(longitude, 180);
+    return lat === null || lng === null ? null : [lat, lng];
   }
 
-  function showStatus(message, unavailable = false) {
-    status.textContent = message;
-    retry.hidden = !unavailable;
-    mapRoot.classList.toggle('map-unavailable', unavailable);
-  }
+  function mount(root) {
+    const editor = root.dataset.reportMap === 'editor';
+    const canvas = root.querySelector('[data-map-canvas]');
+    const status = root.querySelector('[data-map-status]');
+    const retry = root.querySelector('[data-map-retry]');
+    const fields = editor ? root.closest('fieldset') : null;
+    const lat = fields?.querySelector('[data-map-latitude]');
+    const lng = fields?.querySelector('[data-map-longitude]');
+    const clear = fields?.querySelector('[data-map-clear]');
+    const selection = fields?.querySelector('[data-map-selection]');
+    const selectionHelp = fields?.querySelector('[data-map-selection-help]');
+    const disclosure = fields?.querySelector('[data-map-coordinates]');
+    const coordinateValue = fields?.querySelector('[data-map-coordinate-value]');
+    const { tileUrl, tileAttribution, leafletSrc } = root.dataset;
+    const maxZoom = Math.min(19, Math.max(2, Number.parseInt(root.dataset.maxZoom, 10) || 18));
+    const attribution = safeAttributionHtml(tileAttribution || '');
+    const loading = editor ? 'Loading map…' : 'Loading map preview…';
+    const unavailable = editor
+      ? 'Map tiles unavailable. You can still enter coordinates manually.'
+      : 'Map preview unavailable. Saved coordinates and the Google Maps link are still available.';
+    let point = editor ? readPoint(lat.value, lng.value) : readPoint(root.dataset.latitude, root.dataset.longitude);
+    let map;
+    let marker;
+    let tiles;
+    let tileTimer;
+    let state;
 
-  function showSelection(point) {
-    selection.textContent = point ? 'Address unavailable for this pin.' : 'No map location selected.';
-    selectionHelp.textContent = point
-      ? 'The pin is saved at the selected point.'
-      : 'Choose a point on the map or enter latitude and longitude.';
-    coordinates.hidden = !point;
-    coordinateValue.textContent = point ? `${point[0].toFixed(6)}, ${point[1].toFixed(6)}` : '';
-    if (!point) coordinates.open = false;
-  }
-
-  function showError(message, field) {
-    error.textContent = message;
-    for (const input of [latitudeInput, longitudeInput]) {
-      if (message) input.setAttribute('aria-invalid', 'true');
-      else input.removeAttribute('aria-invalid');
-    }
-    if (field) field.focus();
-  }
-
-  function setPoint(point, updateFields = false) {
-    selectedPoint = point;
-    if (isEditor) {
-      if (updateFields) {
-        latitudeInput.value = point[0].toFixed(6);
-        longitudeInput.value = point[1].toFixed(6);
+    function syncDragging() {
+      if (editor && marker?.dragging) {
+        if (state === 'ready') marker.dragging.enable();
+        else marker.dragging.disable();
       }
-      showSelection(point);
-      showError('');
     }
-    if (!map) return;
-    if (!marker) {
-      marker = L.marker(point, { draggable: isEditor, keyboard: false }).addTo(map);
-      if (isEditor) {
-        marker.on('dragend', () => {
-          const position = marker.getLatLng().wrap();
-          setPoint([Number(position.lat.toFixed(6)), Number(position.lng.toFixed(6))], true);
+
+    function showState(next, message = '') {
+      state = next;
+      root.dataset.mapState = next;
+      canvas.setAttribute('aria-busy', String(next === 'loading'));
+      status.textContent = message;
+      retry.hidden = next !== 'unavailable';
+      syncDragging();
+    }
+
+    function syncMarker(recenter) {
+      if (!map) return;
+      if (!point) {
+        marker?.remove();
+        marker = undefined;
+        return;
+      }
+      if (marker) marker.setLatLng(point);
+      else {
+        marker = window.L.marker(point, {
+          keyboard: false,
+          draggable: editor,
+          alt: editor ? 'Selected report location' : 'Saved report location',
+        }).addTo(map);
+        if (editor) marker.on('dragend', () => {
+          if (!point) return;
+          if (state === 'ready') selectOnMap(marker.getLatLng());
+          else marker.setLatLng(point);
         });
       }
-    } else {
-      marker.setLatLng(point);
+      syncDragging();
+      if (recenter) map.setView(point, Math.min(maxZoom, Math.max(map.getZoom(), 13)), { animate: false });
     }
-    if (isEditor) map.setView(point, Math.max(map.getZoom(), 13));
-  }
 
-  function addTiles() {
-    if (tileLayer) map.removeLayer(tileLayer);
-    showStatus(isEditor ? 'Loading map…' : 'Loading map preview…');
-    tileLayer = L.tileLayer(tileUrl, { attribution, maxZoom });
-    let tileFailed = false;
-    tileLayer.once('tileload', () => { if (!tileFailed) showStatus(''); });
-    tileLayer.on('tileerror', () => {
-      tileFailed = true;
-      showStatus(isEditor
-        ? 'Map tiles unavailable. Enter coordinates to keep choosing a location.'
-        : 'Map preview unavailable. The location and Google Maps link remain available.', true);
-    });
-    tileLayer.addTo(map);
-  }
+    function syncSelection() {
+      const hasText = !!(lat.value.trim() || lng.value.trim());
+      selection.textContent = point ? 'Map pin selected.' : 'No map location selected.';
+      selectionHelp.textContent = hasText && !readPoint(lat.value, lng.value)
+        ? (point ? 'Correct both coordinates to move the displayed pin.' : 'Enter both valid coordinates to place the pin.')
+        : point ? 'The pin marks the selected point, not a verified address.'
+          : 'Choose a point on the map or enter latitude and longitude.';
+      disclosure.hidden = !point;
+      if (!point) disclosure.open = false;
+      coordinateValue.textContent = point ? point.map(value => value.toFixed(6)).join(', ') : '';
+      if (clear) clear.hidden = !hasText;
+    }
 
-  function initializeMap() {
-    if (!window.L) {
-      showStatus(isEditor
-        ? 'Map unavailable. Enter latitude and longitude to choose a location.'
-        : 'Map preview unavailable. The location and Google Maps link remain available.', true);
-      return;
+    function selectOnMap(position) {
+      const wrapped = position.wrap();
+      lat.value = wrapped.lat.toFixed(6);
+      lng.value = wrapped.lng.toFixed(6);
+      syncFields();
     }
-    if (map) {
-      addTiles();
-      return;
-    }
-    const center = selectedPoint || [20, 0];
-    map = L.map(canvas, {
-      center,
-      zoom: selectedPoint ? 15 : 2,
-      maxZoom,
-      dragging: isEditor,
-      scrollWheelZoom: isEditor,
-      touchZoom: isEditor,
-      doubleClickZoom: isEditor,
-      boxZoom: isEditor,
-      keyboard: isEditor,
-      zoomControl: isEditor
-    });
-    if (isEditor) {
-      map.on('click', event => {
-        const position = event.latlng.wrap();
-        setPoint([Number(position.lat.toFixed(6)), Number(position.lng.toFixed(6))], true);
-      });
-    }
-    addTiles();
-    if (selectedPoint) setPoint(selectedPoint);
-  }
 
-  retry.addEventListener('click', initializeMap);
-
-  if (isEditor) {
-    const initial = readFields();
-    if (initial.point) setPoint(initial.point);
-    for (const input of [latitudeInput, longitudeInput]) {
-      input.addEventListener('input', () => {
-        const value = readFields();
-        if (value.point) setPoint(value.point);
-        else selectionHelp.textContent = selectedPoint
-          ? 'Coordinates need correction before the pin can move.'
-          : 'Enter both valid coordinates to update the pin.';
-        showError('');
-      });
-    }
-    clear?.addEventListener('click', () => {
-      latitudeInput.value = '';
-      longitudeInput.value = '';
-      selectedPoint = null;
-      if (marker) {
-        map.removeLayer(marker);
-        marker = null;
+    function syncFields() {
+      const next = readPoint(lat.value, lng.value);
+      if (next || (!lat.value.trim() && !lng.value.trim())) {
+        point = next;
+        syncMarker(true);
       }
-      showSelection(null);
-      showError('');
-      latitudeInput.focus();
-    });
-    mapRoot.querySelector('[data-map-change]').addEventListener('click', () => {
-      if (map) canvas.focus();
-      else latitudeInput.focus();
-      showStatus(map
-        ? 'Click or tap the map to move the pin, or enter coordinates above.'
-        : 'Enter latitude and longitude to move the pin.');
-    });
-    const form = mapRoot.closest('form');
-    form.addEventListener('submit', event => {
-      const value = readFields();
-      if (value.point || (value.empty && mapRoot.dataset.pointRequired !== 'true')) return;
-      event.preventDefault();
-      showError(value.empty
-        ? 'Choose a location on the map or enter latitude and longitude.'
-        : 'Enter valid latitude and longitude with at most six decimal places.',
-      value.field || latitudeInput);
-    }, { capture: true });
-    if (document.querySelector('#map-location-error .field-validation-error')) {
-      latitudeInput.setAttribute('aria-invalid', 'true');
-      longitudeInput.setAttribute('aria-invalid', 'true');
+      syncSelection();
     }
-  } else {
-    const latitude = parsedCoordinate(mapRoot.dataset.latitude, -90, 90);
-    const longitude = parsedCoordinate(mapRoot.dataset.longitude, -180, 180);
-    if (latitude !== null && longitude !== null) selectedPoint = [latitude, longitude];
+
+    function addTiles() {
+      clearTimeout(tileTimer);
+      // Leaflet detaches map event handlers during the layer's remove event.
+      tiles?.remove().off();
+      showState('loading', loading);
+      const layer = window.L.tileLayer(tileUrl, { attribution, maxZoom });
+      tiles = layer;
+      let failed = false;
+      const fail = () => {
+        if (layer !== tiles || failed) return;
+        failed = true;
+        clearTimeout(tileTimer);
+        showState('unavailable', unavailable);
+      };
+      function beginLoading() {
+        if (layer !== tiles || failed) return;
+        if (state !== 'loading') showState('loading', loading);
+        clearTimeout(tileTimer);
+        tileTimer = setTimeout(fail, tileTimeoutMs);
+      }
+      layer.on('loading', beginLoading);
+      layer.on('tileerror', fail);
+      layer.on('load', () => {
+        if (layer !== tiles || failed) return;
+        clearTimeout(tileTimer);
+        showState('ready');
+      });
+      beginLoading();
+      layer.addTo(map);
+    }
+
+    async function start(retrying = false) {
+      if (retrying && document.activeElement === retry) canvas.focus({ preventScroll: true });
+      showState('loading', loading);
+      try {
+        if (!window.L && retrying) await reloadLeaflet(leafletSrc);
+        if (!window.L) throw new Error('Leaflet unavailable');
+        if (!map) {
+          map = window.L.map(canvas, {
+            center: point || [20, 0],
+            zoom: point ? Math.min(maxZoom, 15) : 2,
+            minZoom: 2,
+            maxZoom,
+            dragging: editor,
+            scrollWheelZoom: false,
+            touchZoom: editor,
+            doubleClickZoom: false,
+            boxZoom: editor,
+            keyboard: editor,
+            zoomControl: editor,
+            worldCopyJump: editor,
+          });
+          if (editor) map.on('click', event => {
+            if (state === 'ready') selectOnMap(event.latlng);
+          });
+          syncMarker(false);
+        }
+        addTiles();
+      } catch {
+        clearTimeout(tileTimer);
+        showState('unavailable', editor
+          ? 'Map unavailable. You can still enter coordinates manually.' : unavailable);
+      }
+    }
+
+    if (editor) {
+      // These inputs preview a point, but MVC binding and MapLocationRules validate the post.
+      for (const input of [lat, lng]) input.addEventListener('input', syncFields);
+      clear?.addEventListener('click', () => {
+        lat.value = lng.value = '';
+        syncFields();
+        lat.focus();
+      });
+      syncSelection();
+    }
+    retry.addEventListener('click', () => start(true));
+    start();
   }
 
-  initializeMap();
+  document.querySelectorAll('[data-report-map]').forEach(mount);
 })();
