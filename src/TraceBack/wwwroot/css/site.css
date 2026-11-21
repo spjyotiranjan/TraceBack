@@ -18,24 +18,7 @@ h3 { font: var(--tb-type-heading-3); }
 .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
 .section-heading h2 { margin: 0; }
 
-.site-header { background: var(--tb-surface); border-bottom: 1px solid var(--tb-divider); }
-.site-header .navbar { min-height: 76px; gap: .5rem; }
-.site-header .navbar-collapse { flex-wrap: wrap; }
-.navbar-brand { font-size: 1.35rem; color: var(--tb-ink); margin-right: .25rem; }
-.navbar-brand:hover, .navbar-brand:focus, .nav-link:hover, .nav-link:focus { color: var(--tb-action); }
-.navbar-brand { display: inline-flex; align-items: center; gap: .5rem; }
-.brand-symbol { flex: none; }
 .tb-icon { display: inline-block; flex: none; vertical-align: middle; }
-.nav-link { color: var(--tb-ink); font-weight: 600; min-height: 44px; display: flex; align-items: center; }
-.navbar-toggler { min-width: 44px; min-height: 44px; padding: .5rem; border: 1px solid var(--tb-control-border); color: var(--tb-ink); }
-@media (scripting: none) {
-  .site-header .navbar-toggler { display: none; }
-  .site-header .navbar-collapse { display: block; }
-}
-.skip-link { position: absolute; top: -100px; left: 1rem; z-index: 1000; background: var(--tb-surface); padding: .6rem 1rem; }
-.skip-link:focus { top: .5rem; }
-.site-footer { background: var(--tb-surface-muted); border-top: 1px solid var(--tb-divider); padding: 1.5rem 0; color: var(--tb-ink-muted); }
-.site-footer a { font-weight: 600; }
 
 .btn, .form-control, .form-select { min-height: 44px; border-radius: var(--tb-radius-control); }
 .btn { font: var(--tb-type-button); padding: .55rem 1rem; transition: background-color var(--tb-duration-feedback) var(--tb-ease-out), color var(--tb-duration-feedback) var(--tb-ease-out), border-color var(--tb-duration-feedback) var(--tb-ease-out); }
@@ -148,7 +131,7 @@ h3 { font: var(--tb-type-heading-3); }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
 
-.tb-appearance__options { display: flex; flex-wrap: wrap; gap: .375rem; }
+.tb-appearance__options { display: grid; gap: .375rem; }
 .tb-appearance__options label {
   display: inline-flex; align-items: center; gap: .375rem; min-height: 44px;
   padding: .25rem .5rem; border: 1px solid var(--tb-control-border);

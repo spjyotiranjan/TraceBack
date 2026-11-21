@@ -70,21 +70,24 @@ async function verify(page, mode) {
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
       await open(page);
-      if (width === 390) await page.getByRole('button', { name: /menu/i }).click();
+      const appearance = page.locator('summary[aria-label="Appearance"]');
+      await appearance.click();
       const system = page.getByRole('radio', { name: 'System' });
       assert(await system.isChecked());
-      await verify(page, 'light');
       assert.equal(await page.getByRole('link', {name: 'TraceBack Home'}).count(), 1);
       assert.equal(await page.locator('svg.tb-icon:not([aria-hidden=true])').count(), 0);
       await page.waitForFunction(() => [...document.querySelectorAll('.brand-symbol use, .tb-appearance use')]
         .every(icon => icon.getBBox().width > 0));
       await page.evaluate(() => document.fonts.ready);
       assert(await page.evaluate(() => [...document.fonts].some(font => font.family === 'Inter' && font.status === 'loaded')));
+      await verify(page, 'light');
+      await appearance.click();
       await system.focus();
       await page.keyboard.press('ArrowRight');
       assert(await page.getByRole('radio', { name: 'Light' }).isChecked());
       await page.emulateMedia({ colorScheme: 'dark' });
       await verify(page, 'light');
+      await appearance.click();
       await page.getByRole('radio', { name: 'Light' }).focus();
       await page.keyboard.press('ArrowRight');
       assert(await page.getByRole('radio', { name: 'Dark' }).isChecked());
@@ -93,7 +96,7 @@ async function verify(page, mode) {
       await page.emulateMedia({ colorScheme: 'light' });
       await page.reload();
       await verify(page, 'dark');
-      if (width === 390) await page.getByRole('button', { name: /menu/i }).click();
+      await appearance.click();
       await page.locator('label[for=appearance-system]').click();
       await verify(page, 'light');
       await page.emulateMedia({ colorScheme: 'dark' });
@@ -107,7 +110,7 @@ async function verify(page, mode) {
       await blocked.addInitScript(() => Object.defineProperty(window, 'localStorage', { get() { throw new Error('Storage blocked'); } }));
       await open(blocked);
       await verify(blocked, 'dark');
-      if (width === 390) await blocked.getByRole('button', { name: /menu/i }).click();
+      await blocked.locator('summary[aria-label="Appearance"]').click();
       await blocked.locator('label[for=appearance-light]').click();
       await verify(blocked, 'light');
       if (process.env.THEME_SCREENSHOTS) await blocked.screenshot({path: `${process.env.THEME_SCREENSHOTS}/theme-light-${width}.png`});
