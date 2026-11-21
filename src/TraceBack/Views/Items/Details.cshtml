@@ -39,7 +39,7 @@
         <div>
             <header class="detail-report__heading">
                 <div class="d-flex gap-2 flex-wrap">
-                    <span class="badge badge-type">@Model.Item.Type</span>
+                    <partial name="_StatusBadge" model="Model.Item.Type" />
                     <partial name="_StatusBadge" model="Model.Item.Status" />
                 </div>
                 <h1>@Model.Item.Title</h1>
