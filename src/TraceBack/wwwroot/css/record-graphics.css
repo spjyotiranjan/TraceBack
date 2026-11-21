@@ -29,7 +29,7 @@ html { scrollbar-color: var(--tb-control-border) var(--tb-canvas); }
 .tb-report-editor > p { max-width: 70ch; }
 .tb-report-composition { display: grid; grid-template-columns: minmax(0, 720px) minmax(240px, 300px); gap: clamp(1.5rem, 4vw, 3rem); align-items: start; margin-top: 2rem; }
 .tb-report-composition .report-form { grid-column: 1; grid-row: 1; min-width: 0; margin: 0; }
-.tb-draft { grid-column: 2; grid-row: 1; position: sticky; top: 1.5rem; min-width: 0; }
+.tb-draft { grid-column: 2; grid-row: 1; position: sticky; top: var(--tb-header-clearance, 1.5rem); min-width: 0; }
 .tb-draft__canvas { background: var(--tb-record-ground); border-bottom: 3px solid var(--tb-action); }
 .tb-draft__media { height: 180px; background: var(--tb-media-ground); clip-path: polygon(0 0, calc(100% - 24px) 0, 100% 24px, 100% 100%, 0 100%); }
 .tb-draft__media > div { height: 100%; position: relative; }

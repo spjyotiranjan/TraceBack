@@ -1,0 +1,22 @@
+@model bool
+@{
+    var controller = ViewContext.RouteData.Values["controller"] as string;
+    var action = ViewContext.RouteData.Values["action"] as string;
+    var browse = controller == "Items" && action == "Index" ? "page"
+        : (controller == "Items" && action == "Details") || controller == "Claims" ? "location" : null;
+    var report = controller == "Items" && action == "Create" ? "page" : null;
+    var dashboard = controller == "Dashboard" ? "page"
+        : controller == "Items" && action == "Edit" ? "location" : null;
+}
+<a class="tb-shell-link" aria-current="@browse" asp-controller="Items" asp-action="Index">
+    @if (Model) { <partial name="_Icon" model='"search"' /> }
+    <span class="@(Model ? "visually-hidden" : null)">Browse</span>
+</a>
+<a class="@(Model ? "tb-shell-link" : "tb-shell-link btn btn-primary")" aria-current="@report" asp-route="default" asp-route-controller="Items" asp-route-action="Create">
+    @if (Model) { <partial name="_Icon" model='"plus"' /> }
+    <span class="@(Model ? "visually-hidden" : null)">Report an item</span>
+</a>
+<a class="tb-shell-link" aria-current="@dashboard" asp-controller="Dashboard" asp-action="Index">
+    @if (Model) { <partial name="_Icon" model='"user"' /> }
+    <span class="@(Model ? "visually-hidden" : null)">My dashboard</span>
+</a>
