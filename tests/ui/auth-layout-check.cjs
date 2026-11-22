@@ -56,7 +56,7 @@ async function checkForm(page, route, width, theme) {
   assert.equal(await password.getAttribute('autocomplete'), login ? 'current-password' : 'new-password');
   assert.equal(await password.getAttribute('type'), 'password');
   assert.equal(await password.getAttribute('value'), null);
-  if (!login) assert.equal(await form.getByLabel('Full name').getAttribute('autocomplete'), 'name');
+  if (!login) assert.equal(await form.getByLabel('Full name (2–80 characters)', { exact: true }).getAttribute('autocomplete'), 'name');
   await email.focus();
   await page.keyboard.press('Tab');
   assert(await password.evaluate(e => e === document.activeElement && getComputedStyle(e).outlineStyle === 'solid'));
@@ -91,6 +91,34 @@ async function checkForm(page, route, width, theme) {
     await alternate.blur();
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(process.env.AUTH_SCREENSHOTS, 'Register-validation-dark-390.png'), fullPage: true });
+  }
+  if (!login && [1440, 390].includes(width)) {
+    await form.getByLabel('Full name').fill('Alex Morgan');
+    await email.fill('alex@example.test');
+    await password.fill('browser-fixture');
+    let posts = 0;
+    // Separate the browser pending guard from the real Mongo-backed MVC outcome tests.
+    await page.route(target, async route => {
+      if (route.request().method() !== 'POST') return route.continue();
+      posts++;
+      await route.fulfill({ status: 303, headers: { Location: target } });
+    });
+    const [pending, sent] = await Promise.all([
+      submit.evaluate(button => {
+        button.click();
+        const status = button.form.querySelector('[data-tb-pending-status]');
+        const repeatCanceled = !button.form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: button }));
+        button.form.requestSubmit(button);
+        return { role: status.getAttribute('role'), text: status.textContent,
+          unavailable: button.getAttribute('aria-disabled'), repeatCanceled };
+      }),
+      page.waitForRequest(r => r.isNavigationRequest() && r.method() === 'POST'),
+      page.waitForNavigation({ waitUntil: 'domcontentloaded' })
+    ]);
+    assert.deepEqual(pending, { role: 'status', text: 'Creating account…', unavailable: 'true', repeatCanceled: true });
+    assert.equal(posts, 1);
+    assert(new URLSearchParams(sent.postData()).get('__RequestVerificationToken'));
+    assert.equal(await submit.getAttribute('aria-disabled'), null);
   }
   await alternate.click();
   assert.equal(new URL(page.url()).pathname, `/Account/${login ? 'Register' : 'Login'}`);
