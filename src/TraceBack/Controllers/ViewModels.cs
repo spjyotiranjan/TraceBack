@@ -33,7 +33,10 @@ public sealed record ItemEditorPage(
     ItemForm Form,
     string? Id,
     string? CurrentImageUrl = null,
-    bool HasSavedPin = false);
+    bool HasSavedPin = false,
+    string? LockedType = null,
+    bool ReselectImage = false,
+    bool PendingImageRemoval = false);
 
 public sealed record ClaimPage(
     Item Item,

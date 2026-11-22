@@ -1,0 +1,47 @@
+@model TraceBack.Controllers.ItemEditorPage
+@{
+    var hasImage = !string.IsNullOrEmpty(Model.CurrentImageUrl);
+    var imageInvalid = ViewData.ModelState["ImageFile"]?.Errors.Count > 0;
+}
+<section class="form-section image-editor" data-image-editor data-current-image-url="@Model.CurrentImageUrl" aria-labelledby="report-image-heading">
+    <h2 id="report-image-heading" class="tb-report-heading" tabindex="-1">Image</h2>
+    <label class="form-label" for="image">Photo (optional)</label>
+    <p id="image-help" class="form-section-intro">A clear photo helps others recognize the item. JPEG, PNG, GIF, or WebP up to 5 MiB.</p>
+    @if (Model.ReselectImage)
+    {
+        <p id="image-reselect" class="form-text">To include a photo with this submission, choose or take it again. The previous file was not carried over.</p>
+    }
+    <div class="tb-report-image-empty" data-image-empty hidden="@hasImage">
+        <partial name="_Icon" model='"image"' />
+        <span>No photo selected</span>
+    </div>
+    <div class="image-preview" data-image-preview hidden="@(!hasImage)">
+        <div class="image-preview-frame"><img src="@Model.CurrentImageUrl" alt="Current report image" data-preview-image /></div>
+        <p class="image-preview-status" tabindex="-1" data-preview-status>Current image</p>
+        <p class="form-text" data-preview-details></p>
+        <div class="image-actions" data-preview-actions hidden>
+            <button class="btn btn-outline-primary" type="button" data-replace-image>Replace image</button>
+            <button class="btn btn-outline-primary" type="button" data-remove-pending hidden>Remove selected photo</button>
+            <button class="btn btn-outline-primary" type="button" data-remove-current hidden>Remove current image</button>
+        </div>
+    </div>
+    <div class="image-removal" data-image-removal hidden>
+        <p role="status">Image will be removed when you save.</p>
+        <button class="btn btn-outline-primary" type="button" data-undo-remove>Undo remove</button>
+    </div>
+    <div class="tb-report-image-choices">
+        <input id="image" name="ImageFile" type="file" accept="image/jpeg,image/png,image/gif,image/webp"
+               class="form-control" aria-invalid="@(imageInvalid ? "true" : null)"
+               aria-describedby="@(Model.ReselectImage ? "image-help image-reselect image-error" : "image-help image-error")" />
+        <button class="btn btn-outline-primary" type="button" data-take-photo hidden>Take photo</button>
+    </div>
+    <span id="image-error" class="text-danger small d-block mt-2"><span role="alert" data-client-image-error></span>@Html.ValidationMessage("ImageFile")</span>
+    <span class="visually-hidden" role="status" data-photo-status></span>
+    @if (hasImage)
+    {
+        <div class="form-check mt-2" data-native-remove>
+            <input id="remove-image" name="RemoveImage" type="checkbox" value="true" checked="@Model.PendingImageRemoval" class="form-check-input" />
+            <label for="remove-image" class="form-check-label">Remove current image</label>
+        </div>
+    }
+</section>

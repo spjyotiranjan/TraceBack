@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace TraceBack.Models;
 
@@ -59,6 +60,7 @@ public sealed class ItemForm : IValidatableObject
     public MapLocationInput? MapLocation { get; set; }
 
     [Required]
+    [BindRequired]
     [DataType(DataType.Date)]
     public DateTime DateReported { get; set; }
 

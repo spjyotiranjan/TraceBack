@@ -7,8 +7,8 @@
     const output = draft.querySelector(target);
     if (!input || !output) return;
     const update = () => { output.textContent = input.value.trim() || fallback; };
-    input.addEventListener('input', update);
-    input.addEventListener('change', update);
+    form.addEventListener('input', event => { if (event.target.name === name) update(); });
+    form.addEventListener('change', event => { if (event.target.name === name) update(); });
     update();
   };
   mirror('Type', '[data-draft-type]');
@@ -39,20 +39,4 @@
     new MutationObserver(syncImage).observe(imageEditor, { subtree: true, attributes: true, attributeFilter: ['src', 'hidden'] });
     syncImage();
   }
-  const links = [...draft.querySelectorAll('nav a')];
-  const selectSection = section => links.forEach(link => {
-    if (link.hash === '#' + section.querySelector('h2')?.id) link.setAttribute('aria-current', 'step');
-    else link.removeAttribute('aria-current');
-  });
-  form.querySelectorAll('.form-section').forEach(section => {
-    section.addEventListener('focusin', () => selectSection(section));
-    if (section.querySelector('.field-validation-error')) {
-      const link = links.find(link => link.hash === '#' + section.querySelector('h2')?.id);
-      if (link) link.dataset.error = 'true';
-    }
-  });
-  links.forEach(link => link.addEventListener('click', () => {
-    const heading = document.getElementById(link.hash.slice(1));
-    if (heading) { heading.tabIndex = -1; heading.focus({ preventScroll: true }); }
-  }));
 })();
