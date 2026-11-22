@@ -509,6 +509,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         Assert.Contains("rel=\"noopener noreferrer\"", mappedMarkup);
     }
 
+
     [ReportBrowserFact]
     public async Task Report_components_pass_the_browser_matrix()
     {
@@ -535,6 +536,11 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         ]);
         reports.ServeValidImage = true;
 
+        await RunReportBrowserAsync(reports, "tests/ui/report-components-check.cjs");
+    }
+
+    private static async Task RunReportBrowserAsync(FakeItemService reports, string script)
+    {
         // Use the real routes, Razor views and static assets on loopback. The Dashboard
         // model is supplied by a test-only filter so no Mongo/R2 account is required.
         using var factory = CreateFactory(reports, new BrowserDashboardFixture(reports));
@@ -550,7 +556,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
-        info.ArgumentList.Add("tests/ui/report-components-check.cjs");
+        info.ArgumentList.Add(script);
         foreach (var name in info.Environment.Keys.Where(name =>
             new[] { "MONGO", "JWT", "R2", "BOOTSTRAP" }.Any(prefix => name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))).ToList())
         {
@@ -559,6 +565,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         info.Environment["TRACEBACK_URL"] = factory.Services.GetRequiredService<IServer>()
             .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
         info.Environment["TRACEBACK_TEST_COOKIE"] = client.DefaultRequestHeaders.GetValues("Cookie").Single();
+        info.Environment["TRACEBACK_TEST_ITEM_IDS"] = string.Join(',', new[] { reports.Item }.Concat(reports.AdditionalItems).Select(item => item.Id));
         using var browser = Process.Start(info)!;
         var stdout = browser.StandardOutput.ReadToEndAsync();
         var stderr = browser.StandardError.ReadToEndAsync();
@@ -734,8 +741,16 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
             return Task.FromResult(Item);
         }
         public Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin) => throw new NotSupportedException();
-        public Task<bool> ResolveAsync(string id, string userId, bool admin) => throw new NotSupportedException();
-        public Task<bool> DeleteAsync(string id, string userId, bool admin) => throw new NotSupportedException();
+        public Task<bool> ResolveAsync(string id, string userId, bool admin)
+        {
+            if (id != Item.Id || Item.Status != "Active" || (!admin && userId != Item.PostedByUserId))
+                return Task.FromResult(false);
+            Item.Status = "Resolved";
+            return Task.FromResult(true);
+        }
+
+        public Task<bool> DeleteAsync(string id, string userId, bool admin) =>
+            Task.FromResult(id == Item.Id && (admin || userId == Item.PostedByUserId));
         public Task<bool> SetImageAsync(string id, ImageUpload image, string userId, bool admin) => throw new NotSupportedException();
         public Task<bool> RemoveImageAsync(string id, string userId, bool admin) => throw new NotSupportedException();
     }

@@ -1,0 +1,14 @@
+@model (string Action, string ReportId, string Title, string Consequence, string Label, bool Destructive)
+@{
+    var id = $"confirm-{Model.Action.ToLowerInvariant()}";
+    var style = Model.Destructive ? "danger" : "secondary";
+}
+<button class="btn btn-outline-@style" type="button" data-confirmation-open="@id" aria-haspopup="dialog" hidden>@Model.Label</button>
+<dialog id="@id" class="tb-confirmation" aria-labelledby="@(id)-title" aria-describedby="@(id)-description">
+    <h2 id="@(id)-title" class="h4">@Model.Title</h2>
+    <p id="@(id)-description">@Model.Consequence</p>
+    <form asp-route="default" asp-route-controller="Items" asp-route-action="@Model.Action" asp-route-id="@Model.ReportId" method="post">
+        <button class="btn btn-outline-secondary" type="button" data-confirmation-cancel autofocus>Cancel</button>
+        <button class="btn @(Model.Destructive ? "btn-danger" : "btn-primary")" type="submit">@Model.Label</button>
+    </form>
+</dialog>
