@@ -5,10 +5,11 @@
     ViewData["AuthDescription"] = "Use your account to post reports and track claims.";
     ViewData["AuthAction"] = "Register";
     ViewData["AuthSubmit"] = "Create account";
+    ViewData["AuthPendingText"] = "Creating account…";
 }
 
 <div class="tb-field">
-    <label asp-for="Name" class="form-label">Full name</label>
+    <label asp-for="Name" class="form-label">Full name (2–80 characters)</label>
     <input asp-for="Name" tb-field tb-error="Name-validation" class="form-control" autocomplete="name" />
     <span id="Name-validation" asp-validation-for="Name" class="tb-field__error"></span>
 </div>
