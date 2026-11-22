@@ -13,7 +13,7 @@ public class AccountController : Controller
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
-        ViewData["ReturnUrl"] = returnUrl;
+        ViewData["ReturnUrl"] = GetLocalReturnUrl(returnUrl);
         return View(new LoginForm());
     }
 
@@ -21,7 +21,8 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login([FromServices] AccountService accounts, LoginForm form, string? returnUrl = null)
     {
-        ViewData["ReturnUrl"] = returnUrl;
+        var localReturnUrl = GetLocalReturnUrl(returnUrl);
+        ViewData["ReturnUrl"] = localReturnUrl;
 
         if (!ModelState.IsValid)
         {
@@ -38,7 +39,7 @@ public class AccountController : Controller
         await SignInAsync(user);
         TempData["Success"] = $"Welcome back, {user.Name}.";
 
-        return LocalRedirect(Url.IsLocalUrl(returnUrl) ? returnUrl! : Url.Action("Index", "Dashboard")!);
+        return LocalRedirect(localReturnUrl ?? Url.Action("Index", "Dashboard")!);
     }
 
     [HttpGet]
@@ -83,6 +84,8 @@ public class AccountController : Controller
     {
         return View();
     }
+
+    private string? GetLocalReturnUrl(string? returnUrl) => Url.IsLocalUrl(returnUrl) ? returnUrl : null;
 
     private Task SignInAsync(AppUser user)
     {
