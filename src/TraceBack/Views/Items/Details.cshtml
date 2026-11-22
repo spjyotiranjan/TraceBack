@@ -4,23 +4,43 @@
 @{
     ViewData["Title"] = Model.Item.Title;
     ViewData["RouteArt"] = "details";
+    var hasPhoto = !string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl);
 }
 
-<a class="back-link" asp-action="Index">← Back to results</a>
+<a class="back-link detail-report__back" asp-action="Index"><partial name="_Icon" model='"arrow-left"' /> Back to results</a>
 
 <article class="detail-report">
     <div class="detail-report__layout">
         <div class="detail-report__media-column">
             <figure class="detail-report__media">
-                @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
-                {
-                    <img class="detail-image" src="@Model.Item.DisplayImageUrl" alt="@Model.Item.Title" />
-                }
-                else
-                {
-                    <div class="detail-placeholder" aria-hidden="true">No photo</div>
-                }
-                <figcaption>@(string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl) ? "No photo was added to this report." : "Photo supplied with this report.")</figcaption>
+                <div class="detail-report__photo">
+                    @if (hasPhoto)
+                    {
+                        <img src="@Model.Item.DisplayImageUrl" alt="Photo of @Model.Item.Title" data-report-photo />
+                        <div class="detail-report__photo-fallback" hidden>
+                            <partial name="_Icon" model='"image-off"' />
+                            <span>Photo unavailable</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="detail-report__photo-fallback">
+                            <partial name="_Icon" model='"image"' />
+                            <span>No photo provided</span>
+                        </div>
+                    }
+                </div>
+                <figcaption>
+                    @if (hasPhoto)
+                    {
+                        <span class="photo-supplied-caption">Photo supplied with this report.</span>
+                        <span class="photo-error-caption">The report photo could not load.</span>
+                    }
+                    else
+                    {
+                        <text>No photo was added to this report.</text>
+                    }
+                </figcaption>
             </figure>
             <section class="detail-report__map" aria-labelledby="report-map-heading">
                 @if (MapLocationRules.SafeStored(Model.Item.MapLocation) is { } point)
@@ -36,17 +56,23 @@
                 }
             </section>
         </div>
-        <div>
+        <div class="detail-report__content">
             <header class="detail-report__heading">
                 <div class="d-flex gap-2 flex-wrap">
                     <partial name="_StatusBadge" model="Model.Item.Type" />
                     <partial name="_StatusBadge" model="Model.Item.Status" />
                 </div>
                 <h1>@Model.Item.Title</h1>
-                <p class="detail-report__description">@Model.Item.Description</p>
+                <div class="detail-report__description" data-detail-description>
+                    <p id="report-description">@Model.Item.Description</p>
+                    <button type="button" aria-expanded="false" aria-controls="report-description" hidden>Read more</button>
+                </div>
             </header>
-            <partial name="_FactList" model="Model.Item" />
             <partial name="_ClaimPanel" model="Model" />
+            <section class="detail-report__facts" aria-labelledby="report-facts-heading">
+                <h2 class="h5" id="report-facts-heading">Report facts</h2>
+                <partial name="_FactList" model="Model.Item" />
+            </section>
             @if (Model.IsOwner || Model.IsAdmin)
             {
                 <div class="detail-report__actions">
@@ -55,15 +81,13 @@
                     {
                         <div class="d-flex gap-2 flex-wrap">
                             <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Item.Id">Edit report</a>
-                            <form asp-route="default" asp-route-controller="Items" asp-route-action="Resolve" asp-route-id="@Model.Item.Id" method="post">
-                                <button class="btn btn-outline-secondary" type="submit" data-confirm="Mark this report resolved?">Mark resolved</button>
-                            </form>
+                            <partial name="_ConfirmationDialog" model='("Resolve", Model.Item.Id, "Mark this report resolved?", "This closes the report and makes its discussion read only.", "Mark resolved", false)' />
                         </div>
                     }
-                    <form asp-route="default" asp-route-controller="Items" asp-route-action="Delete" asp-route-id="@Model.Item.Id" method="post" class="mt-3">
-                        <button class="btn btn-outline-danger" type="submit"
-                                data-confirm="Delete this report and all of its claims? This cannot be undone.">Delete report</button>
-                    </form>
+                    <div class="mt-3">
+                        <partial name="_ConfirmationDialog" model='("Delete", Model.Item.Id, "Delete this report?", "This deletes the report and all of its claims. This cannot be undone.", "Delete report", true)' />
+                    </div>
+                    <noscript><p class="form-text">Enable JavaScript to confirm changes to this report.</p></noscript>
                 </div>
             }
         </div>
@@ -89,23 +113,28 @@
     }
     else
     {
-        <form class="discussion-composer" data-comment-form method="post"
+        <form class="discussion-composer" aria-label="Comment composer" data-comment-form method="post"
               action="@Url.Content($"~/Items/{Model.Item.Id}/Comments")"
-              enctype="multipart/form-data" hidden="@(Model.Item.Status != "Active")">
+              enctype="multipart/form-data" hidden>
             @Html.AntiForgeryToken()
             <input type="hidden" name="parentId" data-parent-id />
             <p class="discussion-reply-label" data-reply-label hidden></p>
             <label for="comment-body" class="form-label fw-semibold">Your comment</label>
-            <textarea id="comment-body" class="form-control" name="body" rows="3" maxlength="2000"
-                      aria-describedby="comment-help comment-error"></textarea>
+            <div class="discussion-input-surface">
+                <textarea id="comment-body" class="form-control" name="body" rows="3" maxlength="2000"
+                          placeholder="Write a comment…" aria-describedby="comment-help comment-error"></textarea>
+                <div class="discussion-input-actions">
+                    <button class="btn btn-outline-secondary" type="button" data-attach-image aria-label="Attach image" aria-describedby="comment-image-help"><partial name="_Icon" model='"image"' /></button>
+                    <button class="btn btn-primary" type="submit" data-submit-comment aria-label="Post comment"><partial name="_Icon" model='"arrow-left"' /></button>
+                </div>
+            </div>
             <p id="comment-help" class="form-text">Write up to 2,000 characters, add one image, or both. Public comments are visible to signed-in viewers.</p>
-            <label for="comment-image" class="form-label fw-semibold">Image (optional)</label>
-            <input id="comment-image" class="form-control" type="file" name="imageFile"
-                   accept="image/jpeg,image/png,image/gif,image/webp" aria-describedby="comment-image-help comment-error" />
-            <p id="comment-image-help" class="form-text">JPEG, PNG, GIF, or WebP; up to 5 MB.</p>
+            <input id="comment-image" type="file" name="imageFile" hidden
+                   accept="image/jpeg,image/png,image/gif,image/webp" />
+            <p id="comment-image-help" class="visually-hidden">JPEG, PNG, GIF, or WebP; up to 5 MiB.</p>
             <div data-image-preview hidden>
                 <img alt="Selected image preview" />
-                <button type="button" class="btn btn-outline-secondary" data-clear-image>Remove image</button>
+                <button type="button" data-clear-image aria-label="Remove image"><span><partial name="_Icon" model='"trash-2"' /></span></button>
             </div>
             <div data-alt-field hidden>
                 <label for="comment-alt" class="form-label fw-semibold">Describe the image</label>
@@ -115,16 +144,14 @@
             </div>
             <p id="comment-error" class="discussion-error" role="alert" hidden></p>
             <div class="discussion-actions">
-                <button type="submit" class="btn btn-primary" data-submit-comment>Post comment</button>
                 <button type="button" class="btn btn-outline-secondary" data-cancel-reply hidden>Cancel reply</button>
+                <span data-comment-pending hidden>Posting…</span>
             </div>
         </form>
-        @if (Model.Item.Status != "Active")
-        {
-            <p class="discussion-notice">This report is no longer active. Its discussion is read only.</p>
-        }
+        <noscript><p class="discussion-notice">Enable JavaScript to load and join the discussion.</p></noscript>
+        <p class="discussion-notice" data-comment-readonly hidden="@(Model.Item.Status == "Active")">This report is no longer active. Its discussion is read only.</p>
         <p class="visually-hidden" role="status" aria-live="polite" data-discussion-announcement></p>
-        <div data-discussion-root aria-busy="true"><p>Loading discussion…</p></div>
+        <div class="discussion-thread" role="region" aria-label="Comment thread" tabindex="0" data-discussion-root hidden></div>
     }
 </section>
 
@@ -136,7 +163,10 @@
 }
 
 @section Scripts {
+    <script src="~/js/report-photo.js" asp-append-version="true" defer></script>
+    <script src="~/js/item-details.js" asp-append-version="true" defer></script>
     <script src="~/lib/leaflet/leaflet.js" defer></script>
     <script src="~/js/report-map.js" asp-append-version="true" defer></script>
     <script src="~/js/discussion.js" asp-append-version="true" defer></script>
+    <script src="~/js/confirmation-dialog.js" asp-append-version="true" defer></script>
 }
