@@ -1,6 +1,7 @@
 @{
     Layout = "_Layout";
     ViewData["RouteArt"] = "auth";
+    var pendingText = ViewData["AuthPendingText"] as string ?? "Submitting…";
 }
 
 <div class="tb-auth">
@@ -26,7 +27,7 @@
         </div>
 
         <div class="tb-auth__submit">
-            <partial name="_Button" model='@(new UiButton((string)ViewData["AuthSubmit"]!, Submit: true, PendingText: "Submitting…", FullWidth: true))' />
+            <partial name="_Button" model='@(new UiButton((string)ViewData["AuthSubmit"]!, Submit: true, PendingText: pendingText, FullWidth: true))' />
             <partial name="_PendingStatus" />
         </div>
 

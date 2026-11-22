@@ -37,6 +37,8 @@ async function checkForm(page, route, width, theme) {
   const art = page.locator('[data-route-art="auth"]');
   assert.equal(await art.getAttribute('aria-hidden'), 'true');
   assert.match(await art.evaluate(e => getComputedStyle(e, '::before').backgroundImage), /auth-(desktop|phone)-(dark|light)-a\.svg/);
+  assert.equal(await art.evaluate(e => getComputedStyle(e, '::before').animationName), 'none');
+  assert.equal(await art.evaluate(e => getComputedStyle(e, '::after').display), 'none');
   await checkContrast(title, intro);
   await checkContrast(intro.locator('p'), intro);
   for (const label of await form.locator('label').all()) await checkContrast(label, form);

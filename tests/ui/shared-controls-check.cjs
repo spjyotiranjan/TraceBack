@@ -157,7 +157,7 @@ async function variants(page) {
           page.waitForRequest(r => r.isNavigationRequest() && r.method() === 'POST').then(r => new URLSearchParams(r.postData())),
           page.waitForNavigation({ waitUntil: 'domcontentloaded' })
         ]);
-        assert.deepEqual(pending, { text: 'Submitting…', role: 'status', shown: true, unavailable: 'true', disabled: false,
+        assert.deepEqual(pending, { text: 'Signing in…', role: 'status', shown: true, unavailable: 'true', disabled: false,
           sizeUnchanged: true, repeatCanceled: true });
         assert.equal(posts, 1);
         assert.equal(sent.get('intent'), 'sign-in');
