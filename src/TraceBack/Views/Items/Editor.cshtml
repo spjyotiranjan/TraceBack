@@ -3,6 +3,14 @@
 @using TraceBack.Models
 @{
     var editing = Model.Id is not null;
+    var reportType = Model.LockedType ?? Model.Form.Type;
+    string? Invalid(string field) => ViewData.ModelState[field]?.Errors.Count > 0 ? "true" : null;
+    var typeInvalid = ViewData.ModelState["Type"]?.Errors.Count > 0;
+    var sections = new (string Anchor, string Label)[]
+    {
+        ("report-details-heading", "What happened"), ("report-place-heading", "Where and when"),
+        ("report-contact-heading", "How to reconnect"), ("report-image-heading", "Image")
+    };
     MapLocationRules.TryNormalize(Model.Form.MapLocation, out var validPoint, out _);
     var hasPoint = validPoint is not null;
     var pairInvalid = ViewData.ModelState["MapLocation"]?.Errors.Count > 0;
@@ -13,41 +21,51 @@
 }
 
 <div class="form-page tb-report-editor">
+    <nav class="tb-report-tracker" aria-label="In this report" data-report-tracker>
+        <p class="tb-report-tracker__title" aria-hidden="true">In this report</p>
+        <ol>
+            @foreach (var step in sections)
+            {
+                <li><a href="#@step.Anchor"><span class="tb-report-tracker__link-label">@step.Label</span></a></li>
+            }
+        </ol>
+        <p class="tb-report-tracker__current" data-report-current aria-hidden="true"></p>
+    </nav>
+    <div class="tb-report-editor__content">
     <h1>@ViewData["Title"]</h1>
     <p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
-    <div class="tb-report-composition">
-    <partial name="_DraftCanvas" model="Model" />
     <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card report-form" novalidate>
         <partial name="_ValidationSummary" model='@(new Dictionary<string, string?>
         {
-            ["Type"] = editing ? null : "type", ["Title"] = "title", ["Category"] = "category",
+            ["Type"] = editing ? null : reportType == "Found" ? "type-found" : "type", ["Title"] = "title", ["Category"] = "category",
             ["Description"] = "description", ["Location"] = "location", ["MapLocation"] = "latitude",
+            ["MapLocation.Latitude"] = "latitude", ["MapLocation.Longitude"] = "longitude",
             ["DateReported"] = "date", ["ContactPreference"] = "contact", ["ImageFile"] = "image"
         })' />
 
         <section class="form-section tb-form-section" aria-labelledby="report-details-heading">
-            <h2 id="report-details-heading" class="h5">What happened</h2>
-            <p class="form-section-intro">Describe the item so someone can recognize it.</p>
+            <h2 id="report-details-heading" class="tb-report-heading" tabindex="-1">@sections[0].Label</h2>
         @if (editing)
         {
             <div class="mb-3">
-                <span class="form-label d-block">Type</span>
-                <p class="form-control-plaintext mb-0">@Model.Form.Type</p>
-                <input type="hidden" name="Type" value="@Model.Form.Type" />
-                <p class="form-text">Report type cannot be changed after publishing.</p>
+                <label class="form-label" for="type-locked">Type</label>
+                <input id="type-locked" class="form-control" name="Type" value="@reportType" readonly aria-describedby="type-help type-error" />
+                <p id="type-help" class="form-text">Report type cannot be changed after publishing.</p>
                 <span id="type-error" class="text-danger small">@Html.ValidationMessage("Type")</span>
             </div>
         }
         else
         {
-            <div class="mb-3">
-                <label class="form-label" for="type">Type <span class="required">required</span></label>
-                <select id="type" name="Type" class="form-select" aria-describedby="type-error">
-                    <option value="Lost" selected="@(Model.Form.Type == "Lost")">Lost</option>
-                    <option value="Found" selected="@(Model.Form.Type == "Found")">Found</option>
-                </select>
+            <fieldset class="mb-3">
+                <legend class="form-label">Type <span class="required">required</span></legend>
+                <div class="tb-report-types">
+                    <input class="visually-hidden" id="type" name="Type" type="radio" value="Lost" checked="@(reportType == "Lost")" required aria-describedby="type-error" aria-invalid="@(typeInvalid ? "true" : null)" />
+                    <label for="type"><partial name="_Icon" model='"search-x"' /> Lost</label>
+                    <input class="visually-hidden" id="type-found" name="Type" type="radio" value="Found" checked="@(reportType == "Found")" required aria-describedby="type-error" aria-invalid="@(typeInvalid ? "true" : null)" />
+                    <label for="type-found"><partial name="_Icon" model='"package-check"' /> Found</label>
+                </div>
                 <span id="type-error" class="text-danger small">@Html.ValidationMessage("Type")</span>
-            </div>
+            </fieldset>
         }
 
         <div class="mb-3">
@@ -56,7 +74,8 @@
                    name="Title"
                    class="form-control"
                    value="@Model.Form.Title"
-                   maxlength="120"
+                   maxlength="120" required
+                   aria-invalid="@Invalid("Title")"
                    aria-describedby="title-error" />
             <span id="title-error" class="text-danger small">@Html.ValidationMessage("Title")</span>
         </div>
@@ -67,7 +86,8 @@
                    name="Category"
                    class="form-control"
                    value="@Model.Form.Category"
-                   maxlength="80"
+                   maxlength="80" required
+                   aria-invalid="@Invalid("Category")"
                    aria-describedby="category-help category-error" />
             <div id="category-help" class="form-text">Examples: Electronics, Clothing, Keys</div>
             <span id="category-error" class="text-danger small">@Html.ValidationMessage("Category")</span>
@@ -79,22 +99,23 @@
                       name="Description"
                       class="form-control"
                       rows="5"
-                      maxlength="2000"
+                      maxlength="2000" required
+                      aria-invalid="@Invalid("Description")"
                       aria-describedby="description-error">@Model.Form.Description</textarea>
             <span id="description-error" class="text-danger small">@Html.ValidationMessage("Description")</span>
         </div>
         </section>
 
         <section class="form-section tb-form-section" aria-labelledby="report-place-heading">
-            <h2 id="report-place-heading" class="h5">Where and when</h2>
-            <p class="form-section-intro">Give the location and date that best match the report.</p>
+            <h2 id="report-place-heading" class="tb-report-heading" tabindex="-1">@sections[1].Label</h2>
         <div class="mb-3">
             <label class="form-label" for="location">Location description <span class="required">required</span></label>
             <input id="location"
                    name="Location"
                    class="form-control"
                    value="@Model.Form.Location"
-                   maxlength="120"
+                   maxlength="120" required
+                   aria-invalid="@Invalid("Location")"
                    aria-describedby="location-help location-error" />
             <div id="location-help" class="form-text">Add context people can recognize, such as the north library entrance. This is your description, not a verified pin address.</div>
             <span id="location-error" class="text-danger small">@Html.ValidationMessage("Location")</span>
@@ -145,101 +166,56 @@
 
         <div class="mb-3">
             <label class="form-label" for="date">Date <span class="required">required</span></label>
-            <input id="date"
-                   name="DateReported"
-                   type="date"
-                   class="form-control"
-                   value="@Model.Form.DateReported.ToString("yyyy-MM-dd")"
-                   aria-describedby="date-error" />
+            @Html.TextBox("DateReported", Model.Form.DateReported.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                new { id = "date", type = "date", @class = "form-control", required = "required", aria_describedby = "date-error", aria_invalid = Invalid("DateReported") })
             <span id="date-error" class="text-danger small">@Html.ValidationMessage("DateReported")</span>
         </div>
         </section>
 
         <section class="form-section tb-form-section" aria-labelledby="report-contact-heading">
-            <h2 id="report-contact-heading" class="h5">How to reconnect</h2>
+            <h2 id="report-contact-heading" class="tb-report-heading" tabindex="-1">@sections[2].Label</h2>
         <div class="mb-3">
             <label class="form-label" for="contact">Contact preference <span class="required">required</span></label>
             <input id="contact"
                    name="ContactPreference"
                    class="form-control"
                    value="@Model.Form.ContactPreference"
-                   maxlength="120"
+                   maxlength="120" required
+                   aria-invalid="@Invalid("ContactPreference")"
                    aria-describedby="contact-help contact-error" />
             <div id="contact-help" class="form-text">For example, meet at the campus help desk. This is public.</div>
             <span id="contact-error" class="text-danger small">@Html.ValidationMessage("ContactPreference")</span>
         </div>
         </section>
 
-        <section class="form-section image-editor" data-image-editor data-editing="@(editing ? "true" : "false")" data-current-image-url="@Model.CurrentImageUrl" aria-labelledby="report-image-heading">
-            <h2 id="report-image-heading" class="h5">Image</h2>
-            <p id="image-help" class="form-section-intro">A clear photo helps others recognize the item. JPEG, PNG, GIF, or WebP; up to 5 MB.</p>
-            <label class="form-label" for="image">Add an image (optional)</label>
-            <input id="image"
-                   name="ImageFile"
-                   type="file"
-                   accept="image/jpeg,image/png,image/gif,image/webp"
-                   class="form-control"
-                   aria-describedby="image-help image-error" />
-            <div class="image-choices" data-image-choices hidden>
-                <label class="btn btn-outline-primary" for="image">Upload image</label>
-                <button class="btn btn-outline-primary" type="button" data-take-photo>Take photo</button>
-            </div>
-            <p class="form-text" data-camera-unavailable hidden>Camera capture is unavailable in this browser; choose an image instead.</p>
-            <div class="image-camera" data-camera-panel hidden>
-                <h3 class="h6" tabindex="-1" data-camera-heading>Take a photo</h3>
-                <p id="camera-instructions">Position the item in the frame, then choose Capture photo.</p>
-                <video autoplay muted playsinline aria-label="Live camera preview" aria-describedby="camera-instructions" data-camera-video></video>
-                <p class="form-text" role="status" aria-live="polite" data-camera-status></p>
-                <div class="image-actions">
-                    <button class="btn btn-primary" type="button" data-capture-photo disabled>Capture photo</button>
-                    <button class="btn btn-outline-primary" type="button" data-cancel-camera>Cancel camera</button>
-                    <button class="btn btn-outline-primary" type="button" data-retry-camera hidden>Try camera again</button>
-                    <label class="btn btn-outline-primary" for="image" data-camera-upload hidden>Upload image</label>
-                </div>
-            </div>
-            <div class="image-preview" data-image-preview hidden>
-                <div class="image-preview-frame"><img src="" alt="Selected image preview" data-preview-image /></div>
-                <p class="image-preview-status" tabindex="-1" data-preview-status></p>
-                <p class="form-text" data-preview-details></p>
-                <div class="image-actions">
-                    <button class="btn btn-outline-primary" type="button" data-retake-photo hidden>Retake photo</button>
-                    <button class="btn btn-outline-primary" type="button" data-replace-image>Replace image</button>
-                    <button class="btn btn-outline-primary" type="button" data-remove-pending>Remove image</button>
-                    <button class="btn btn-outline-primary" type="button" data-remove-current hidden>Remove image</button>
-                </div>
-            </div>
-            <div class="image-removal" data-image-removal hidden>
-                <p>Image will be removed when you save.</p>
-                <button class="btn btn-outline-primary" type="button" data-undo-remove>Undo remove</button>
-            </div>
-            <span id="image-error" class="text-danger small d-block mt-2" role="alert"><span data-client-image-error></span>@Html.ValidationMessage("ImageFile")</span>
-            @if (editing)
-            {
-                <div class="form-check mt-2" data-native-remove>
-                    <input id="remove-image" name="RemoveImage" type="checkbox" value="true" class="form-check-input" />
-                    <label for="remove-image" class="form-check-label">Remove current image</label>
-                </div>
-            }
-        </section>
+        <partial name="_ReportImagePicker" model="Model" />
+        <partial name="_DraftCanvas" model="Model" />
 
         <div class="report-form-actions">
-            <button class="btn btn-primary" type="submit" data-submit-label="@(editing ? "Saving…" : "Publishing…")">@(editing ? "Save changes" : "Publish report")</button>
+            <button class="btn btn-primary" type="submit" data-tb-pending="@(editing ? "Saving…" : "Publishing…")">
+                <span class="tb-report-submit-label">@(editing ? "Save changes" : "Publish report")</span>
+                <span class="tb-report-submit-pending" aria-hidden="true">@(editing ? "Saving…" : "Publishing…")</span>
+            </button>
             <a class="btn btn-outline-primary" asp-controller="Dashboard" asp-action="Index">Cancel</a>
-            <span class="visually-hidden" role="status" aria-live="polite" data-submit-status></span>
+            <partial name="_PendingStatus" />
         </div>
     </form>
     </div>
 </div>
 
+<partial name="_ReportCamera" />
+
 @section Styles {
     <link rel="stylesheet" href="~/lib/leaflet/leaflet.css" />
     <link rel="stylesheet" href="~/css/report-map.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/detail-report.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/report-editor.css" asp-append-version="true" />
 }
 
 @section Scripts {
-    <script src="~/js/report-image.js" asp-append-version="true" defer></script>
+    <script type="module" src="~/js/report-image.js" asp-append-version="true"></script>
     <script src="~/lib/leaflet/leaflet.js" defer></script>
     <script src="~/js/report-map.js" asp-append-version="true" defer></script>
     <script src="~/js/record-graphics.js" asp-append-version="true" defer></script>
+    <script src="~/js/report-editor.js" asp-append-version="true" defer></script>
 }

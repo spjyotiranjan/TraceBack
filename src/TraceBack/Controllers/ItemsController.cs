@@ -119,6 +119,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
     [RequestSizeLimit(6 * 1024 * 1024)]
     public async Task<IActionResult> Create(ItemForm form, IFormFile? imageFile)
     {
+        var editor = new ItemEditorPage(form, null, ReselectImage: imageFile is not null);
         if (form.MapLocation?.Latitude is null && form.MapLocation?.Longitude is null)
         {
             ModelState.AddModelError(nameof(form.MapLocation), MapLocationRules.RequiredMessage);
@@ -133,7 +134,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
 
         if (!ModelState.IsValid)
         {
-            return View("Editor", new ItemEditorPage(form, null));
+            return View("Editor", editor);
         }
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -145,7 +146,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         catch (ArgumentException error)
         {
             ModelState.AddModelError(nameof(form.MapLocation), error.Message);
-            return View("Editor", new ItemEditorPage(form, null));
+            return View("Editor", editor);
         }
 
         if (upload is not null)
@@ -160,9 +161,14 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
             catch (Exception error) when (error is not OperationCanceledException)
             {
                 logger.LogError(error, "Image upload failed for report {ItemId}", item.Id);
-                await items.DeleteAsync(item.Id, currentUserId, false);
+                if (!await items.DeleteAsync(item.Id, currentUserId, false) && await items.GetAsync(item.Id) is not null)
+                {
+                    // Do not offer a new Create submission if the report still exists.
+                    TempData["Error"] = "The report was saved, but the image could not be added. Open Edit report to try the photo again.";
+                    return RedirectToAction(nameof(Details), new { id = item.Id });
+                }
                 ModelState.AddModelError("ImageFile", "Could not store the image. Please try again.");
-                return View("Editor", new ItemEditorPage(form, null));
+                return View("Editor", editor);
             }
         }
 
@@ -219,7 +225,13 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         if (existingItem is null) return NotFound();
         if (!CanManage(existingItem)) return Forbid();
 
-        var editor = new ItemEditorPage(form, id, existingItem.DisplayImageUrl, MapLocationRules.SafeStored(existingItem.MapLocation) is not null);
+        var editor = new ItemEditorPage(form, id, existingItem.DisplayImageUrl,
+            MapLocationRules.SafeStored(existingItem.MapLocation) is not null, existingItem.Type,
+            ReselectImage: imageFile is not null, PendingImageRemoval: removeImage && imageFile is null);
+        if (removeImage && imageFile is not null)
+        {
+            ModelState.AddModelError("ImageFile", "Choose either to replace the current image or remove it, not both.");
+        }
         ImageUpload? upload = null;
         if (imageFile is not null)
         {

@@ -37,7 +37,7 @@ async function fillReport(page) {
 
 async function main() {
   if (evidence) mkdirSync(evidence, { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH });
   try {
     for (const [width, theme] of [[1440, 'light'], [390, 'dark']]) {
       const context = await browser.newContext({ viewport: { width, height: 844 }, colorScheme: theme, hasTouch: width === 390 });

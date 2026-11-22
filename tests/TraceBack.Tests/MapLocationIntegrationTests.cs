@@ -20,7 +20,7 @@ using TraceBack.Services;
 
 namespace TraceBack.Tests;
 
-public sealed class MapLocationIntegrationTests
+public sealed partial class MapLocationIntegrationTests
 {
     [Theory]
     [InlineData("2026-11-05T20:00:00Z", 330)]
