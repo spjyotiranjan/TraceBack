@@ -40,15 +40,21 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
     {
         search.Page = Math.Clamp(search.Page, 1, 1000);
 
-        if (search.Type is not (null or "Lost" or "Found"))
+        search.Query = CleanFilter(search.Query);
+        search.Category = CleanFilter(search.Category);
+        search.Location = CleanFilter(search.Location);
+        search.Type = search.Type?.Trim().ToUpperInvariant() switch
         {
-            search.Type = null;
-        }
-
-        if (search.Status is not (null or "Active" or "Resolved" or "Claimed"))
+            "LOST" => "Lost",
+            "FOUND" => "Found",
+            _ => null
+        };
+        search.Status = search.Status?.Trim().ToUpperInvariant() switch
         {
-            search.Status = null;
-        }
+            "RESOLVED" => "Resolved",
+            "CLAIMED" => "Claimed",
+            _ => "Active"
+        };
 
         try
         {
@@ -79,6 +85,8 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
             return View(new BrowsePage(search, [], false, true));
         }
     }
+
+    private static string? CleanFilter(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     [HttpGet]
     public async Task<IActionResult> Details(string id)

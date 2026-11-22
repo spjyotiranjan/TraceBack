@@ -1,5 +1,5 @@
 @model TraceBack.Controllers.FilterChip
 <a class="filter-chip" href="@Model.Url" aria-label="Remove @Model.Label filter: @Model.Value">
     <span>@Model.Label: @Model.Value</span>
-    <partial name="_Icon" model='"x"' />
+    <span class="filter-chip-icon" aria-hidden="true"><partial name="_Icon" model='"x"' /></span>
 </a>

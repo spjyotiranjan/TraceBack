@@ -512,7 +512,19 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
     [ReportBrowserFact]
     public async Task Report_components_pass_the_browser_matrix()
     {
-        var reports = new FakeItemService();
+        var reports = new FakeItemService
+        {
+            SearchResults = search => search.Query switch
+            {
+                "retry & check" => throw new InvalidOperationException("Fixture search failure"),
+                "no matches" => [],
+                "inventory & tag" when search.Page == 1 => Enumerable.Range(1, 24).Select(index =>
+                    new Item { Title = $"Inventory report {index}", Type = "Found", Status = "Claimed" }).ToList(),
+                "inventory & tag" when search.Page == 2 => [new Item { Title = "Final inventory report", Type = "Found", Status = "Claimed" }],
+                "inventory & tag" => [],
+                _ => null
+            }
+        };
         reports.Item.Type = "Found";
         reports.Item.Title = "Oversized navy travel backpack with a zippered pocket and a removable reflective name tag attached to the shoulder strap";
         reports.Item.Location = "North Engineering Building second-floor study area near the pedestrian bridge and across from the library reception desk";
@@ -680,6 +692,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         public ItemSearch? LastSearch { get; private set; }
         public List<Item> AdditionalItems { get; } = [];
         public bool ServeValidImage { get; set; }
+        public Func<ItemSearch, List<Item>?>? SearchResults { get; init; }
 
         public Task<List<Item>> SearchAsync(ItemSearch search)
         {
@@ -689,7 +702,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
             {
                 return Task.FromException<List<Item>>(new InvalidOperationException("Fixture search failure"));
             }
-            return Task.FromResult(EmptySearch ? [] : new List<Item> { Item }.Concat(AdditionalItems).ToList());
+            return Task.FromResult(EmptySearch ? [] : SearchResults?.Invoke(search) ?? new List<Item> { Item }.Concat(AdditionalItems).ToList());
         }
 
         public Task<Item?> GetAsync(string id)

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { chromium } = require('playwright');
+const browseJourneys = require('./browse-journeys.cjs');
 
 const base = process.env.TRACEBACK_URL;
 const cookie = process.env.TRACEBACK_TEST_COOKIE;
@@ -150,7 +151,7 @@ async function main() {
   try {
     for (const width of [1440, 390]) {
       for (const colorScheme of ['light', 'dark']) {
-        const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1050 }, colorScheme, reducedMotion: 'reduce' });
+        const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1050 }, colorScheme, reducedMotion: 'reduce', hasTouch: width === 390 });
         try {
           await context.addCookies([auth]);
           const page = await context.newPage();
@@ -168,15 +169,16 @@ async function main() {
           for (const [route, variant] of [['/', 'home'], ['/Items', 'browse'], ['/Dashboard', 'dashboard']]) {
             await cardMatrix(page, route, variant, width, colorScheme, imageResponses);
           }
+          await browseJourneys(page, base, width, colorScheme, evidence);
           assert.deepEqual(pageErrors, []);
-          assert.deepEqual(unexpectedResponses, []);
+          assert.deepEqual(unexpectedResponses, ['503 /Items', '503 /Items']);
           console.log(`${width}px ${colorScheme}: Home/Browse search, three card variants, keyboard, media, clamp and badges passed`);
         } finally {
           await context.close();
         }
       }
     }
-    const context = await browser.newContext({ javaScriptEnabled: false });
+    const context = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
     await context.addCookies([auth]);
     const page = await context.newPage();
     await visit(page, '/');
@@ -184,7 +186,10 @@ async function main() {
     await input.fill('keys');
     await Promise.all([page.waitForURL('**/Items?Query=keys'), input.press('Enter')]);
     assert.match(await page.locator('.browse-count').textContent(), /on page 1$/);
-    console.log('No JavaScript: keyboard GET search passed');
+    await page.getByLabel('Type', { exact: true }).selectOption('Found');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    assert.equal(new URL(page.url()).searchParams.get('Type'), 'Found');
+    console.log('No JavaScript: keyboard GET search and mobile filters passed');
     await context.close();
   } finally {
     await browser.close();

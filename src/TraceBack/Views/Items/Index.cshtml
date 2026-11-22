@@ -2,94 +2,85 @@
 @{
     ViewData["Title"] = "Browse reports";
     ViewData["RouteArt"] = "browse";
+    var search = Model.Search;
+    var filters = new (string Name, string Label, string? Value)[]
+    {
+        (nameof(search.Query), "Search", search.Query),
+        (nameof(search.Type), "Type", search.Type),
+        (nameof(search.Category), "Category", search.Category),
+        (nameof(search.Location), "Location", search.Location),
+        (nameof(search.Status), "Status", search.Status == "Active" ? null : search.Status)
+    };
     var chips = new List<TraceBack.Controllers.FilterChip>();
-    if (!string.IsNullOrWhiteSpace(Model.Search.Query))
+    var route = Model.PageRoute(1);
+    foreach (var filter in filters)
     {
-        chips.Add(new("Search", Model.Search.Query, Url.Action("Index", "Items", new { type = Model.Search.Type, category = Model.Search.Category, location = Model.Search.Location, status = Model.Search.Status, page = 1 })!));
-    }
-    if (!string.IsNullOrWhiteSpace(Model.Search.Type))
-    {
-        chips.Add(new("Type", Model.Search.Type, Url.Action("Index", "Items", new { query = Model.Search.Query, category = Model.Search.Category, location = Model.Search.Location, status = Model.Search.Status, page = 1 })!));
-    }
-    if (Model.Search.Status is "Resolved" or "Claimed")
-    {
-        chips.Add(new("Status", Model.Search.Status, Url.Action("Index", "Items", new { query = Model.Search.Query, type = Model.Search.Type, category = Model.Search.Category, location = Model.Search.Location, page = 1 })!));
-    }
-    if (!string.IsNullOrWhiteSpace(Model.Search.Category))
-    {
-        chips.Add(new("Category", Model.Search.Category, Url.Action("Index", "Items", new { query = Model.Search.Query, type = Model.Search.Type, location = Model.Search.Location, status = Model.Search.Status, page = 1 })!));
-    }
-    if (!string.IsNullOrWhiteSpace(Model.Search.Location))
-    {
-        chips.Add(new("Location", Model.Search.Location, Url.Action("Index", "Items", new { query = Model.Search.Query, type = Model.Search.Type, category = Model.Search.Category, status = Model.Search.Status, page = 1 })!));
+        if (filter.Value is not { } value) { continue; }
+        var remaining = new RouteValueDictionary(route);
+        remaining.Remove(filter.Name);
+        chips.Add(new(filter.Label, value, Url.Action("Index", "Items", remaining)!));
     }
 }
 
-<partial name="_ResultBoard" model="Model" />
+<div class="tb-browse-page">
+    <partial name="_ResultBoard" model="Model" />
+    <partial name="_SearchFilters" model="Model" />
 
-<partial name="_SearchFilters" model="Model" />
-
-@if (chips.Count > 0)
-{
-    <div class="browse-applied" aria-label="Applied filters">
-        <span class="browse-applied-label">Applied</span>
-        @foreach (var chip in chips)
-        {
-            <partial name="_FilterChip" model="chip" />
-        }
-        <a class="clear-all-filters" asp-controller="Items" asp-action="Index">Clear all</a>
-    </div>
-}
-
-<section class="browse-results" aria-labelledby="browse-results-title">
-    <div class="section-heading">
-        <h2 id="browse-results-title" tabindex="-1">Results</h2>
-    </div>
-    @if (Model.LoadFailed)
+    @if (chips.Count > 0)
     {
-        <div class="tb-empty-state" role="alert">
-            <h3>Reports could not load</h3>
-            <p>Try again. Your filters will stay in place.</p>
-            <a class="btn btn-primary" href="@Context.Request.Path@Context.Request.QueryString">Retry</a>
-        </div>
-    }
-    else if (Model.Items.Count == 0)
-    {
-        <div class="tb-empty-state">
-            <h3>@(chips.Count > 0 ? "No reports match these filters" : Model.Search.Page > 1 ? "No reports on this page" : "No active reports yet")</h3>
-            <p>@(chips.Count > 0 ? "Try fewer search words or clear a filter." : Model.Search.Page > 1 ? "Go back to the previous page to keep browsing." : "When someone posts a lost or found item, it will appear here.")</p>
-            <div class="browse-empty-actions">
-                @if (chips.Count > 0)
-                {
-                    <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index">Clear filters</a>
-                }
-                <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="tb-report-grid">
-            @foreach (var item in Model.Items)
+        <div class="browse-applied" role="group" aria-label="Applied filters">
+            <span class="browse-applied-label">Applied</span>
+            @foreach (var chip in chips)
             {
-                <partial name="_ItemCard" model="new ReportCard(item, ReportCardVariant.Browse)" />
+                <partial name="_FilterChip" model="chip" />
             }
+            <a class="clear-all-filters" asp-controller="Items" asp-action="Index">Clear all</a>
         </div>
     }
-</section>
 
-<partial name="_Pagination" model="Model" />
+    <section class="browse-results" aria-labelledby="browse-results-title">
+        <div class="section-heading">
+            <h2 id="browse-results-title">Results</h2>
+        </div>
+        @if (Model.LoadFailed)
+        {
+            var retry = Context.Request.PathBase.ToUriComponent() + Context.Request.Path.ToUriComponent() + Context.Request.QueryString.ToUriComponent();
+            <partial name="_RecoveryContent" model='@(new RecoveryContent("Reports could not load", "Try again. Your filters will stay in place.", RecoveryArt.Service,
+                Primary: new UiButton("Retry", Href: retry)))' />
+        }
+        else if (Model.Items.Count == 0)
+        {
+            var recovery = search.Page > 1
+                ? new RecoveryContent("No reports on this page", "Return to the first page to see what's available with these filters.", RecoveryArt.Reports,
+                    Primary: new UiButton("Back to page 1", Href: Url.Action("Index", "Items", route)))
+                : chips.Count > 0
+                    ? new RecoveryContent("No reports match these filters", "Try fewer search words or clear a filter.", RecoveryArt.Search,
+                        Primary: new UiButton("Clear filters", Href: Url.Action("Index", "Items")))
+                    : new RecoveryContent("No active reports yet", "When someone posts a lost or found item, it will appear here.", RecoveryArt.Reports,
+                        Primary: new UiButton("Report an item", Href: Url.RouteUrl("default", new { controller = "Items", action = "Create" })));
+            <partial name="_RecoveryContent" model="recovery" />
+        }
+        else
+        {
+            <div class="tb-report-grid">
+                @foreach (var item in Model.Items)
+                {
+                    <partial name="_ItemCard" model="new ReportCard(item, ReportCardVariant.Browse)" />
+                }
+            </div>
+        }
+    </section>
+
+    <partial name="_Pagination" model="Model" />
+</div>
 
 @section Styles {
     <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/browse.css" asp-append-version="true" />
 }
 
 @section Scripts {
     <script src="~/js/report-search.js" asp-append-version="true" defer></script>
     <script src="~/js/report-photo.js" asp-append-version="true" defer></script>
-    <script>
-        if (window.location.search) {
-            document.getElementById('browse-results-title')?.focus();
-        }
-    </script>
+    <script src="~/js/browse-filters.js" asp-append-version="true" defer></script>
 }

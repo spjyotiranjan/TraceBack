@@ -6,7 +6,18 @@ public sealed record BrowsePage(
     ItemSearch Search,
     List<Item> Items,
     bool HasNext,
-    bool LoadFailed = false);
+    bool LoadFailed = false)
+{
+    public RouteValueDictionary PageRoute(int page) => new(new
+    {
+        Search.Query,
+        Search.Type,
+        Search.Category,
+        Search.Location,
+        Search.Status,
+        Page = page
+    });
+}
 
 public sealed record HomePage(List<Item> RecentItems, bool RecentLoadFailed = false);
 
