@@ -1,3 +1,4 @@
+@model bool
 @{
     var controller = ViewContext.RouteData.Values["controller"] as string;
     var action = ViewContext.RouteData.Values["action"] as string;
@@ -6,15 +7,19 @@
 {
     if (User.IsInRole("Admin"))
     {
-        <a class="tb-shell-link tb-admin-link" aria-current="@(controller == "Admin" ? "page" : null)" asp-controller="Admin" asp-action="Index">Admin</a>
+        <a class="tb-shell-link tb-admin-link" aria-current="@(controller == "Admin" ? "page" : null)" asp-controller="Admin" asp-action="Index">
+            <span class="tb-nav-label">@if (Model) { <partial name="_Icon" model='"shield-check"' /> } Admin</span>
+        </a>
     }
     <form asp-controller="Account" asp-action="Logout" asp-antiforgery="true" method="post">
-        <button class="tb-shell-link" type="submit">Sign out</button>
+        <button class="tb-shell-link" type="submit">
+            <span class="tb-nav-label">@if (Model) { <partial name="_Icon" model='"log-out"' /> } Sign out</span>
+        </button>
     </form>
 }
 else
 {
-    <a class="tb-shell-link" asp-controller="Items" asp-action="Index">Browse</a>
-    <a class="tb-shell-link" aria-current="@(controller == "Account" && action == "Login" ? "page" : null)" asp-controller="Account" asp-action="Login">Sign in</a>
+    <a class="tb-shell-link" asp-controller="Items" asp-action="Index"><span class="tb-nav-label">Browse</span></a>
+    <a class="tb-shell-link" aria-current="@(controller == "Account" && action == "Login" ? "page" : null)" asp-controller="Account" asp-action="Login"><span class="tb-nav-label">Sign in</span></a>
     <a class="tb-shell-link btn btn-primary" aria-current="@(controller == "Account" && action == "Register" ? "page" : null)" asp-controller="Account" asp-action="Register">Create account</a>
 }

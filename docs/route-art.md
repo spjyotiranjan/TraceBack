@@ -2,7 +2,7 @@
 
 ## Use in Razor
 
-Set `ViewData["RouteArt"]` in the consuming view. The shared layout places one empty, `aria-hidden` element before the shell content. Its absolute, clipped layer sits behind all controls and does not participate in layout, focus or hit testing. Pages that do not set a variant do not load the artwork styles. Keep responsive app surfaces and text contrast independent of the art.
+Set `ViewData["RouteArt"]` in the consuming view. The shared layout places one empty, `aria-hidden` element before the shell content. Its viewport-fixed, clipped layer pins the SVG gradients and route motifs together behind the scrolling document. It does not participate in layout, focus or hit testing. Pages that do not set a variant do not load the artwork styles. Keep responsive app surfaces and text contrast independent of the art.
 
 | Variant | Used by | Poses |
 |---|---|---|
@@ -15,7 +15,7 @@ Set `ViewData["RouteArt"]` in the consuming view. The shared layout places one e
 | `denied`, `not-found`, `error` | Recovery, including the generic HTML 404 | A only |
 | `privacy` | Privacy | A only |
 
-The route layer uses native phone composition below 600 px and desktop composition otherwise. Effective-theme tokens select light or dark, including the system preference with scripts disabled. CSS plays one 4.8-second A → B → A opacity pass when motion is allowed. Reduced motion uses phase A alone, without requesting B. The layer is suppressed in forced colors and print. The Home foreground illustration is a single responsive SVG with intrinsic `480 × 480` dimensions and empty alt text; it is separate from the route background.
+The route layer uses native phone composition below 600 px and desktop composition otherwise. Effective-theme tokens select light or dark, including the system preference with scripts disabled. CSS plays one eased 4.8-second A → B → A opacity pass when motion is allowed, with 78% B opacity at the midpoint. There is no scroll timeline or positional drift. Reduced motion uses phase A alone, without requesting B. The layer is suppressed in forced colors and print. The Home foreground illustration is a single responsive SVG with intrinsic `480 × 480` dimensions and empty alt text; it is separate from the route background.
 
 ## Source and redistribution check
 
@@ -26,6 +26,8 @@ The route layer uses native phone composition below 600 px and desktop compositi
 ## Regenerate and verify
 
 Run `python scripts/export-route-art.py` (standard library only); `python scripts/export-route-art.py --check` verifies the SVGs and generated asset stylesheet. No export/build tool is needed by the app. Each page requests only its active device/theme artwork, and the generated configuration can reuse byte-identical poses. `tests/ui/route-art-check.cjs` runs against a local app (set `TRACEBACK_URL`, and `NODE_PATH`/`CHROME_PATH` as needed). It covers actual public routes and renders the private asset choices as CSS fixtures; MVC tests exercise signed-in Home, Browse, Details, Create, Edit and item-not-found with an isolated service fixture.
+
+`TRACEBACK_BROWSER_TESTS=1 dotnet test TraceBack.slnx -c Release --filter FullyQualifiedName~Route_backgrounds_stay` runs the additional fixed-background matrix against real guest and signed-in Razor routes on a disposable Kestrel host. It compares matched viewport crops at the same static phase while measuring the H1 displacement. Home and Edit also sample the real CSS animation timeline. Set `ART_SCREENSHOTS` to an existing directory to save the matched crops, normal page screenshots, motion frames and scroll metrics.
 
 ## Known differences and parity follow-up (UI 27)
 

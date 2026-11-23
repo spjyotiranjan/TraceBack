@@ -10,13 +10,19 @@
 }
 <a class="tb-shell-link" aria-current="@browse" asp-controller="Items" asp-action="Index">
     @if (Model) { <partial name="_Icon" model='"search"' /> }
-    <span class="@(Model ? "visually-hidden" : null)">Browse</span>
+    <span class="@(Model ? "visually-hidden" : "tb-nav-label")">
+        @if (!Model) { <partial name="_Icon" model='"search"' /> }
+        Browse
+    </span>
 </a>
 <a class="@(Model ? "tb-shell-link" : "tb-shell-link btn btn-primary")" aria-current="@report" asp-route="default" asp-route-controller="Items" asp-route-action="Create">
-    @if (Model) { <partial name="_Icon" model='"plus"' /> }
+    <partial name="_Icon" model='"plus"' />
     <span class="@(Model ? "visually-hidden" : null)">Report an item</span>
 </a>
 <a class="tb-shell-link" aria-current="@dashboard" asp-controller="Dashboard" asp-action="Index">
     @if (Model) { <partial name="_Icon" model='"user"' /> }
-    <span class="@(Model ? "visually-hidden" : null)">My dashboard</span>
+    <span class="@(Model ? "visually-hidden" : "tb-nav-label")">
+        @if (!Model) { <partial name="_Icon" model='"user"' /> }
+        My dashboard
+    </span>
 </a>

@@ -115,7 +115,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         using var client = CreateClient(factory);
         var markup = await client.GetStringAsync("/account/login");
 
-        Assert.Matches("<a[^>]*href=\"/Items\"[^>]*>\\s*Browse\\s*</a>", markup);
+        Assert.Matches("<a[^>]*href=\"/Items\"[^>]*>\\s*<span[^>]*>\\s*Browse\\s*</span>\\s*</a>", markup);
         Assert.Matches("<a[^>]*aria-current=\"page\"[^>]*href=\"/Account/Login\"[^>]*>", markup);
         Assert.DoesNotContain("aria-label=\"Member navigation\"", markup);
         Assert.DoesNotContain("/Account/Logout", markup);
@@ -140,7 +140,22 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
     }
 
     [BrowserFact]
-    public Task Shared_shell_in_browser() => RunShellBrowserChecks("shell-check.cjs", "theme-check.cjs");
+    public Task Shared_shell_in_browser() => RunShellBrowserChecks("shell-check.cjs", "theme-check.cjs", "route-art-check.cjs");
+
+    [ReportBrowserFact]
+    public Task Route_backgrounds_stay_in_the_viewport_while_content_scrolls()
+    {
+        var reports = new FakeItemService();
+        reports.Item.ImageKey = null;
+        reports.Item.PostedByUserId = "test-user";
+        reports.Item.MapLocation = new MapLocation { Latitude = 12.34, Longitude = 56.78 };
+        reports.AdditionalItems.AddRange(Enumerable.Range(1, 12).Select(index => new Item
+        {
+            Title = $"Backpack fixture {index}", Description = "Test report", Category = "Bag",
+            Location = "Library", PostedByUserId = "test-user"
+        }));
+        return RunReportBrowserAsync(reports, "tests/ui/fixed-background-check.cjs");
+    }
 
     private async Task RunShellBrowserChecks(params string[] scripts)
     {

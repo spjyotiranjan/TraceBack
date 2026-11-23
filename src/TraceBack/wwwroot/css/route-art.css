@@ -4,7 +4,8 @@
 }
 
 .tb-route-art {
-  position: absolute;
+  /* Both the route shapes and their SVG gradients belong to the viewport. */
+  position: fixed;
   inset: 0 0 auto;
   width: min(100%, 1800px);
   max-height: 100%;
@@ -43,8 +44,8 @@
   }
 }
 
-@keyframes tb-route-phase-a { 50% { opacity: .35; } }
-@keyframes tb-route-phase-b { 50% { opacity: .65; } }
+@keyframes tb-route-phase-a { 50% { opacity: .22; } }
+@keyframes tb-route-phase-b { 50% { opacity: .78; } }
 
 @media (forced-colors: active), print {
   .tb-route-art { display: none; }
