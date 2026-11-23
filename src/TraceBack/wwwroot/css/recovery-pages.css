@@ -1,0 +1,30 @@
+/* Shared page sizing; inline empty states keep their existing treatment. */
+.main-content:has(> .tb-recovery-content--page) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+
+.main-content > .tb-recovery-content--page {
+  inline-size: min(100%, 36.875rem);
+  min-block-size: 20.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  margin-block: 0;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  gap: 1rem;
+  box-shadow: var(--tb-shadow);
+}
+
+[data-route-art="error"] ~ main > .tb-recovery-content--page { min-block-size: 22rem; }
+
+.tb-recovery-content--page .tb-recovery-content__reference code { overflow-wrap: anywhere; }
+
+@media (width >= 56rem) {
+  .main-content:has(> .tb-recovery-content--page) { align-content: center; }
+}
+
+@media (width < 36rem) {
+  .main-content > .tb-recovery-content--page { min-block-size: 21.75rem; }
+  [data-route-art="error"] ~ main > .tb-recovery-content--page { min-block-size: 24.125rem; }
+}

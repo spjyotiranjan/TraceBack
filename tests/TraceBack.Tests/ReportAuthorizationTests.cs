@@ -140,7 +140,9 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
     }
 
     [BrowserFact]
-    public async Task Shared_shell_in_browser()
+    public Task Shared_shell_in_browser() => RunShellBrowserChecks("shell-check.cjs", "theme-check.cjs");
+
+    private async Task RunShellBrowserChecks(params string[] scripts)
     {
         var reports = new FakeItemService();
         reports.Item.ImageKey = null;
@@ -149,7 +151,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         using var client = factory.CreateClient();
 
         var root = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        foreach (var script in new[] { "shell-check.cjs", "theme-check.cjs" })
+        foreach (var script in scripts)
         {
             var start = new ProcessStartInfo("node")
             {
@@ -160,7 +162,8 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
                 UseShellExecute = false
             };
             start.ArgumentList.Add(Path.Combine(root, "tests", "ui", script));
-            start.Environment["TRACEBACK_URL"] = client.BaseAddress!.GetLeftPart(UriPartial.Authority);
+            start.Environment["TRACEBACK_URL"] = factory.Services.GetRequiredService<IServer>()
+                .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
             using var process = Process.Start(start)!;
             var stdout = process.StandardOutput.ReadToEndAsync();
             var stderr = process.StandardError.ReadToEndAsync();
@@ -713,6 +716,9 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
             }
             return Task.FromResult(EmptySearch ? [] : SearchResults?.Invoke(search) ?? new List<Item> { Item }.Concat(AdditionalItems).ToList());
         }
+
+        public Task<bool> ExistsAsync(string id, CancellationToken cancellationToken) =>
+            Task.FromResult(id == Item.Id || AdditionalItems.Exists(item => item.Id == id));
 
         public Task<Item?> GetAsync(string id)
         {

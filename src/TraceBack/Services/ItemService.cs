@@ -8,6 +8,7 @@ namespace TraceBack.Services;
 public interface IItemService
 {
     Task<List<Item>> SearchAsync(ItemSearch search);
+    Task<bool> ExistsAsync(string id, CancellationToken cancellationToken);
     Task<Item?> GetAsync(string id);
     Task<List<Item>> MineAsync(string userId);
     Task<Item> CreateAsync(ItemForm form, string userId);
@@ -60,6 +61,10 @@ public sealed class ItemService(MongoStore store, ItemImageService images) : IIt
             .Limit(pageSize)
             .ToListAsync();
     }
+
+    public async Task<bool> ExistsAsync(string id, CancellationToken cancellationToken) =>
+        ObjectId.TryParse(id, out _) && await store.Items.Find(x => x.Id == id)
+            .Project(x => x.Id).FirstOrDefaultAsync(cancellationToken) is not null;
 
     public async Task<Item?> GetAsync(string id)
     {
