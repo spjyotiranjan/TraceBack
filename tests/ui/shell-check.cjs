@@ -287,19 +287,30 @@ async function verifyNativeZoom() {
             await cdp.detach();
           }
 
-          await signedIn(context, admin);
-          await page.goto(`${base}/Home/Privacy`);
-          if (mobile) await menu.locator('summary').click();
-          assert.equal(await actions.getByRole('link', exact('Admin')).getAttribute('href'), '/Admin');
-          const logout = actions.getByRole('button', exact('Sign out'));
-          assert.deepEqual(await logout.evaluate(button => [button.form.method, button.form.querySelector('[name=__RequestVerificationToken]').value.length > 0]), ['post', true]);
-          if (width === 390 || width === 1440) {
-            await screenshot(page, `admin-${colorScheme}-${width}`);
-            await logout.click();
-            await page.waitForURL(`${base}/`);
-            await page.waitForLoadState('domcontentloaded');
-            assert.equal(await nav.count(), 0);
-          }
+          // Appearance and safe-area probes mutate the member context. Start
+          // afresh so the admin frame reflects the requested theme and viewport.
+          const adminContext = await browser.newContext({ viewport: { width, height }, colorScheme, reducedMotion: 'reduce' });
+          try {
+            await signedIn(adminContext, admin);
+            const adminPage = await adminContext.newPage();
+            adminPage.setDefaultTimeout(5000);
+            adminPage.on('pageerror', error => errors.push(error.message));
+            assert.equal((await adminPage.goto(`${base}/Home/Privacy`)).status(), 200);
+            assert.equal(await adminPage.locator('html').getAttribute('data-theme'), colorScheme);
+            const adminMenu = panel(adminPage, 'Menu');
+            if (mobile) await adminMenu.locator('summary').click();
+            const adminActions = mobile ? adminMenu : adminPage.getByRole('banner');
+            assert.equal(await adminActions.getByRole('link', exact('Admin')).getAttribute('href'), '/Admin');
+            const logout = adminActions.getByRole('button', exact('Sign out'));
+            assert.deepEqual(await logout.evaluate(button => [button.form.method, button.form.querySelector('[name=__RequestVerificationToken]').value.length > 0]), ['post', true]);
+            if (width === 390 || width === 1440) {
+              await screenshot(adminPage, `admin-${colorScheme}-${width}`);
+              await logout.click();
+              await adminPage.waitForURL(`${base}/`);
+              await adminPage.waitForLoadState('domcontentloaded');
+              assert.equal(await adminPage.getByRole('navigation', exact('Member navigation')).count(), 0);
+            }
+          } finally { await adminContext.close(); }
           assert.deepEqual(errors, []);
           console.log(`${colorScheme}: guest/member/admin at ${width}x${height} passed`);
         } finally { await context.close(); }
