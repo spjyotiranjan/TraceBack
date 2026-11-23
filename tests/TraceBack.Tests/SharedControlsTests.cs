@@ -1,13 +1,21 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using TraceBack.Models;
 using Xunit;
+using Claim = System.Security.Claims.Claim;
 
 namespace TraceBack.Tests;
 
@@ -72,25 +80,49 @@ public class SharedControlsTests : IClassFixture<SharedControlsFactory>
     }
 
     [Fact]
-    public async Task FailedGetOffersAnExplicitContextPreservingGetLink()
+    public async Task FailedGetOffersAQueryFreeRetryOfAKnownSafePage()
     {
-        using var response = await _client.GetAsync("/ui-controls-test/failure?q=blue%20bag&page=2");
+        using var response = await _client.GetAsync("/Home/Privacy?fixtureFault=fixture-query-marker");
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Null(response.Headers.Location);
         var page = await response.Content.ReadAsStringAsync();
-        Assert.Contains("href=\"/ui-controls-test/failure?q=blue%20bag&amp;page=2\"", page);
+        Assert.Contains("href=\"/Home/Privacy\"", page);
+        Assert.Contains("Try again", page);
+        Assert.Equal("no-referrer", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
+        Assert.DoesNotContain("fixture-query-marker", page);
+        Assert.DoesNotContain("Fixture exception detail", page);
         Assert.Contains("Reference:", page);
-        Assert.Contains("aria-hidden=\"true\"", page);
+        Assert.Contains("data-route-art=\"error\"", page);
     }
 
     [Fact]
     public async Task FailedPostKeepsStatusButDoesNotOfferReplay()
     {
-        using var response = await _client.PostAsync("/ui-controls-test/failure?q=blue%20bag", new StringContent("sample"));
+        using var response = await _client.PostAsync("/ui-controls-test/failure?q=fixture-query-marker", new StringContent("fixture-body-marker"));
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Null(response.Headers.Location);
         var page = await response.Content.ReadAsStringAsync();
         Assert.DoesNotContain("Try again", page);
         Assert.DoesNotContain("data-retry", page);
         Assert.Contains("Go home", page);
+        Assert.DoesNotContain("fixture-query-marker", page);
+        Assert.DoesNotContain("fixture-body-marker", page);
+    }
+
+    [Theory]
+    [InlineData("/Home/Error", HttpStatusCode.OK)]
+    [InlineData("/ui-controls-test/failure?fixtureFault=fixture-query-marker", HttpStatusCode.InternalServerError)]
+    public async Task WithoutAKnownSafeOriginalGetTheErrorPageOnlyOffersHome(string url, HttpStatusCode status)
+    {
+        using var response = await _client.GetAsync(url);
+        Assert.Equal(status, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var page = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Go home", page);
+        Assert.DoesNotContain("Try again", page);
+        Assert.DoesNotContain("fixture-query-marker", page);
     }
 
     [Fact]
@@ -115,8 +147,23 @@ public class SharedControlsFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Production");
         builder.UseStaticWebAssets();
         builder.UseSetting("Jwt:Secret", new string('x', 48));
-        builder.ConfigureServices(services => services.AddControllersWithViews().AddApplicationPart(typeof(SharedControlsTestController).Assembly));
+        builder.ConfigureServices(services => services.AddControllersWithViews(options => options.Filters.Add(new PrivacyFaultFilter()))
+            .AddApplicationPart(typeof(SharedControlsTestController).Assembly));
     }
+}
+
+internal sealed class PrivacyFaultFilter : IActionFilter
+{
+    public void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (context.RouteData.Values["controller"] is "Home" && context.RouteData.Values["action"] is "Privacy"
+            && context.HttpContext.Request.Query.ContainsKey("fixtureFault"))
+        {
+            throw new InvalidOperationException("Fixture exception detail");
+        }
+    }
+
+    public void OnActionExecuted(ActionExecutedContext context) { }
 }
 
 public class SharedControlsBrowserTests
@@ -131,11 +178,12 @@ public class SharedControlsBrowserTests
     {
         var script = Environment.GetEnvironmentVariable(scriptVariable)!;
         using var factory = new SharedControlsFactory();
-        factory.UseKestrel(0);
+        factory.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
         using var client = factory.CreateClient();
         var start = new ProcessStartInfo("node") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
         start.ArgumentList.Add(script);
-        start.Environment["TRACEBACK_URL"] = client.BaseAddress!.GetLeftPart(UriPartial.Authority);
+        start.Environment["TRACEBACK_URL"] = factory.Services.GetRequiredService<IServer>()
+            .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
         using var browser = Process.Start(start)!;
         var output = browser.StandardOutput.ReadToEndAsync();
         var errors = browser.StandardError.ReadToEndAsync();
@@ -177,6 +225,29 @@ public class SharedControlsTestController : Controller
 
     [AcceptVerbs("GET", "POST", Route = "failure")]
     public IActionResult Failure() => throw new InvalidOperationException("Test recovery rendering");
+
+    [HttpGet("write-form")]
+    public IActionResult WriteForm() => Content("""
+        <!doctype html><html lang="en"><title>Fixture form</title>
+        <form method="post" action="/ui-controls-test/failure?fixtureFault=fixture-query-marker">
+          <input type="hidden" name="details" value="fixture-body-marker">
+          <button type="submit">Send fixture</button>
+        </form></html>
+        """, "text/html");
+
+    [HttpGet("reference/{variant}")]
+    public IActionResult Reference(string variant) => View("~/Views/Shared/Error.cshtml",
+        new ErrorViewModel { RequestId = variant == "long" ? new string('R', 512) + "<end>" : null });
+
+    [HttpPost("member-cookie")]
+    public async Task<IActionResult> MemberCookie()
+    {
+        const string scheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "000000000000000000000001"),
+            new Claim(ClaimTypes.Name, "Fixture Member"), new Claim(ClaimTypes.Role, "Member")], scheme);
+        await HttpContext.SignInAsync(scheme, new ClaimsPrincipal(identity));
+        return NoContent();
+    }
 
     [HttpGet("button/{tone}")]
     public IActionResult Button(ButtonTone tone, bool disabled = false, bool iconOnly = false) =>

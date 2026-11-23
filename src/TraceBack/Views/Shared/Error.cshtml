@@ -4,17 +4,31 @@
     const string heading = "Something went wrong";
     ViewData["Title"] = heading;
     ViewData["RouteArt"] = "error";
+    Context.Response.Headers["Referrer-Policy"] = "no-referrer";
+    var homeUrl = Url.Action("Index", "Home")!;
     var original = Context.Features.Get<IExceptionHandlerPathFeature>();
-    var retryUrl = HttpMethods.IsGet(Context.Request.Method) && original is not null
-        ? Context.Request.PathBase.ToUriComponent() + new PathString(original.Path).ToUriComponent() + Context.Request.QueryString.ToUriComponent()
-        : null;
-    var canRetry = Url.IsLocalUrl(retryUrl);
+    string? retryUrl = null;
+    if (HttpMethods.IsGet(Context.Request.Method) && original is not null)
+    {
+        // Do not echo the failing URL: even a local path or query can contain private data.
+        var originalPath = (Context.Request.PathBase + new PathString(original.Path)).ToUriComponent();
+        string?[] safePages = [homeUrl, Url.Action("Index", "Items"), Url.Action("Privacy", "Home")];
+        retryUrl = Array.Find(safePages, path => string.Equals(path, originalPath, StringComparison.OrdinalIgnoreCase));
+    }
+    var canRetry = retryUrl is not null;
     var help = canRetry
         ? "We could not load this page. Please try again. If the problem continues, contact your campus service desk."
         : "We could not complete this request. If the problem continues, contact your campus service desk.";
-    var home = new UiButton("Go home", canRetry ? ButtonTone.Secondary : ButtonTone.Primary,
-        Href: Url.Action("Index", "Home")!);
+    var home = new UiButton("Go home", canRetry ? ButtonTone.Secondary : ButtonTone.Primary, Href: homeUrl);
 }
 <partial name="_RecoveryContent" model='@(new RecoveryContent(heading, help, RecoveryArt.Service,
     Primary: canRetry ? new UiButton("Try again", Href: retryUrl) : home,
-    Secondary: canRetry ? home : null, FullPage: true, Reference: Model.RequestId))' />
+    Secondary: canRetry && retryUrl != homeUrl ? home : null, FullPage: true, Reference: Model.RequestId))' />
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/recovery-pages.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/recovery-focus.js" asp-append-version="true" defer></script>
+}

@@ -33,7 +33,7 @@ Components use Campus Signal tokens. Use the Razor partials in `Views/Shared`; k
 
 - `_TempDataNotices` already consumes `TempData["Success"]` and `TempData["Error"]` in the layout. Use `_Notice` (`UiNotice`) for inline info/success/error and an optional action. Supply text that makes the result or next step explicit. Keep inline errors in their affected region.
 - `_RecoveryContent` (`RecoveryContent`) takes the caller’s heading, help, art (`Search`, `Reports`, `Claims`, `Access`, `Service`), actions and optional request reference. `FullPage: true` renders the page’s `h1`; the inline default renders `h2`. Art is decorative; route backgrounds belong to page cards.
-- A retry is an ordinary local GET link. For a failed GET, generate it from the server-known original path and query (including filters/page), not a redirect parameter, referrer or `location.reload()`. Do not render a retry for failed writes; offer a safe GET destination instead. The shared error view preserves the middleware response status and only offers retry for a genuine original GET. Rendering a partial never changes the response status.
+- The shared production error page offers **Try again** only after a failed GET to Home, Browse or Privacy, using a generated local URL without the original query. Other failures and direct visits to `/Home/Error` offer **Go home**. No retry replays a write or forwards the error document's referrer. Rendering the recovery view does not change the handler's response status.
 
 ## Checks
 

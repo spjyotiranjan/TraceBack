@@ -1,0 +1,24 @@
+.tb-privacy {
+  max-inline-size: var(--tb-form-width);
+  margin-inline: auto;
+}
+
+.tb-privacy h1 {
+  margin-block: 0 var(--tb-space-4);
+}
+
+.tb-privacy .tb-privacy__policy {
+  padding: clamp(var(--tb-space-4), 3vw, var(--tb-space-8));
+}
+
+.tb-privacy__entry + .tb-privacy__entry {
+  border-block-start: 1px solid var(--tb-divider);
+  margin-block-start: var(--tb-space-6);
+  padding-block-start: var(--tb-space-6);
+}
+
+.tb-privacy__entry p {
+  margin-block: var(--tb-space-2) 0;
+  color: var(--tb-ink-muted);
+  line-height: 1.65;
+}

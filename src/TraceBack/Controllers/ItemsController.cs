@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -88,14 +89,25 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
 
     private static string? CleanFilter(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> Details(string id)
     {
+        // A guest can recover from a dead link, but only members can load report data.
+        var session = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        if (!session.Succeeded || session.Principal is not { Identity.IsAuthenticated: true } member)
+        {
+            if (await items.ExistsAsync(id, HttpContext.RequestAborted))
+                return Challenge(CookieAuthenticationDefaults.AuthenticationScheme);
+
+            return MissingReport();
+        }
+
+        HttpContext.User = member;
         var item = await items.GetAsync(id);
         if (item is null)
         {
-            Response.StatusCode = StatusCodes.Status404NotFound;
-            return View("NotFound");
+            return MissingReport();
         }
 
         var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -104,6 +116,12 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         var canClaim = User.Identity?.IsAuthenticated == true && !isOwner && item.Type == "Found" && item.Status == "Active";
 
         return View(new ItemDetailPage(item, isOwner, isAdmin, canClaim));
+    }
+
+    private ViewResult MissingReport()
+    {
+        Response.StatusCode = StatusCodes.Status404NotFound;
+        return View("NotFound");
     }
 
     [Authorize]

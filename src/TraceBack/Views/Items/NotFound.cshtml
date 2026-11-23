@@ -1,10 +1,17 @@
 @{
-    ViewData["Title"] = "Item not found";
+    const string heading = "Item not found";
+    ViewData["Title"] = heading;
     ViewData["RouteArt"] = "not-found";
 }
 
-<div class="empty-state">
-    <h1>Item not found</h1>
-    <p>This item may have been removed, or the link may be incorrect.</p>
-    <a class="btn btn-primary" asp-controller="Items" asp-action="Index">Browse items</a>
-</div>
+<partial name="_RecoveryContent" model='@(new RecoveryContent(heading,
+    "This item may have been removed, or the link may be incorrect.", RecoveryArt.Search,
+    Primary: new UiButton("Browse items", Href: Url.Action("Index", "Items")), FullPage: true))' />
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/recovery-pages.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/recovery-focus.js" asp-append-version="true" defer></script>
+}

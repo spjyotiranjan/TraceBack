@@ -3,13 +3,28 @@
     ViewData["RouteArt"] = "privacy";
 }
 
-<article class="tb-prose">
-    <h1>@ViewData["Title"]</h1>
-    <p>TraceBack displays the item details you choose to publish, including its description, location, date, image, and contact preference. Keep personal contact details out of those public fields.</p>
-    <p>Your account email is used to sign in and is not shown in public reports. Ownership claim messages are available only to authorized claim reviewers and the person who submitted the claim.</p>
-    <p>If you need a report corrected or removed, sign in and manage it from your dashboard or contact your campus service desk.</p>
+<article class="tb-privacy" aria-labelledby="privacy-title">
+    <h1 id="privacy-title">@ViewData["Title"]</h1>
+    <div class="tb-panel tb-privacy__policy">
+        <div class="tb-privacy__entry">
+            <strong>What appears in public reports</strong>
+            <p>TraceBack displays the item details you choose to publish, including its description, location, date, image, and contact preference. Keep personal contact details out of those public fields.</p>
+        </div>
+        <div class="tb-privacy__entry">
+            <strong>Who can see account and claim information</strong>
+            <p>Your account email is used to sign in and is not shown in public reports. Ownership claim messages are available only to authorized claim reviewers and the person who submitted the claim.</p>
+        </div>
+        <div class="tb-privacy__entry">
+            <strong>Correcting or removing a report</strong>
+            <p>If you need a report corrected or removed, sign in and manage it from your dashboard or contact your campus service desk.</p>
+        </div>
+    </div>
 </article>
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/privacy.css" asp-append-version="true" />
+}
+
+@section Scripts {
+    <script src="~/js/recovery-focus.js" asp-append-version="true" defer></script>
 }
