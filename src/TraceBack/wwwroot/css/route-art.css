@@ -29,23 +29,30 @@
 .tb-route-art::before { background-image: var(--tb-route-art-a, none); }
 .tb-route-art::after { display: none; }
 
-/* One quiet A → B → A pass. No looping, JS, or second image for reduced motion. */
+/* A quiet, seamless A → B → A loop. Reduced motion keeps only pose A. */
 @media (prefers-reduced-motion: no-preference) {
+  .tb-route-art { --tb-route-cycle: 14s; }
   :is([data-route-art^="home-"], [data-route-art="auth"], [data-route-art="browse"],
       [data-route-art="details"], [data-route-art="editor"], [data-route-art="dashboard"])::before {
-    animation: tb-route-phase-a 4.8s ease-in-out;
+    animation: tb-route-phase-a var(--tb-route-cycle) ease-in-out infinite;
   }
   :is([data-route-art^="home-"], [data-route-art="auth"], [data-route-art="browse"],
       [data-route-art="details"], [data-route-art="editor"], [data-route-art="dashboard"])::after {
     display: block;
     background-image: var(--tb-route-art-b, none);
     opacity: 0;
-    animation: tb-route-phase-b 4.8s ease-in-out;
+    animation: tb-route-phase-b var(--tb-route-cycle) ease-in-out infinite;
   }
 }
 
-@keyframes tb-route-phase-a { 50% { opacity: .22; } }
-@keyframes tb-route-phase-b { 50% { opacity: .78; } }
+@keyframes tb-route-phase-a {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .22; }
+}
+@keyframes tb-route-phase-b {
+  0%, 100% { opacity: 0; }
+  50% { opacity: .78; }
+}
 
 @media (forced-colors: active), print {
   .tb-route-art { display: none; }

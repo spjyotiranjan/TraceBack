@@ -162,8 +162,6 @@ body { padding-block: var(--tb-header-clearance) var(--tb-footer-clearance); }
 
 .skip-link:focus { top: var(--tb-shell-top); }
 .site-footer {
-  background: var(--tb-surface-muted);
-  border-top: 1px solid var(--tb-divider);
   color: var(--tb-ink-muted);
   padding: 1rem env(safe-area-inset-right, 0px) 1rem env(safe-area-inset-left, 0px);
 }
