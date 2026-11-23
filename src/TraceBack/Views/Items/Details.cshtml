@@ -160,6 +160,10 @@
     <link rel="stylesheet" href="~/css/report-map.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/discussion.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/detail-report.css" asp-append-version="true" />
+    @if (Model.CanClaim)
+    {
+        <link rel="stylesheet" href="~/css/claim.css" asp-append-version="true" />
+    }
 }
 
 @section Scripts {
@@ -169,4 +173,8 @@
     <script src="~/js/report-map.js" asp-append-version="true" defer></script>
     <script src="~/js/discussion.js" asp-append-version="true" defer></script>
     <script src="~/js/confirmation-dialog.js" asp-append-version="true" defer></script>
+    @if (Model.CanClaim)
+    {
+        <script src="~/js/claim.js" asp-append-version="true" defer></script>
+    }
 }

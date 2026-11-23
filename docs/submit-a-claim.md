@@ -1,0 +1,9 @@
+# Submit a claim
+
+An eligible signed-in visitor follows **Submit a claim** from a Found, Active report. Item Details opens a native modal dialog when supported; the same link still opens `GET /Claims/Create?itemId={id}` without scripts or in a new tab. Both views render `Views/Shared/_ClaimForm.cshtml` and POST to the same antiforgery-protected MVC action. `CanClaim` controls the entry point, not authorization: GET and POST both check the current report and user, and the claim service rechecks eligibility when writing.
+
+The drawer posts with `X-TraceBack-Claim: drawer` to request JSON feedback. The header changes the response format only. A confirmed write returns the Dashboard URL; the browser performs a visible navigation so the one-time success notice is not consumed by a background request. The standalone route uses the normal POST/redirect. Invalid and failed submissions retain the message; stale or forbidden drawer submissions retain a copyable draft but disable further attempts. A transport or storage failure does not prove the write failed: check **My claims** before retrying. The browser prevents overlapping submits, and the database enforces one claim per user/report even without scripts. The draft is not saved in client storage or added to public discussion.
+
+## Verification
+
+Run `dotnet test TraceBack.slnx -c Release --nologo`. Set `TRACEBACK_TEST_MONGO_URI` to a disposable MongoDB server to exercise claim persistence and authorization. For the Chromium journey also set `TRACEBACK_BROWSER_TESTS=1`, make Playwright available to Node, and provision Chromium (or set `CHROME_PATH`). Use `--filter 'FullyQualifiedName~Claim_drawer|FullyQualifiedName~Claim_posts'` for just the page and route checks. Optional `TRACEBACK_CLAIM_EVIDENCE` saves screenshots. The browser matrix covers desktop/mobile light and dark, keyboard and reduced motion, failure and pending states, and native standalone navigation with and without scripts.
