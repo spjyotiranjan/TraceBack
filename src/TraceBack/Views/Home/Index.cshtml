@@ -11,8 +11,7 @@
 <section class="home-hero" aria-labelledby="home-title">
     <h1 id="home-title">Find what matters.</h1>
     <div class="home-hero-aside" aria-hidden="true">
-        <img class="tb-home-illustration" src="~/art/home-hero.svg" asp-append-version="true"
-             alt="" width="480" height="480" />
+        <partial name="_HeroIllustration" />
     </div>
     <div class="home-hero-copy">
         @if (signedIn)
@@ -25,8 +24,8 @@
                 </div>
             </form>
             <div class="home-hero-actions">
-                <partial name="_Button" model='new UiButton("Browse reports", ButtonTone.Secondary, Href: browseUrl)' />
-                <partial name="_Button" model='new UiButton("Report an item", Href: createUrl)' />
+                <partial name="_Button" model='new UiButton("Browse reports", ButtonTone.Quiet, Href: browseUrl)' />
+                <partial name="_Button" model='new UiButton("Report an item", ButtonTone.Quiet, Href: createUrl)' />
             </div>
         }
         else
@@ -51,17 +50,16 @@
             </div>
             <a asp-controller="Items" asp-action="Index">Browse all reports</a>
         </div>
-        @if (Model.RecentLoadFailed)
+        @if (Model.RecentLoadFailed || Model.RecentItems.Count == 0)
         {
-            <partial name="_RecoveryContent" model='new RecoveryContent(
-                "Recent reports could not load", "Try this page again, or open Browse to search the index.", RecoveryArt.Service,
-                new UiButton("Retry", Href: Context.Request.GetEncodedPathAndQuery()))' />
-        }
-        else if (Model.RecentItems.Count == 0)
-        {
-            <partial name="_RecoveryContent" model='new RecoveryContent(
-                "No active reports yet", "Share an item you lost or found to get the index started.", RecoveryArt.Reports,
-                new UiButton("Report an item", Href: createUrl))' />
+            var failed = Model.RecentLoadFailed;
+            <div class="home-recent-status">
+                <h3>@(failed ? "Recent reports could not load" : "No active reports yet")</h3>
+                <p>@(failed ? "Try this page again, or open Browse to search the index." : "Share an item you lost or found to get the index started.")</p>
+                <partial name="_Button" model='@(failed
+                    ? new UiButton("Retry", Href: Context.Request.GetEncodedPathAndQuery())
+                    : new UiButton("Report an item", Href: createUrl))' />
+            </div>
         }
         else
         {
@@ -73,9 +71,19 @@
             </div>
         }
     </section>
+    <section class="process-section" aria-labelledby="process-title">
+        <div class="section-heading">
+            <div>
+                <h2 id="process-title">Report. Search. Reunite.</h2>
+                <p>Share a report, look for useful details, and arrange a safe handoff after confirming ownership.</p>
+            </div>
+        </div>
+    </section>
 }
-
-<partial name="_ProcessPath" />
+else
+{
+    <partial name="_ProcessPath" />
+}
 
 @section Styles {
     <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />
@@ -84,16 +92,4 @@
 @section Scripts {
     <script src="~/js/report-search.js" asp-append-version="true" defer></script>
     <script src="~/js/report-photo.js" asp-append-version="true" defer></script>
-    <script>
-        const path = document.querySelector('.process-route');
-        if (path && 'IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            const observer = new IntersectionObserver(entries => {
-                if (entries[0].isIntersecting) {
-                    path.classList.add('is-visible');
-                    observer.disconnect();
-                }
-            }, { threshold: 0.3 });
-            observer.observe(path);
-        }
-    </script>
 }

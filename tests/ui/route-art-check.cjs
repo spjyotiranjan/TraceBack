@@ -60,10 +60,11 @@ async function inspect(page, route, mode, phone, staticPose) {
         assert.equal((await page.goto(`${base}${uri}`)).status(), status);
         await inspect(page, variant, 'light', phone, !['auth','home-guest'].includes(variant));
         if (variant === 'home-guest') {
-          const hero = page.locator('img.tb-home-illustration');
+          const hero = page.locator('svg.tb-home-illustration');
           assert.equal(await hero.count(), 1);
-          assert(await hero.evaluate(el => el.complete && el.naturalWidth > 0 && el.alt === '' &&
-            el.width > 0 && el.height > 0 && el.getAttribute('width') === '480' && el.getAttribute('height') === '480'));
+          assert(await hero.evaluate(el => el.getBoundingClientRect().width > 0 && el.getBBox().height > 0 &&
+            el.getAttribute('viewBox') === '0 0 480 280' && el.getAttribute('focusable') === 'false' &&
+            !!el.closest('[aria-hidden="true"]')));
           await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-route-art]'), '::after').opacity) > .72);
           await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-route-art]'), '::after').opacity === '0');
         }

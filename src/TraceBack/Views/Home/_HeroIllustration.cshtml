@@ -1,0 +1,61 @@
+<svg class="tb-home-illustration" width="480" height="280" viewBox="0 0 480 280" fill="none" focusable="false">
+  <defs>
+    <linearGradient id="blue" x1="0" y1=".3" x2="1" y2=".6">
+      <stop stop-color="#3854cf"/><stop offset=".44" stop-color="#748cfb"/><stop offset="1" stop-color="#3444b4"/>
+    </linearGradient>
+    <linearGradient id="cap" x2="1" y2="1">
+      <stop stop-color="#8d9eff"/><stop offset="1" stop-color="#3b50cf"/>
+    </linearGradient>
+    <linearGradient id="coral" x1=".4" y1="0" x2=".65" y2="1">
+      <stop stop-color="#ffc9b2"/><stop offset=".45" stop-color="#ed8978"/><stop offset="1" stop-color="#c65157"/>
+    </linearGradient>
+    <linearGradient id="indigo" x2="1" y2="1">
+      <stop stop-color="#616fae"/><stop offset=".5" stop-color="#39436f"/><stop offset="1" stop-color="#22294c"/>
+    </linearGradient>
+    <linearGradient id="route" x2="1" y2="0">
+      <stop stop-color="#6987ef"/><stop offset=".55" stop-color="#aa86eb"/><stop offset="1" stop-color="#f28976"/>
+    </linearGradient>
+  </defs>
+
+  <!-- One transparent route behind the three separately moving belongings. -->
+  <path id="home-route" d="M24 202C80 255 125 239 190 196c74-49 100-103 174-111 34-4 64 6 88 22" pathLength="100" />
+  <use href="#home-route" stroke="url(#route)" stroke-width="2" stroke-linecap="round" stroke-dasharray=".16 1.45" opacity=".65" />
+  <use class="pulse" href="#home-route" stroke="url(#route)" stroke-width="3" stroke-linecap="round" stroke-dasharray="19 103" />
+  <circle cx="24" cy="202" r="4" fill="#7c93f1"/>
+  <circle cx="452" cy="107" r="4" fill="#ef9385"/>
+  <path d="M186 76v18m-9-9h18m212 127v14m-7-7h14M268 47v12m-6-6h12" stroke="#8798ee" stroke-width="2" stroke-linecap="round" opacity=".8" />
+  <circle cx="62" cy="110" r="3" fill="#ee9e8c"/><circle cx="444" cy="174" r="3" fill="#9ca9f4"/>
+
+  <g class="float bottle">
+    <g transform="rotate(-20 121 147)">
+      <path d="M107 52v-8a15 15 0 0 1 30 0v8" stroke="#657deb" stroke-width="6" stroke-linecap="round"/>
+      <path d="M101 77h42v14c0 10 19 14 19 31v86a18 18 0 0 1-18 18h-44a18 18 0 0 1-18-18v-86c0-17 19-21 19-31z" fill="url(#blue)" stroke="#667ff2" stroke-width="1.5"/>
+      <rect x="97" y="53" width="50" height="30" rx="9" fill="url(#cap)" stroke="#93a4ff" stroke-width="1.5"/>
+      <path d="M102 63h40M95 124v70" stroke="#bac9ff" opacity=".62" stroke-width="3" stroke-linecap="round"/>
+      <path d="M83 154c25 9 52 11 78 1v23c-27 11-55 9-78-1z" fill="#c1cfff" fill-opacity=".28"/>
+      <path d="m116 166 5 5 8-8" stroke="#e9efff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+
+  <g class="float umbrella">
+    <g transform="rotate(-19 244 206)">
+      <path d="M286 208h30a12 12 0 1 1 0 24h-3" stroke="#a96a79" stroke-width="6" stroke-linecap="round"/>
+      <path d="m170 213 21-4 1 9-22-2a1.5 1.5 0 0 1 0-3Z" fill="#c37783"/>
+      <path d="M185 211c28-17 54-29 91-30 14 0 22 11 22 25 0 15-8 24-22 24-33 1-61-5-91-14a2.7 2.7 0 0 1 0-5Z" fill="url(#coral)" stroke="#ee9d92" stroke-width="1.5"/>
+      <path d="M201 212c24-9 52-16 75-17m-75 19c27 3 52 3 76 1" stroke="#ffe3d2" stroke-opacity=".66" stroke-width="2" stroke-linecap="round"/>
+      <path d="M245 185c-5 13-4 30 3 44" stroke="#ad4f5b" stroke-width="9"/>
+      <circle cx="246" cy="205" r="2.5" fill="#ffe3d2"/>
+    </g>
+  </g>
+
+  <g class="float headset">
+    <g transform="rotate(17 359 121)">
+      <path d="M304 142v-22a55 55 0 0 1 110 0v22" stroke="#7888c6" stroke-width="15" stroke-linecap="round"/>
+      <path d="M304 142v-22a55 55 0 0 1 110 0v22" stroke="url(#indigo)" stroke-width="11" stroke-linecap="round"/>
+      <path d="M319 91a48 48 0 0 1 79 0" stroke="#abb9ec" stroke-width="2" opacity=".8" stroke-linecap="round"/>
+      <rect x="293" y="125" width="35" height="55" rx="15" fill="url(#indigo)" stroke="#8d9cd5" stroke-width="1.5"/>
+      <rect x="390" y="125" width="35" height="55" rx="15" fill="url(#indigo)" stroke="#8d9cd5" stroke-width="1.5"/>
+      <path d="M321 140v24m76-24v24" stroke="#8496d1" stroke-width="5" stroke-linecap="round"/>
+    </g>
+  </g>
+</svg>
