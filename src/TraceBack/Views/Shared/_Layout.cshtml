@@ -61,7 +61,7 @@
         <div class="tb-shell-actions">
             <partial name="_ThemeControl" />
             <div class="tb-desktop-actions">
-                <partial name="_ShellAccountActions" />
+                <partial name="_ShellAccountActions" model="true" />
             </div>
             <details class="tb-disclosure tb-mobile-menu" data-shell-disclosure>
                 <summary class="tb-shell-trigger" aria-label="Menu">
@@ -70,7 +70,7 @@
                 </summary>
                 <div class="tb-shell-panel">
                     <p class="tb-shell-panel-title">Menu</p>
-                    <partial name="_ShellAccountActions" />
+                    <partial name="_ShellAccountActions" model="false" />
                 </div>
             </details>
         </div>

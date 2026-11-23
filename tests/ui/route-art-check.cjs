@@ -31,7 +31,7 @@ async function inspect(page, route, mode, phone, staticPose) {
   assert.equal(response.status(), 200);
   assert.match(response.headers()['content-type'], /image\/svg\+xml/);
   assert.deepEqual([styles.pointer, styles.position, styles.z, styles.hidden, styles.children],
-    ['none', 'absolute', '-1', 'true', 0]);
+    ['none', 'fixed', '-1', 'true', 0]);
   assert.equal(styles.width, page.viewportSize().width);
   if (staticPose) {
     assert.deepEqual(styles.names, ['none', 'none']);
@@ -64,7 +64,7 @@ async function inspect(page, route, mode, phone, staticPose) {
           assert.equal(await hero.count(), 1);
           assert(await hero.evaluate(el => el.complete && el.naturalWidth > 0 && el.alt === '' &&
             el.width > 0 && el.height > 0 && el.getAttribute('width') === '480' && el.getAttribute('height') === '480'));
-          await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-route-art]'), '::after').opacity) > .35);
+          await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-route-art]'), '::after').opacity) > .72);
           await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-route-art]'), '::after').opacity === '0');
         }
         if (process.env.ART_SCREENSHOTS) await page.screenshot({path: `${process.env.ART_SCREENSHOTS}/${variant}-light-${width}.png`, animations: 'disabled'});

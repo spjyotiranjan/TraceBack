@@ -88,6 +88,88 @@ async function exerciseDisclosures(page, mobile) {
   }
 }
 
+async function verifyNavFeedback(browser, colorScheme) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme });
+  try {
+    await signedIn(context, member);
+    const page = await context.newPage();
+    await page.goto(`${base}/Items?Query=backpack`);
+    const nav = page.getByRole('navigation', exact('Member navigation'));
+    const dashboard = nav.getByRole('link', exact('My dashboard'));
+    const browse = nav.getByRole('link', exact('Browse'));
+    const report = nav.getByRole('link', exact('Report an item'));
+    const brand = page.getByRole('link', exact('TraceBack Home'));
+    const font = locator => locator.evaluate(el => getComputedStyle(el).fontSize);
+    const gap = await nav.evaluate(el => parseFloat(getComputedStyle(el).columnGap));
+    assert(gap > 6 && gap <= 12, `Unexpected member nav gap: ${gap}px`);
+    assert.deepEqual(await Promise.all([browse, report, dashboard, brand].map(font)), ['15px', '15px', '15px', '18px']);
+    assert.match(await report.locator('svg use').getAttribute('href'), /\/lucide\.svg#plus$/);
+    const style = () => dashboard.evaluate(el => {
+      const label = el.querySelector('.tb-nav-label');
+      const line = getComputedStyle(label, '::after');
+      return {
+        fill: getComputedStyle(el).backgroundColor,
+        lift: label.getBoundingClientRect().top - el.getBoundingClientRect().top,
+        underline: new DOMMatrix(line.transform).a,
+        duration: parseFloat(line.transitionDuration) * (line.transitionDuration.endsWith('ms') ? 1 : 1000),
+        origin: parseFloat(line.transformOrigin),
+        y: el.getBoundingClientRect().top
+      };
+    });
+    const rest = await style();
+    assert.equal(rest.underline, 0);
+    assert.equal(rest.origin, 0);
+    assert(rest.duration >= 200 && rest.duration <= 300);
+    await dashboard.hover();
+    await page.waitForFunction(el => {
+      const label = el.querySelector('.tb-nav-label');
+      return new DOMMatrix(getComputedStyle(label, '::after').transform).a === 1;
+    }, await dashboard.elementHandle());
+    const hover = await style();
+    assert.equal(hover.fill, 'rgba(0, 0, 0, 0)');
+    assert.equal(hover.y, rest.y, 'Hover must not move the hit target');
+    assert(rest.lift > hover.lift && rest.lift - hover.lift <= 4);
+    await screenshot(page, `member-hover-${colorScheme}-1440`);
+    await page.mouse.move(0, 0);
+    await report.focus();
+    await page.keyboard.press('Tab');
+    assert(await focusIs(dashboard));
+    assert(await dashboard.evaluate(el => el.matches(':focus-visible') && getComputedStyle(el).outlineStyle === 'solid'));
+    await screenshot(page, `member-focus-${colorScheme}-1440`);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.reload();
+    await dashboard.hover();
+    const reduced = await style();
+    assert(Math.abs(reduced.lift - rest.lift) < .1 && reduced.duration < 1 && reduced.underline === 1);
+    assert.equal(await browse.getAttribute('aria-current'), 'page');
+    assert.equal(await report.evaluate(el => getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)'), false);
+  } finally { await context.close(); }
+
+  const touch = await browser.newContext({ viewport: { width: 390, height: 844 }, colorScheme, hasTouch: true });
+  try {
+    const page = await touch.newPage();
+    assert.equal(await page.evaluate(() => matchMedia('(hover: hover)').matches), false);
+    await page.goto(`${base}/Account/Login`);
+    const menu = panel(page, 'Menu');
+    await menu.locator('summary').tap();
+    assert(await menu.evaluate(el => el.open));
+    await menu.getByRole('link', exact('Browse')).tap();
+    await page.waitForURL(/\/Account\/Login\?ReturnUrl=%2FItems/i);
+    await signedIn(touch, member);
+    await page.goto(`${base}/Items`);
+    const appearance = panel(page, 'Appearance');
+    await appearance.locator('summary').tap();
+    const choice = colorScheme === 'light' ? 'dark' : 'light';
+    await appearance.locator(`label[for="appearance-${choice}"]`).tap();
+    await page.waitForFunction(choice => document.documentElement.dataset.theme === choice, choice);
+    const dock = page.getByRole('navigation', exact('Member navigation'));
+    await dock.getByRole('link', exact('Report an item')).tap();
+    await page.waitForURL('**/Items/Create');
+    await current(dock, 'Report an item', 'page');
+  } finally { await touch.close(); }
+  console.log(`${colorScheme}: desktop hover/focus and reduced motion, guest challenge and member touch passed`);
+}
+
 async function verifyNativeZoom() {
   // A disposable profile isolates Chromium's real page-zoom setting from the user.
   const bin = path.join(process.cwd(), 'src', 'TraceBack', 'bin');
@@ -189,7 +271,9 @@ async function verifyNativeZoom() {
               { name: 'prefers-color-scheme', value: colorScheme },
               { name: 'prefers-reduced-motion', value: 'reduce' }
             ] });
-            await page.waitForFunction(() => matchMedia('(prefers-reduced-transparency: reduce)').matches);
+            await page.waitForFunction(() => matchMedia('(prefers-reduced-transparency: reduce)').matches &&
+              ['.site-header', '.tb-member-dock'].every(selector =>
+                getComputedStyle(document.querySelector(selector)).backdropFilter === 'none'));
             for (const shell of ['.site-header', '.tb-member-dock']) {
               const style = await page.locator(shell).evaluate(e => [getComputedStyle(e).backgroundColor, getComputedStyle(e).backdropFilter]);
               assert(!style[0].startsWith('rgba') && !style[0].startsWith('color('), `Expected opaque surface, got ${style[0]}`);
@@ -226,7 +310,9 @@ async function verifyNativeZoom() {
     await panel(noJs, 'Menu').locator('summary').click();
     assert(await panel(noJs, 'Menu').getByRole('link', exact('Create account')).isVisible());
     assert(!await panel(noJs, 'Appearance').isVisible());
+    await noJs.close();
     console.log('Native mobile menu works without JavaScript');
+    for (const colorScheme of ['light', 'dark']) await verifyNavFeedback(browser, colorScheme);
   } finally { await browser.close(); }
   await verifyNativeZoom();
 })().catch(error => { console.error(error); process.exitCode = 1; });
