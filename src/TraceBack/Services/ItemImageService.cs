@@ -44,10 +44,12 @@ public sealed class MongoItemImageRepository(MongoStore store, IImageCleanup cle
             Builders<Item>.Filter.Eq(x => x.Status, "Active") &
             Builders<Item>.Filter.Eq(x => x.UpdatedAt, item.UpdatedAt);
         if (!admin) filter &= Builders<Item>.Filter.Eq(x => x.PostedByUserId, userId);
+        // A photo-only change must invalidate an open Edit form even in the same MongoDB millisecond.
+        var updatedAt = new DateTime(Math.Max(DateTime.UtcNow.Ticks, item.UpdatedAt.AddMilliseconds(1).Ticks), DateTimeKind.Utc);
         var result = await store.Items.UpdateOneAsync(filter, Builders<Item>.Update
             .Set(x => x.ImageKey, key)
             .Set(x => x.ImageUrl, null)
-            .Set(x => x.UpdatedAt, DateTime.UtcNow));
+            .Set(x => x.UpdatedAt, updatedAt));
         return result.ModifiedCount > 0;
     }
 }

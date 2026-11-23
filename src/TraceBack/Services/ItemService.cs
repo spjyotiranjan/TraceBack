@@ -11,7 +11,7 @@ public interface IItemService
     Task<Item?> GetAsync(string id);
     Task<List<Item>> MineAsync(string userId);
     Task<Item> CreateAsync(ItemForm form, string userId);
-    Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin);
+    Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin, long? expectedRevision = null);
     Task<bool> ResolveAsync(string id, string userId, bool admin);
     Task<bool> DeleteAsync(string id, string userId, bool admin);
     Task<bool> SetImageAsync(string id, ImageUpload image, string userId, bool admin);
@@ -92,7 +92,7 @@ public sealed class ItemService(MongoStore store, ItemImageService images) : IIt
         return item;
     }
 
-    public async Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin)
+    public async Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin, long? expectedRevision = null)
     {
         if (!ObjectId.TryParse(id, out _))
         {
@@ -107,8 +107,15 @@ public sealed class ItemService(MongoStore store, ItemImageService images) : IIt
         }
 
         var previousUpdatedAt = item.UpdatedAt;
+        if (expectedRevision.HasValue && expectedRevision.Value != previousUpdatedAt.Ticks)
+        {
+            throw new ItemUpdateConflictException();
+        }
         var point = ValidateMapLocation(form.MapLocation, required: false);
         Apply(item, form, point ?? item.MapLocation);
+        // MongoDB stores millisecond precision: even a save in the same millisecond must advance the revision.
+        var nextRevision = previousUpdatedAt.AddMilliseconds(1);
+        if (item.UpdatedAt < nextRevision) item.UpdatedAt = nextRevision;
 
         var result = await store.Items.ReplaceOneAsync(
             x => x.Id == id && x.Status == "Active" && x.UpdatedAt == previousUpdatedAt,

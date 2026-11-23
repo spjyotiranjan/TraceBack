@@ -35,6 +35,10 @@
     <h1>@ViewData["Title"]</h1>
     <p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
     <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card report-form" novalidate>
+        @if (Model.EditRevision is long revision)
+        {
+            <input type="hidden" name="EditRevision" value="@revision.ToString(CultureInfo.InvariantCulture)" />
+        }
         <partial name="_ValidationSummary" model='@(new Dictionary<string, string?>
         {
             ["Type"] = editing ? null : reportType == "Found" ? "type-found" : "type", ["Title"] = "title", ["Category"] = "category",

@@ -212,22 +212,30 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
             ContactPreference = item.ContactPreference
         };
 
-        return View("Editor", new ItemEditorPage(form, id, item.DisplayImageUrl, MapLocationRules.SafeStored(item.MapLocation) is not null));
+        return View("Editor", new ItemEditorPage(form, id, item.DisplayImageUrl, MapLocationRules.SafeStored(item.MapLocation) is not null,
+            LockedType: item.Type, EditRevision: item.UpdatedAt.Ticks));
     }
 
     [Authorize]
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequestSizeLimit(6 * 1024 * 1024)]
-    public async Task<IActionResult> Edit(string id, ItemForm form, IFormFile? imageFile, bool removeImage)
+    public async Task<IActionResult> Edit(string id, ItemForm form, IFormFile? imageFile, bool removeImage, [FromForm] long? editRevision)
     {
         var existingItem = await items.GetAsync(id);
         if (existingItem is null) return NotFound();
         if (!CanManage(existingItem)) return Forbid();
+        if (existingItem.Status != "Active") return NotFound();
+        if (ModelState[nameof(editRevision)]?.Errors.Count > 0 ||
+            (editRevision.HasValue && editRevision.Value != existingItem.UpdatedAt.Ticks))
+        {
+            return EditConflict(id);
+        }
 
         var editor = new ItemEditorPage(form, id, existingItem.DisplayImageUrl,
             MapLocationRules.SafeStored(existingItem.MapLocation) is not null, existingItem.Type,
-            ReselectImage: imageFile is not null, PendingImageRemoval: removeImage && imageFile is null);
+            ReselectImage: imageFile is not null, PendingImageRemoval: removeImage && imageFile is null,
+            EditRevision: existingItem.UpdatedAt.Ticks);
         if (removeImage && imageFile is not null)
         {
             ModelState.AddModelError("ImageFile", "Choose either to replace the current image or remove it, not both.");
@@ -250,7 +258,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         Item? item;
         try
         {
-            item = await items.UpdateAsync(id, form, currentUserId, isAdmin);
+            item = await items.UpdateAsync(id, form, currentUserId, isAdmin, existingItem.UpdatedAt.Ticks);
         }
         catch (ArgumentException error)
         {
@@ -259,7 +267,7 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
         }
         catch (ItemUpdateConflictException)
         {
-            return Conflict("This report changed while you were editing it. Reload and try again.");
+            return EditConflict(id);
         }
         if (item is null)
         {
@@ -286,6 +294,13 @@ public class ItemsController(IItemService items, ILogger<ItemsController> logger
 
         TempData["Success"] = "Your report was updated.";
         return RedirectToAction(nameof(Details), new { id });
+    }
+
+    private ViewResult EditConflict(string id)
+    {
+        var result = View("EditConflict", id);
+        result.StatusCode = StatusCodes.Status409Conflict;
+        return result;
     }
 
     [Authorize]

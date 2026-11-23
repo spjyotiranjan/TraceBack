@@ -127,13 +127,25 @@ async function main() {
     const locked = manual.getByRole('textbox', { name: 'Type' });
     assert.equal(await locked.inputValue(), 'Found');
     assert(await locked.evaluate(input => input.readOnly));
+    const stale = await account.newPage();
+    await stale.goto(editUrl);
+    await stale.locator('#title').fill('Stale title must not overwrite');
     await manual.locator('#title').fill('Editor saved without scripts');
     await form.getByRole('button', { name: 'Save changes' }).click();
     await manual.waitForURL('**/Items/Details/**');
     assert(await manual.getByRole('heading', { name: 'Editor saved without scripts' }).isVisible());
+    const conflict = stale.waitForResponse(response => response.request().method() === 'POST' && response.url() === editUrl);
+    await stale.getByRole('button', { name: 'Save changes' }).click();
+    assert.equal((await conflict).status(), 409);
+    assert(await stale.getByRole('heading', { name: /report changed while you were editing/ }).isVisible());
+    const reload = stale.getByRole('link', { name: 'Reload report' });
+    await reload.press('Enter');
+    assert.equal(await stale.locator('#title').inputValue(), 'Editor saved without scripts');
+    await stale.getByRole('link', { name: 'Cancel', exact: true }).click();
+    assert.match(new URL(stale.url()).pathname, /^\/Dashboard(?:\/Index)?$/);
     const storageState = await account.storageState();
     await account.close();
-    console.log('No JavaScript: anchors, icons, validation redisplay, manual pin, publish and locked Edit save passed');
+    console.log('No JavaScript: anchors, icons, validation redisplay, manual pin, publish, locked Edit save, stale 409, reload and Dashboard Cancel passed');
 
     const fallback = await browser.newContext({ storageState });
     await fallback.addInitScript(() => { Object.defineProperty(navigator, 'mediaDevices', { value: undefined }); });
@@ -144,11 +156,16 @@ async function main() {
     await fallbackPage.getByText('Image ready to publish').waitFor();
     await fallbackPage.getByRole('button', { name: 'Remove selected photo' }).click();
     await media.pendingPublish(fallbackPage);
+    const noPhotoEditUrl = new URL(fallbackPage.url());
+    noPhotoEditUrl.pathname = noPhotoEditUrl.pathname.replace('/Details/', '/Edit/');
+    await fallbackPage.goto(noPhotoEditUrl.href);
+    assert(!await fallbackPage.getByRole('button', { name: 'Take photo' }).isVisible());
+    assert(await fallbackPage.getByText('No photo selected').isVisible());
     await fallback.close();
 
     for (const width of [1440, 896, 895, 390, 320]) for (const colorScheme of ['light', 'dark']) {
       const mobile = width < 896;
-      const context = await browser.newContext({ storageState, viewport: { width, height: 844 }, colorScheme, hasTouch: mobile, reducedMotion: 'reduce' });
+      const context = await browser.newContext({ storageState, viewport: { width, height: width === 1440 ? 1040 : 844 }, colorScheme, hasTouch: mobile, reducedMotion: 'reduce' });
       const referenceWidth = [1440, 390].includes(width);
       if (referenceWidth) await media.fixture(context);
       await context.route('**://tile.openstreetmap.org/**', route => route.abort());
@@ -184,18 +201,30 @@ async function main() {
       await clearOfShell(page, page.getByRole('heading', { name: names[2] }));
       if (referenceWidth && process.env.EDITOR_STORED_PHOTO === '1') {
         await tracker(page).getByRole('link', { name: 'Image' }).click();
+        if (process.env.EDITOR_EVIDENCE) {
+          await page.screenshot({ path: join(process.env.EDITOR_EVIDENCE, `edit-current-photo-${width}-${colorScheme}.png`) });
+        }
         const mutations = [];
         page.on('request', request => { if (request.method() !== 'GET') mutations.push(request.method()); });
         await media.currentPhoto(page);
+        await media.review(page, width, colorScheme, 'edit-camera');
         assert.deepEqual(mutations, []);
       }
       assert.deepEqual(errors, []);
       if (process.env.EDITOR_EVIDENCE && [1440, 390].includes(width)) {
+        await page.goto(editUrl);
+        await current(page, names[0]);
         await page.screenshot({ path: join(process.env.EDITOR_EVIDENCE, `edit-${width}-${colorScheme}.png`) });
       }
       console.log(`${width}px ${colorScheme}: tracker, anchors, focus clearance, scroll and Edit deep link passed`);
       await context.close();
     }
+    const guard = await browser.newContext({ storageState });
+    const save = await guard.newPage();
+    await save.goto(editUrl);
+    await media.pendingEditorSubmit(save, 'Edit', 'Saving…', 'Guarded save');
+    console.log('Edit Save: repeated activation sends one multipart POST and returns to Details');
+    await guard.close();
     await nativeZoom(storageState);
   } finally { await browser.close(); }
 }

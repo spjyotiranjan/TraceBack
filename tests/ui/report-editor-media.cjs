@@ -25,7 +25,7 @@ async function fixture(context) {
   });
 }
 
-async function review(page, width, colorScheme) {
+async function review(page, width, colorScheme, evidencePrefix = 'camera') {
   const opener = page.getByRole('button', { name: 'Take photo', exact: true });
   const modal = page.getByRole('dialog', { name: 'Take a photo' });
   const input = page.locator('#image');
@@ -41,7 +41,7 @@ async function review(page, width, colorScheme) {
   assert.equal(await modal.evaluate(el => getComputedStyle(el).animationName), 'none');
   await page.keyboard.press('Tab');
   assert(await modal.evaluate(el => el.contains(document.activeElement)));
-  if (process.env.EDITOR_EVIDENCE) await page.screenshot({ path: join(process.env.EDITOR_EVIDENCE, `camera-${width}-${colorScheme}.png`) });
+  if (process.env.EDITOR_EVIDENCE) await page.screenshot({ path: join(process.env.EDITOR_EVIDENCE, `${evidencePrefix}-${width}-${colorScheme}.png`) });
   await modal.getByRole('button', { name: 'Retake photo' }).click();
   await capture.click();
   await modal.getByRole('button', { name: 'Use this photo' }).click();
@@ -99,8 +99,13 @@ async function pendingPublish(page) {
     location: 'Library entrance', contact: 'Campus desk', latitude: '20.5', longitude: '85.5' })) {
     await page.locator(`#${id}`).fill(value);
   }
+  await pendingEditorSubmit(page, 'Create', 'Publishing…', 'Guarded publish');
+}
+
+async function pendingEditorSubmit(page, action, pendingLabel, title) {
+  await page.locator('#title').fill(title);
   let posts = 0;
-  await page.route('**/Items/Create', async route => {
+  await page.route(url => url.pathname.startsWith(`/Items/${action}`), async route => {
     if (route.request().method() === 'POST') {
       posts++;
       assert.match(route.request().headers()['content-type'], /^multipart\/form-data/);
@@ -115,10 +120,10 @@ async function pendingPublish(page) {
     publish.click();
     return [pending, form.querySelector('[data-tb-pending-status]').textContent, publish.querySelector('.tb-report-submit-pending').checkVisibility()];
   });
-  assert.deepEqual(state, ['true', 'Publishing…', true]);
+  assert.deepEqual(state, ['true', pendingLabel, true]);
   await page.waitForURL(/\/Items\/Details\/[a-f0-9]{24}$/);
   assert.equal(posts, 1);
-  assert(await page.getByRole('heading', { name: 'Guarded publish' }).isVisible());
+  assert(await page.getByRole('heading', { name: title }).isVisible());
 }
 
-module.exports = { fixture, review, photo, currentPhoto, pendingPublish };
+module.exports = { fixture, review, photo, currentPhoto, pendingPublish, pendingEditorSubmit };
