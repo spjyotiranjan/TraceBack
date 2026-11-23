@@ -5,8 +5,17 @@
     <aside class="action-panel tb-panel" aria-labelledby="claim-title">
         <h2 id="claim-title" class="h5">Think this is yours?</h2>
         <p>Share details only the owner would know. Your message stays private.</p>
-        <a class="btn btn-primary" asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id">Submit a claim</a>
+        <a class="btn btn-primary" asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id" data-claim-open>Submit a claim</a>
     </aside>
+    <dialog id="claim-drawer" class="claim-drawer" aria-labelledby="claim-drawer-title" data-claim-drawer>
+        <header class="claim-drawer__header">
+            <h2 id="claim-drawer-title">Submit a claim</h2>
+            <button class="btn btn-outline-secondary claim-drawer__close" type="button" aria-label="Close claim drawer" data-claim-close autofocus>
+                <partial name="_Icon" model='"x"' />
+            </button>
+        </header>
+        <partial name="_ClaimForm" model='(new TraceBack.Controllers.ClaimPage(Model.Item, new TraceBack.Models.ClaimForm()), true)' />
+    </dialog>
 }
 else if (User.Identity?.IsAuthenticated != true && Model.Item.Type == "Found" && Model.Item.Status == "Active")
 {

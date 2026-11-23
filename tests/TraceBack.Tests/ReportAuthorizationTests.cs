@@ -539,11 +539,13 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         await RunReportBrowserAsync(reports, "tests/ui/report-components-check.cjs");
     }
 
-    private static async Task RunReportBrowserAsync(FakeItemService reports, string script)
+    private static async Task RunReportBrowserAsync(FakeItemService reports, string script, Action<Microsoft.AspNetCore.Hosting.IWebHostBuilder>? configure = null)
     {
         // Use the real routes, Razor views and static assets on loopback. The Dashboard
         // model is supplied by a test-only filter so no Mongo/R2 account is required.
-        using var factory = CreateFactory(reports, new BrowserDashboardFixture(reports));
+        using var baseFactory = CreateFactory(reports, new BrowserDashboardFixture(reports));
+        using var configuredFactory = configure is null ? null : baseFactory.WithWebHostBuilder(configure);
+        var factory = configuredFactory ?? baseFactory;
         factory.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
         using var client = CreateClient(factory);
         AddCookie(client, factory);

@@ -1,45 +1,19 @@
 @model TraceBack.Controllers.ClaimPage
 @{
-    ViewData["Title"] = "Claim an item";
+    ViewData["Title"] = "Submit a claim";
 }
 
-<div class="claim-page">
-    <a class="back-link" asp-controller="Items" asp-action="Details" asp-route-id="@Model.Item.Id">← Back to item</a>
-
-    <h1>Claim @Model.Item.Title</h1>
-    <div class="claim-page__context">
-        @if (!string.IsNullOrWhiteSpace(Model.Item.DisplayImageUrl))
-        {
-            <img class="claim-page__thumbnail" src="@Model.Item.DisplayImageUrl" alt="Photo for @Model.Item.Title" width="120" height="90" />
-        }
-        <p><partial name="_StatusBadge" model="Model.Item.Type" /> <partial name="_StatusBadge" model="Model.Item.Status" /></p>
-    </div>
-    <p class="claim-page__privacy">Describe details that confirm this item belongs to you. Your message is private to the claim review and does not appear in public discussion.</p>
-
-    <form asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@Model.Item.Id" method="post" class="form-card" data-claim-form novalidate>
-        <partial name="_ValidationSummary" model='@(new Dictionary<string, string?> { ["Message"] = "message" })' />
-
-        <div class="mb-4">
-            <label for="message" class="form-label">Ownership details <span class="required">required</span></label>
-            <textarea id="message"
-                      name="Message"
-                      class="form-control"
-                      rows="6"
-                      maxlength="1000"
-                      aria-describedby="message-help message-error">@Model.Form.Message</textarea>
-            <div id="message-help" class="form-text">Include a distinguishing detail, where you last had it, or when you lost it.</div>
-            <span id="message-error" class="text-danger small">@Html.ValidationMessage("Message")</span>
-        </div>
-
-        <button class="btn btn-primary" type="submit" data-claim-submit>Submit claim</button>
-        <span class="visually-hidden" role="status" aria-live="polite" data-claim-status></span>
-    </form>
+<div class="claim-standalone">
+    <a class="back-link" asp-controller="Items" asp-action="Details" asp-route-id="@Model.Item.Id"><partial name="_Icon" model='"arrow-left"' /> Back to item</a>
+    <h1>Submit a claim</h1>
+    <partial name="_ClaimForm" model="(Model, false)" />
 </div>
 
 @section Styles {
-    <link rel="stylesheet" href="~/css/detail-report.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/claim.css" asp-append-version="true" />
 }
 
 @section Scripts {
+    <script src="~/js/report-photo.js" asp-append-version="true" defer></script>
     <script src="~/js/claim.js" asp-append-version="true" defer></script>
 }

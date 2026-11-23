@@ -1,0 +1,61 @@
+@model (TraceBack.Controllers.ClaimPage Page, bool InDrawer)
+@{
+    var item = Model.Page.Item;
+    var hasPhoto = !string.IsNullOrWhiteSpace(item.DisplayImageUrl);
+    var messageState = ViewData.ModelState["Message"];
+    var message = messageState?.AttemptedValue ?? Model.Page.Form.Message ?? string.Empty;
+    var invalid = messageState?.Errors.Count > 0;
+}
+<form class="claim-form" asp-route="default" asp-route-controller="Claims" asp-route-action="Create" asp-route-itemId="@item.Id"
+      method="post" aria-label="Private ownership claim" data-claim-form novalidate>
+    <div class="claim-form__body" data-claim-scroll tabindex="@(Model.InDrawer ? "0" : null)"
+         role="@(Model.InDrawer ? "region" : null)" aria-label="@(Model.InDrawer ? "Claim form" : null)">
+        <div class="claim-form__item">
+            <div class="claim-form__media">
+                @if (hasPhoto)
+                {
+                    <img src="@item.DisplayImageUrl" alt="" width="64" height="64" data-report-photo />
+                }
+                <div class="claim-form__placeholder" hidden="@hasPhoto">
+                    <partial name="_Icon" model='"image"' />
+                    <span class="visually-hidden">No photo</span>
+                </div>
+            </div>
+            <div>
+                <p class="claim-form__meta">@item.Type · @item.Status</p>
+                <p class="claim-form__item-title">@item.Title</p>
+            </div>
+        </div>
+        <div class="claim-form__privacy">
+            <partial name="_Icon" model='"lock-keyhole"' />
+            <div><strong>Private claim</strong><p>Only claim reviewers can see your message. It stays out of public discussion.</p></div>
+        </div>
+        <partial name="_ValidationSummary" model='@(new Dictionary<string, string?> { ["Message"] = "claim-message" })' />
+        <div>
+            <label for="claim-message" class="form-label">Ownership details <span class="required">(required)</span></label>
+            <textarea id="claim-message" name="Message" class="form-control" rows="6" required minlength="10" maxlength="1000"
+                      aria-invalid="@(invalid ? "true" : null)" aria-describedby="claim-help claim-message-error"
+                      placeholder="Describe a detail only you would know…">
+@message</textarea>
+            <div id="claim-message-error" class="text-danger small" data-claim-field-error>@Html.ValidationMessage("Message")</div>
+            <div class="claim-form__help">
+                <p id="claim-help" class="form-text">Include a distinguishing mark, where you last had it, or when you lost it. 10–1,000 characters.</p>
+                <span class="form-text claim-form__count" aria-hidden="true" data-claim-count hidden></span>
+            </div>
+        </div>
+    </div>
+    <div class="claim-form__actions">
+        @if (Model.InDrawer)
+        {
+            <button class="btn btn-outline-secondary" type="button" data-claim-close>Cancel</button>
+        }
+        else
+        {
+            <a class="btn btn-outline-secondary" asp-controller="Items" asp-action="Details" asp-route-id="@item.Id">Cancel</a>
+        }
+        <button class="btn btn-primary" type="submit" data-claim-submit data-tb-pending="@(Model.InDrawer ? null : "Submitting claim…")">
+            <span class="claim-form__ready-label">Submit claim</span><span class="claim-form__pending-label">Submitting…</span>
+        </button>
+        <span class="visually-hidden" role="status" data-tb-pending-status></span>
+    </div>
+</form>
