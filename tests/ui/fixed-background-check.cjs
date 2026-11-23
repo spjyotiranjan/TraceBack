@@ -55,12 +55,12 @@ async function checkScroll(page, label) {
   return { label, viewport: page.viewportSize(), moved, top: [beforeTop, afterTop], same };
 }
 
-async function checkMotion(page, label) {
+async function checkMotion(page, label, regressions) {
   // Capture the fully settled pose before starting the compositor animation.
   // Seeking an active pseudo-element animation to t=0 can read opacity 0
   // from style before the compositor has discarded its previous frame.
   const start = await artCrop(page);
-  // Reload to start the real CSS animation, then seek both pseudo-elements to
+  // Reload to start the real CSS animations, then seek both pseudo-elements to
   // exact times on the same timeline; do not approximate phases with timeouts.
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   assert.equal((await page.reload()).status(), 200);
@@ -72,12 +72,15 @@ async function checkMotion(page, label) {
       await image.decode();
     }
   });
-  const phase = async fraction => page.evaluate(async fraction => {
-    const layer = document.querySelector('[data-route-art]');
+  const timeline = await page.evaluateHandle(async () => {
     const animations = document.getAnimations().filter(animation => animation.animationName?.startsWith('tb-route-phase-'));
     if (animations.length !== 2) throw new Error(`Expected two route animations, got ${animations.length}`);
     for (const animation of animations) animation.pause();
     await Promise.all(animations.map(animation => animation.ready));
+    return animations;
+  });
+  const phase = fraction => timeline.evaluate(async (animations, fraction) => {
+    const layer = document.querySelector('[data-route-art]');
     for (const animation of animations) animation.currentTime = animation.effect.getTiming().duration * fraction;
     await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     return ['::before', '::after'].map(pseudo => Number(getComputedStyle(layer, pseudo).opacity));
@@ -94,8 +97,16 @@ async function checkMotion(page, label) {
   assert(Math.abs(falling - rising) < .001);
   assert.deepEqual(await phase(1), [1, 0]);
   const end = await artCrop(page, 'allow');
-  assert(start.equals(end), `${label}: the last frame must match the settled pose`);
+  assert(start.equals(end), `${label}: the cycle boundary must match the resting pose`);
   save(`${label}-motion-end`, end);
+  const repeats = await timeline.evaluate(animations => animations.every(animation => animation.effect.getTiming().iterations === Infinity));
+  const laterPeak = await phase(3.5);
+  if (!repeats || Math.abs(laterPeak[1] - peak) >= .001 || Math.abs(laterPeak[0] + laterPeak[1] - 1) >= .001) {
+    regressions.push(`${label}: route crossfade does not loop continuously (${laterPeak})`);
+  }
+  const seam = [await phase(.99), await phase(1.01)];
+  assert(seam.every(([a, b]) => 1 - a < .01 && b < .01), `${label}: crossfade must ease through the loop seam`);
+  await timeline.dispose();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   assert.equal(await page.locator('[data-route-art]').evaluate(el => getComputedStyle(el, '::after').display), 'none');
 }
@@ -103,6 +114,7 @@ async function checkMotion(page, label) {
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
   const results = [];
+  const regressions = [];
   try {
     for (const colorScheme of ['light', 'dark']) {
       for (const [width, height] of [[1440, 900], [390, 844]]) {
@@ -137,9 +149,20 @@ async function checkMotion(page, label) {
               assert(style.a.includes(`${variant}-${width === 390 ? 'phone' : 'desktop'}-${colorScheme}-a.svg`));
               assert.deepEqual([style.b, style.pointer, style.z], ['none', 'none', '-1']);
               const label = `${key}-${colorScheme}-${width}`;
+              const footer = page.getByRole('contentinfo');
+              assert(await footer.getByText('TraceBack helps campus belongings find their way home.', { exact: true }).isVisible());
+              assert(await footer.getByRole('link', { name: 'Privacy' }).isVisible());
+              const footerPaint = await footer.evaluate(el => {
+                const style = getComputedStyle(el);
+                return [style.backgroundColor, style.backgroundImage, style.borderTopWidth];
+              });
+              const [color, image, border] = footerPaint;
+              if (color !== 'rgba(0, 0, 0, 0)' || image !== 'none' || border !== '0px') {
+                regressions.push(`${label}: footer paints ${footerPaint.join(' ')}`);
+              }
               if (evidence) save(`${label}-rest`, await capture(page));
               results.push(await checkScroll(page, label));
-              if (['guest-home', 'member-edit'].includes(key)) await checkMotion(page, label);
+              if (['guest-home', 'member-edit'].includes(key)) await checkMotion(page, label, regressions);
             }
             assert.deepEqual(errors, []);
           } finally { await context.close(); }
@@ -151,4 +174,5 @@ async function checkMotion(page, label) {
   console.log(`Measured ${results.length} matched viewport captures with moving content`);
   const mismatches = results.filter(r => !r.same || r.top.some(y => y !== 0));
   assert.deepEqual(mismatches, [], 'The art/gradient pixels or layer geometry moved with the document');
+  assert.deepEqual(regressions, [], 'Shared footer and route motion regressions');
 })().catch(error => { console.error(error); process.exitCode = 1; });

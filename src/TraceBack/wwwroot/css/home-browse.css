@@ -65,19 +65,23 @@
 .tb-home-illustration { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .tb-home-illustration .pulse { opacity: 0; stroke-dashoffset: 22; }
 
-/* One non-looping pass. The default pose is the reduced-motion pose. */
+/* Stagger the float cycles; the default pose stays still for reduced motion. */
 @media (prefers-reduced-motion: no-preference) {
-  .tb-home-illustration .float { animation: home-hero-float var(--duration) ease-in-out var(--delay, 0s); }
-  .tb-home-illustration .bottle { --duration: 4.4s; --rise: -13px; --drift: 3px; }
-  .tb-home-illustration .umbrella { --duration: 3.6s; --delay: .5s; --rise: -8px; --drift: -5px; }
-  .tb-home-illustration .headset { --duration: 4.6s; --delay: .2s; --rise: -11px; --drift: 6px; }
-  .tb-home-illustration .pulse { animation: home-hero-pulse 4.8s ease-in-out; }
+  .tb-home-illustration .float { animation: home-hero-float var(--duration) ease-in-out var(--delay, 0s) infinite; }
+  .tb-home-illustration .bottle { --duration: 8s; --delay: -1s; --rise: -13px; --drift: 3px; }
+  .tb-home-illustration .umbrella { --duration: 9s; --delay: -5.5s; --rise: -8px; --drift: -5px; }
+  .tb-home-illustration .headset { --duration: 10.5s; --delay: -2.5s; --rise: -11px; --drift: 6px; }
+  .tb-home-illustration .pulse { animation: home-hero-pulse 12s ease-in-out infinite; }
 }
-@keyframes home-hero-float { 50% { transform: translate(var(--drift), var(--rise)); } }
+@keyframes home-hero-float {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(var(--drift), var(--rise)); }
+}
 @keyframes home-hero-pulse {
-  from { stroke-dashoffset: 22; }
-  25%, 68% { opacity: .8; }
-  to { stroke-dashoffset: -100; }
+  /* Hide the dash at both ends so its reset is invisible. */
+  from { opacity: 0; stroke-dashoffset: 22; }
+  50% { opacity: .8; }
+  to { opacity: 0; stroke-dashoffset: -100; }
 }
 
 .home-recent, .process-section { margin-top: clamp(2.5rem, 5vw, 4rem); }

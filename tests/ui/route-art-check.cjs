@@ -18,7 +18,7 @@ async function inspect(page, route, mode, phone, staticPose) {
     const a = getComputedStyle(el, '::before');
     const b = getComputedStyle(el, '::after');
     return { a: a.backgroundImage, b: b.backgroundImage, displayB: b.display,
-      names: [a.animationName, b.animationName], duration: b.animationDuration,
+      names: [a.animationName, b.animationName], iterations: [a.animationIterationCount, b.animationIterationCount],
       pointer: getComputedStyle(el).pointerEvents, position: getComputedStyle(el).position,
       z: getComputedStyle(el).zIndex, hidden: el.getAttribute('aria-hidden'), children: el.childElementCount,
       width: document.documentElement.scrollWidth,
@@ -40,7 +40,7 @@ async function inspect(page, route, mode, phone, staticPose) {
     assert(styles.b.includes(file.replace(/-a\.svg$/, '-b.svg')));
     assert.notEqual(styles.displayB, 'none');
     assert(styles.names.every(name => name !== 'none'));
-    assert(parseFloat(styles.duration) <= 5);
+    assert.deepEqual(styles.iterations, ['infinite', 'infinite']);
   }
 }
 
@@ -65,8 +65,6 @@ async function inspect(page, route, mode, phone, staticPose) {
           assert(await hero.evaluate(el => el.getBoundingClientRect().width > 0 && el.getBBox().height > 0 &&
             el.getAttribute('viewBox') === '0 0 480 280' && el.getAttribute('focusable') === 'false' &&
             !!el.closest('[aria-hidden="true"]')));
-          await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-route-art]'), '::after').opacity) > .72);
-          await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-route-art]'), '::after').opacity === '0');
         }
         if (process.env.ART_SCREENSHOTS) await page.screenshot({path: `${process.env.ART_SCREENSHOTS}/${variant}-light-${width}.png`, animations: 'disabled'});
         await page.emulateMedia({colorScheme: 'dark', reducedMotion: 'reduce'});

@@ -120,11 +120,12 @@ async function verifyNavFeedback(browser, colorScheme) {
     assert.equal(rest.underline, 0);
     assert.equal(rest.origin, 0);
     assert(rest.duration >= 200 && rest.duration <= 300);
-    await dashboard.hover();
-    await page.waitForFunction(el => {
+    const waitForUnderline = async () => page.waitForFunction(el => {
       const label = el.querySelector('.tb-nav-label');
       return new DOMMatrix(getComputedStyle(label, '::after').transform).a === 1;
     }, await dashboard.elementHandle());
+    await dashboard.hover();
+    await waitForUnderline();
     const hover = await style();
     assert.equal(hover.fill, 'rgba(0, 0, 0, 0)');
     assert.equal(hover.y, rest.y, 'Hover must not move the hit target');
@@ -139,8 +140,11 @@ async function verifyNavFeedback(browser, colorScheme) {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.reload();
     await dashboard.hover();
+    // Even the near-zero reduced-motion transition can take one browser frame.
+    await waitForUnderline();
     const reduced = await style();
-    assert(Math.abs(reduced.lift - rest.lift) < .1 && reduced.duration < 1 && reduced.underline === 1);
+    assert(Math.abs(reduced.lift - rest.lift) < .1 && reduced.duration < 1 && reduced.underline === 1,
+      `Reduced-motion nav feedback differs: ${JSON.stringify({ rest, reduced })}`);
     assert.equal(await browse.getAttribute('aria-current'), 'page');
     assert.equal(await report.evaluate(el => getComputedStyle(el).backgroundColor === 'rgba(0, 0, 0, 0)'), false);
   } finally { await context.close(); }
@@ -280,6 +284,12 @@ async function verifyNativeZoom() {
               assert.equal(style[1], 'none');
             }
             await cdp.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 27, right: 25, bottom: 34, left: 28 } });
+            // The protocol response can arrive before the new safe-area values reach layout.
+            await page.waitForFunction(() => {
+              const header = document.querySelector('.site-header').getBoundingClientRect();
+              const dock = document.querySelector('.tb-member-dock').getBoundingClientRect();
+              return header.x === 28 && header.y === 39 && innerHeight - dock.bottom === 46;
+            });
             const header = await page.locator('.site-header').boundingBox();
             const dock = await page.locator('.tb-member-dock').boundingBox();
             assert.deepEqual([header.x, header.y, height - dock.y - dock.height], [28, 39, 46]);

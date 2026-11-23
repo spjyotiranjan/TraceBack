@@ -36,27 +36,43 @@ async function checkHeroMotion(browser) {
       await page.waitForTimeout(650);
       assert(!(await shot()).equals(first), 'the hero artwork must visibly animate');
 
-      const motion = await art.evaluate(el => el.getAnimations({ subtree: true }).map(animation => {
-        animation.pause();
-        const { target } = animation.effect;
-        const { endTime } = animation.effect.getComputedTiming();
-        const read = time => {
-          animation.currentTime = time;
-          const style = getComputedStyle(target);
-          const transform = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
-          return [transform.toString(), style.strokeDashoffset, style.opacity];
-        };
-        return { name: animation.animationName, endTime, start: read(0), middle: read(endTime * .42), end: read(5000) };
-      }));
+      const motion = await art.evaluate(async el => {
+        const animations = el.getAnimations({ subtree: true });
+        animations.forEach(animation => animation.pause());
+        await Promise.all(animations.map(animation => animation.ready));
+        return animations.map(animation => {
+          const { target } = animation.effect;
+          const { duration, delay, iterations } = animation.effect.getTiming();
+          const sample = fraction => {
+            animation.currentTime = delay + duration * fraction;
+            const style = getComputedStyle(target);
+            const transform = new DOMMatrixReadOnly(style.transform === 'none' ? undefined : style.transform);
+            return { x: transform.m41, y: transform.m42, dash: parseFloat(style.strokeDashoffset), opacity: Number(style.opacity) };
+          };
+          return { name: animation.animationName, loops: iterations === Infinity,
+            start: sample(1), beforeSeam: sample(.99), afterSeam: sample(1.01),
+            rising: sample(1.25), peak: sample(1.5), falling: sample(1.75), repeatedPeak: sample(3.5) };
+        });
+      });
       const floats = motion.filter(entry => entry.name === 'home-hero-float');
       assert.equal(floats.length, 3);
-      assert.equal(motion.filter(entry => entry.name === 'home-hero-pulse').length, 1);
-      assert.equal(new Set(floats.map(entry => entry.middle[0])).size, 3);
+      const pulses = motion.filter(entry => entry.name === 'home-hero-pulse');
+      assert.equal(pulses.length, 1);
       for (const entry of motion) {
-        assert(entry.endTime <= 5000, 'the artwork settles within five seconds');
-        assert.notDeepEqual(entry.middle, entry.start);
-        assert.deepEqual(entry.end, entry.start);
+        assert(entry.loops, `${entry.name} must keep moving after its first cycle`);
+        assert.deepEqual(entry.repeatedPeak, entry.peak, `${entry.name} must repeat its motion in later cycles`);
       }
+      assert.equal(new Set(floats.map(entry => entry.peak.y)).size, 3);
+      for (const { start, beforeSeam, afterSeam, rising, peak, falling } of floats) {
+        assert(peak.y < rising.y && rising.y < start.y && peak.y < falling.y && falling.y < start.y);
+        for (const sample of [beforeSeam, afterSeam]) {
+          assert(Math.hypot(sample.x - start.x, sample.y - start.y) < .1, 'float must ease through the loop seam');
+        }
+      }
+      const [pulse] = pulses;
+      assert(pulse.rising.dash > pulse.peak.dash && pulse.peak.dash > pulse.falling.dash, 'pulse must travel along the route');
+      assert(pulse.rising.opacity > .1 && pulse.peak.opacity > pulse.rising.opacity && pulse.falling.opacity > .1);
+      assert(Math.max(pulse.beforeSeam.opacity, pulse.afterSeam.opacity) < .01, 'pulse must fade out before its dash resets');
 
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const resting = await shot();
@@ -70,7 +86,7 @@ async function checkHeroMotion(browser) {
       assert.equal((await background.boundingBox()).y, backgroundTop, 'only the route background stays pinned');
       assert.equal(await background.evaluate(el => getComputedStyle(el).position), 'fixed');
 
-      console.log(`hero ${width}: embedded motion, static pose and distinct scroll anchoring passed`);
+      console.log(`hero ${width}: continuous motion, loop seams, static pose and distinct scroll anchoring passed`);
     } finally {
       await page.close();
     }
