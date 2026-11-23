@@ -1,0 +1,11 @@
+@model string
+@{
+    const string heading = "This report changed while you were editing";
+    ViewData["Title"] = heading;
+    ViewData["RouteArt"] = "editor";
+}
+<partial name="_RecoveryContent" model='@(new RecoveryContent(heading,
+    "Your changes were not saved. Reload the report to start with the latest details and photo.", RecoveryArt.Service,
+    Primary: new UiButton("Reload report", Href: Url.Action("Edit", "Items", new { id = Model })),
+    Secondary: new UiButton("Go to Dashboard", ButtonTone.Secondary, Href: Url.Action("Index", "Dashboard")),
+    FullPage: true))' />

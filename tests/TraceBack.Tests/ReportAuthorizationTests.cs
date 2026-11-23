@@ -742,7 +742,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
             };
             return Task.FromResult(Item);
         }
-        public Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin) => throw new NotSupportedException();
+        public Task<Item?> UpdateAsync(string id, ItemForm form, string userId, bool admin, long? expectedRevision = null) => throw new NotSupportedException();
         public Task<bool> ResolveAsync(string id, string userId, bool admin)
         {
             if (id != Item.Id || Item.Status != "Active" || (!admin && userId != Item.PostedByUserId))

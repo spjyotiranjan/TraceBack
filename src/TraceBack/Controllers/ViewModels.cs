@@ -36,7 +36,8 @@ public sealed record ItemEditorPage(
     bool HasSavedPin = false,
     string? LockedType = null,
     bool ReselectImage = false,
-    bool PendingImageRemoval = false);
+    bool PendingImageRemoval = false,
+    long? EditRevision = null);
 
 public sealed record ClaimPage(
     Item Item,

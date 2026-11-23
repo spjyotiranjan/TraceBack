@@ -79,6 +79,9 @@ public sealed partial class MapLocationIntegrationTests
             Assert.Single(storage.Media);
 
             var editPath = $"/Items/Edit/{stored.Id}";
+            using var guestEdit = await guest.PostAsync(editPath, Multipart("", file: false));
+            Assert.Equal(HttpStatusCode.Redirect, guestEdit.StatusCode);
+            Assert.Equal("/Account/Login", guestEdit.Headers.Location?.AbsolutePath);
             using var invalid = await owner.PostAsync(editPath, Multipart(token, validImage: false));
             Assert.Equal(HttpStatusCode.OK, invalid.StatusCode);
             var markup = await invalid.Content.ReadAsStringAsync();
@@ -88,6 +91,62 @@ public sealed partial class MapLocationIntegrationTests
             Assert.Contains("not both", await conflict.Content.ReadAsStringAsync());
             Assert.Equal(stored.ImageKey, (await reports.Find(_ => true).SingleAsync()).ImageKey);
             Assert.Single(storage.Media);
+
+            // A successful save in another tab must invalidate the older draft, including its photo mutation.
+            var revision = await EditRevisionAsync(owner, editPath);
+            using var newer = await owner.PostAsync(editPath, Multipart(token, title: "Newer edit", file: false, revision: revision));
+            Assert.Equal(HttpStatusCode.Redirect, newer.StatusCode);
+            using var stale = await owner.PostAsync(editPath, Multipart(token, title: "Stale edit", remove: true, file: false, revision: revision));
+            Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+            var recovery = await stale.Content.ReadAsStringAsync();
+            Assert.Contains($"href=\"{editPath}\"", recovery);
+            Assert.Contains("Reload report", recovery);
+            var afterStale = await reports.Find(x => x.Id == stored.Id).SingleAsync();
+            Assert.Equal("Newer edit", afterStale.Title);
+            Assert.Equal(stored.ImageKey, afterStale.ImageKey);
+            Assert.Single(storage.Media);
+
+            using var other = MvcClient(factory, "other");
+            var otherToken = await AntiForgeryTokenAsync(other);
+            using var forbidden = await other.PostAsync(editPath, Multipart(otherToken, file: false, revision: revision));
+            Assert.Equal("/Account/Denied", forbidden.Headers.Location?.AbsolutePath);
+            using var unverified = await owner.PostAsync(editPath, Multipart("", file: false));
+            Assert.Equal(HttpStatusCode.BadRequest, unverified.StatusCode);
+            using var missing = await owner.PostAsync($"/Items/Edit/{MongoDB.Bson.ObjectId.GenerateNewId()}", Multipart(token, file: false));
+            Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+            storage.FailUpload = true;
+            var nextRevision = await EditRevisionAsync(owner, editPath);
+            using var partial = await owner.PostAsync(editPath, Multipart(token, title: "Details saved without new photo", revision: nextRevision));
+            Assert.Equal(HttpStatusCode.Redirect, partial.StatusCode);
+            using var partialDetails = await owner.GetAsync(partial.Headers.Location);
+            var partialMarkup = await partialDetails.Content.ReadAsStringAsync();
+            Assert.Contains("Details saved without new photo", partialMarkup);
+            Assert.Contains("Report details were saved, but the image could not be changed.", partialMarkup);
+            Assert.Equal(stored.ImageKey, (await reports.Find(x => x.Id == stored.Id).SingleAsync()).ImageKey);
+            Assert.Single(storage.Media);
+            storage.FailUpload = false;
+
+            var revisionBeforePhoto = await EditRevisionAsync(owner, editPath);
+            using var replaced = await owner.PostAsync(editPath, Multipart(token, revision: revisionBeforePhoto));
+            Assert.Equal(HttpStatusCode.Redirect, replaced.StatusCode);
+            var replacement = (await reports.Find(x => x.Id == stored.Id).SingleAsync()).ImageKey;
+            Assert.NotNull(replacement);
+            Assert.NotEqual(stored.ImageKey, replacement);
+            Assert.DoesNotContain(stored.ImageKey!, storage.Media.Keys);
+            Assert.NotEqual(revisionBeforePhoto, await EditRevisionAsync(owner, editPath));
+            using var removed = await owner.PostAsync(editPath, Multipart(token, remove: true, file: false, revision: await EditRevisionAsync(owner, editPath)));
+            Assert.Equal(HttpStatusCode.Redirect, removed.StatusCode);
+            Assert.Null((await reports.Find(x => x.Id == stored.Id).SingleAsync()).ImageKey);
+            Assert.Empty(storage.Media);
+            using var noPhoto = await owner.GetAsync(editPath);
+            Assert.Contains("No photo selected", await noPhoto.Content.ReadAsStringAsync());
+
+            await reports.UpdateOneAsync(x => x.Id == stored.Id, Builders<Item>.Update.Set(x => x.Status, "Resolved"));
+            using var inactiveGet = await owner.GetAsync(editPath);
+            using var inactivePost = await owner.PostAsync(editPath, Multipart(token, file: false, revision: revision));
+            Assert.Equal(HttpStatusCode.BadRequest, inactiveGet.StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, inactivePost.StatusCode);
 
             failRollback = storage.FailUpload = true;
             using var notRolledBack = await owner.PostAsync("/Items/Create", Multipart(token));
@@ -140,14 +199,25 @@ public sealed partial class MapLocationIntegrationTests
 
     private static readonly byte[] EditorGif = Convert.FromBase64String("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7");
 
-    private static MultipartFormDataContent Multipart(string token, bool validImage = true, bool includeDate = true, bool remove = false)
+    private static async Task<string> EditRevisionAsync(HttpClient client, string editPath)
+    {
+        using var editor = await client.GetAsync(editPath);
+        Assert.Equal(HttpStatusCode.OK, editor.StatusCode);
+        var markup = await editor.Content.ReadAsStringAsync();
+        var revision = System.Text.RegularExpressions.Regex.Match(markup, "name=\"EditRevision\" value=\"([0-9]+)\"").Groups[1].Value;
+        Assert.NotEmpty(revision);
+        return revision;
+    }
+
+    private static MultipartFormDataContent Multipart(string token, bool validImage = true, bool includeDate = true,
+        bool remove = false, bool file = true, string title = "Editor multipart test", string? revision = null)
     {
         var body = new MultipartFormDataContent();
         foreach (var (key, value) in new Dictionary<string, string>
         {
             ["__RequestVerificationToken"] = token,
             ["Type"] = "Lost",
-            ["Title"] = "Editor multipart test",
+            ["Title"] = title,
             ["Category"] = "Keys",
             ["Description"] = "A key on a ring",
             ["Location"] = "Library",
@@ -157,9 +227,13 @@ public sealed partial class MapLocationIntegrationTests
         }) body.Add(new StringContent(value), key);
         if (includeDate) body.Add(new StringContent("2024-01-01"), "DateReported");
         if (remove) body.Add(new StringContent("true"), "RemoveImage");
-        var image = new ByteArrayContent(validImage ? EditorGif : "not a photo"u8.ToArray());
-        image.Headers.ContentType = new MediaTypeHeaderValue("image/gif");
-        body.Add(image, "ImageFile", "photo.gif");
+        if (revision is not null) body.Add(new StringContent(revision), "EditRevision");
+        if (file)
+        {
+            var image = new ByteArrayContent(validImage ? EditorGif : "not a photo"u8.ToArray());
+            image.Headers.ContentType = new MediaTypeHeaderValue("image/gif");
+            body.Add(image, "ImageFile", "photo.gif");
+        }
         return body;
     }
 
