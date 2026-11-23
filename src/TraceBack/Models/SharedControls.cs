@@ -16,4 +16,4 @@ public enum RecoveryArt { Search, Reports, Claims, Access, Service }
 
 public sealed record RecoveryContent(string Heading, string Help, RecoveryArt Art,
     UiButton? Primary = null, UiButton? Secondary = null, bool FullPage = false,
-    string? Reference = null);
+    string? Reference = null, bool Nested = false);

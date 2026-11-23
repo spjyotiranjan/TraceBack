@@ -1,0 +1,21 @@
+@model TraceBack.Controllers.ClaimRow
+@{
+    var item = Model.Item;
+    var submitted = Model.Claim.CreatedAt.ToLocalTime();
+}
+<article class="tb-claim-row">
+    <div class="tb-claim-row__main">
+        <h3>
+            @if (item is not null && !string.IsNullOrWhiteSpace(item.Id) && !string.IsNullOrWhiteSpace(item.Title))
+            {
+                <a asp-controller="Items" asp-action="Details" asp-route-id="@item.Id">@item.Title</a>
+            }
+            else
+            {
+                <span>Item no longer available</span>
+            }
+        </h3>
+        <p>Submitted <time datetime="@submitted.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)">@submitted.ToString("d MMM yyyy")</time></p>
+    </div>
+    <partial name="_StatusBadge" model="Model.Claim.Status" />
+</article>

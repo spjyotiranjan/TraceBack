@@ -2,6 +2,9 @@
 @{
     ViewData["Title"] = "My dashboard";
     ViewData["RouteArt"] = "dashboard";
+    var reportAction = new UiButton("Report an item", Href: Url.RouteUrl("default", new { controller = "Items", action = "Create" }));
+    var browseFound = new UiButton("Browse found items", ButtonTone.Secondary,
+        Href: Url.Action("Index", "Items", new { Type = "Found" }));
 }
 
 <div class="page-heading tb-workspace-heading">
@@ -9,18 +12,22 @@
     <p>Review your reports and follow your claims.</p>
 </div>
 
-<section class="tb-workspace-section" aria-labelledby="my-reports">
+<section class="tb-workspace-section tb-dashboard-section" aria-labelledby="my-reports">
     <div class="section-heading tb-workspace-section__heading">
-        <h2 id="my-reports">My reports <span class="tb-section-count">@Model.Items.Count</span></h2>
-        <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
+        <h2 id="my-reports">My reports</h2>
+        @if (Model.Items.Count > 0)
+        {
+            <div class="tb-dashboard__desktop-action">
+                <partial name="_Button" model="reportAction" />
+            </div>
+        }
     </div>
 
     @if (Model.Items.Count == 0)
     {
-        <div class="tb-empty-state tb-workspace-empty">
-            <h3>No reports yet</h3>
-            <p>Post a lost or found item to start keeping track of it here.</p>
-            <a asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
+        <div class="tb-dashboard__reports-empty">
+            <partial name="_RecoveryContent" model='@(new RecoveryContent("No reports yet", "You have not posted a report yet.",
+                RecoveryArt.Reports, Primary: reportAction, Nested: true))' />
         </div>
     }
     else
@@ -34,41 +41,22 @@
     }
 </section>
 
-<section aria-labelledby="my-claims" class="tb-workspace-section">
+<section aria-labelledby="my-claims" class="tb-workspace-section tb-dashboard-section">
     <div class="tb-workspace-section__heading">
-        <h2 id="my-claims">My claims <span class="tb-section-count">@Model.Claims.Count</span></h2>
-        <p>Private ownership requests and their current decisions.</p>
+        <h2 id="my-claims">My claims</h2>
     </div>
 
     @if (Model.Claims.Count == 0)
     {
-        <div class="tb-empty-state tb-workspace-empty">
-            <h3>No claims yet</h3>
-            <p>When you claim a found item, its status will appear here.</p>
-            <a asp-controller="Items" asp-action="Index" asp-route-type="Found">Browse found items</a>
-        </div>
+        <partial name="_RecoveryContent" model='@(new RecoveryContent("No claims yet", "You have not submitted a claim yet.",
+            RecoveryArt.Claims, Primary: browseFound, Nested: true))' />
     }
     else
     {
         <div class="tb-claim-list">
             @foreach (var row in Model.Claims)
             {
-                <article class="tb-claim-row">
-                    <div class="tb-claim-row__main">
-                        <h3>
-                            @if (row.Item is not null)
-                            {
-                                <a asp-controller="Items" asp-action="Details" asp-route-id="@row.Item.Id">@row.Item.Title</a>
-                            }
-                            else
-                            {
-                                <span>Item no longer available</span>
-                            }
-                        </h3>
-                        <p>Submitted @row.Claim.CreatedAt.ToLocalTime().ToString("d MMM yyyy")</p>
-                    </div>
-                    <partial name="_StatusBadge" model="row.Claim.Status" />
-                </article>
+                <partial name="_DashboardClaimRow" model="row" />
             }
         </div>
     }
@@ -77,6 +65,7 @@
 @section Styles {
     <link rel="stylesheet" href="~/css/home-browse.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/account-dashboard.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/my-dashboard.css" asp-append-version="true" />
 }
 
 @section Scripts {
