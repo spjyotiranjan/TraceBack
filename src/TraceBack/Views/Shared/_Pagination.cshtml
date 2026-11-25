@@ -1,5 +1,5 @@
 @model TraceBack.Controllers.BrowsePage
-@if (!Model.LoadFailed && Model.Items.Count > 0)
+@if (!Model.LoadFailed && Model.Items.Count > 0 && (Model.Search.Page > 1 || Model.HasNext))
 {
     <nav class="browse-pagination" aria-label="Result pages">
         <ul class="pagination">
@@ -9,12 +9,20 @@
                     <a class="page-link" rel="prev" href="@Url.Action("Index", "Items", Model.PageRoute(Model.Search.Page - 1))">Previous</a>
                 </li>
             }
+            else
+            {
+                <li class="page-item disabled"><span class="page-link" aria-disabled="true">Previous</span></li>
+            }
             <li class="page-item active"><span class="page-link" aria-current="page">Page @Model.Search.Page</span></li>
             @if (Model.HasNext)
             {
                 <li class="page-item">
                     <a class="page-link" rel="next" href="@Url.Action("Index", "Items", Model.PageRoute(Model.Search.Page + 1))">Next</a>
                 </li>
+            }
+            else
+            {
+                <li class="page-item disabled"><span class="page-link" aria-disabled="true">Next</span></li>
             }
         </ul>
     </nav>

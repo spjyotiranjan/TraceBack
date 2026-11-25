@@ -4,8 +4,9 @@
         <div class="browse-query">
             <partial name="_ReportSearchField" model='new ReportSearchField("query", "Search words", Model.Search.Query)' />
         </div>
-        <button class="btn btn-outline-primary browse-filter-toggle" type="button"
+        <button class="btn btn-outline-secondary browse-filter-toggle" type="button"
                 aria-controls="browse-filter-options" aria-expanded="false" hidden>
+            <partial name="_Icon" model='"sliders-horizontal"' />
             <span class="browse-filter-toggle-label">Filters</span>
         </button>
         <div class="browse-filter-options" id="browse-filter-options">
@@ -36,7 +37,7 @@
         </div>
         <div class="browse-filter-actions">
             <button type="submit" class="btn btn-primary">Apply filters</button>
-            <a class="btn btn-outline-primary" asp-controller="Items" asp-action="Index">Clear filters</a>
+            <a class="btn btn-outline-secondary" asp-controller="Items" asp-action="Index">Clear filters</a>
         </div>
     </div>
 </form>

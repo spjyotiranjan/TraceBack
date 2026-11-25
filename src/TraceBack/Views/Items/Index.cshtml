@@ -5,7 +5,6 @@
     var search = Model.Search;
     var filters = new (string Name, string Label, string? Value)[]
     {
-        (nameof(search.Query), "Search", search.Query),
         (nameof(search.Type), "Type", search.Type),
         (nameof(search.Category), "Category", search.Category),
         (nameof(search.Location), "Location", search.Location),
@@ -20,21 +19,40 @@
         remaining.Remove(filter.Name);
         chips.Add(new(filter.Label, value, Url.Action("Index", "Items", remaining)!));
     }
+    TraceBack.Controllers.FilterChip? queryChip = null;
+    if (search.Query is { } query)
+    {
+        var remaining = new RouteValueDictionary(route);
+        remaining.Remove(nameof(search.Query));
+        queryChip = new("Search", query, Url.Action("Index", "Items", remaining)!);
+    }
+    var hasFilters = chips.Count > 0 || queryChip is not null;
+    var foundOnly = search.Type == "Found" && chips.Count == 1 && queryChip is null;
 }
 
 <div class="tb-browse-page">
     <partial name="_ResultBoard" model="Model" />
     <partial name="_SearchFilters" model="Model" />
 
-    @if (chips.Count > 0)
+    @if (hasFilters)
     {
         <div class="browse-applied" role="group" aria-label="Applied filters">
-            <span class="browse-applied-label">Applied</span>
+            @if (!foundOnly)
+            {
+                <span class="browse-applied-label">Applied</span>
+            }
             @foreach (var chip in chips)
             {
                 <partial name="_FilterChip" model="chip" />
             }
-            <a class="clear-all-filters" asp-controller="Items" asp-action="Index">Clear all</a>
+            @if (!foundOnly)
+            {
+                <a class="btn btn-outline-secondary clear-all-filters" asp-controller="Items" asp-action="Index">Clear all</a>
+            }
+            @if (queryChip is not null)
+            {
+                <partial name="_FilterChip" model="queryChip" />
+            }
         </div>
     }
 
@@ -52,10 +70,10 @@
         {
             var recovery = search.Page > 1
                 ? new RecoveryContent("No reports on this page", "Return to the first page to see what's available with these filters.", RecoveryArt.Reports,
-                    Primary: new UiButton("Back to page 1", Href: Url.Action("Index", "Items", route)))
-                : chips.Count > 0
+                    Primary: new UiButton("Back to page 1", ButtonTone.Secondary, Href: Url.Action("Index", "Items", route)))
+                : hasFilters
                     ? new RecoveryContent("No reports match these filters", "Try fewer search words or clear a filter.", RecoveryArt.Search,
-                        Primary: new UiButton("Clear filters", Href: Url.Action("Index", "Items")))
+                        Primary: new UiButton("Clear filters", ButtonTone.Secondary, Href: Url.Action("Index", "Items")))
                     : new RecoveryContent("No active reports yet", "When someone posts a lost or found item, it will appear here.", RecoveryArt.Reports,
                         Primary: new UiButton("Report an item", Href: Url.RouteUrl("default", new { controller = "Items", action = "Create" })));
             <partial name="_RecoveryContent" model="recovery" />

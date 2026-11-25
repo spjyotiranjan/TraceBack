@@ -3,10 +3,6 @@
     <div class="tb-result-board__intro">
         <h1>Browse reports</h1>
         <p class="browse-count">@(Model.LoadFailed ? "Reports are temporarily unavailable." : $"Showing {Model.Items.Count} {(Model.Items.Count == 1 ? "report" : "reports")} on page {Model.Search.Page}")</p>
-        @if (!string.IsNullOrWhiteSpace(Model.Search.Query))
-        {
-            <p class="tb-result-board__query">Search: <strong>@Model.Search.Query</strong></p>
-        }
         <a class="btn btn-primary" asp-route="default" asp-route-controller="Items" asp-route-action="Create">Report an item</a>
     </div>
 </div>

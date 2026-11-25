@@ -12,6 +12,9 @@
     <path d="M4 12h16" />
     <path d="M4 19h16" />
   </symbol>
+  <symbol id="sliders-horizontal" viewBox="0 0 24 24">
+    <path d="M10 5H3m9 14H3m11-14h7m-5 14h5M3 12h11m4 0h3M10 3v4m4 3v4m-2 3v4" />
+  </symbol>
   <symbol id="x" viewBox="0 0 24 24">
     <path d="M18 6 6 18" />
     <path d="m6 6 12 12" />

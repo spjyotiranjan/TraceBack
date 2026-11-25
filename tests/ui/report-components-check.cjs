@@ -67,7 +67,8 @@ async function cardMatrix(page, route, variant, width, colorScheme, imageRespons
     }
     const after = await media.boundingBox();
     assert.deepEqual([after.width, after.height], [before.width, before.height]);
-    assert(Math.abs(after.width / after.height - 4 / 3) < 0.002, '4:3 media');
+    if (variant === 'browse') assert.equal(after.height, 212, 'Browse media matches the 212px frame');
+    else assert(Math.abs(after.width / after.height - 4 / 3) < 0.002, '4:3 media');
     sizes.push([after.width, after.height]);
 
     if (variant === 'browse') {
@@ -85,7 +86,11 @@ async function cardMatrix(page, route, variant, width, colorScheme, imageRespons
   assert(sizes.every(([w, h]) => Math.abs(w - sizes[0][0]) < 1 && Math.abs(h - sizes[0][1]) < 1));
   const badges = await page.locator('.tb-status').evaluateAll(elements => elements.map(element => {
     const style = getComputedStyle(element);
-    return [element.textContent.trim(), style.color, style.backgroundColor];
+    let background = style.backgroundColor;
+    for (let ancestor = element.parentElement; background === 'rgba(0, 0, 0, 0)' && ancestor; ancestor = ancestor.parentElement) {
+      background = getComputedStyle(ancestor).backgroundColor;
+    }
+    return [element.textContent.trim(), style.color, background];
   }));
   const expected = ['Found', 'Lost', 'Active', 'Claimed', 'Resolved'];
   if (variant === 'dashboard') expected.push('Pending', 'Approved', 'Rejected');
