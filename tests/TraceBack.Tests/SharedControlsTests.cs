@@ -163,7 +163,17 @@ internal sealed class PrivacyFaultFilter : IActionFilter
         }
     }
 
-    public void OnActionExecuted(ActionExecutedContext context) { }
+    public void OnActionExecuted(ActionExecutedContext context)
+    {
+        // The optional no-reference variant still exercises the real failing GET and safe retry.
+        if (context.HttpContext.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>()?.Path == "/Home/Privacy"
+            && context.HttpContext.User.Identity?.IsAuthenticated != true
+            && context.HttpContext.Request.Query["omitReference"] == "1"
+            && context.Result is ViewResult { Model: ErrorViewModel model })
+        {
+            model.RequestId = null;
+        }
+    }
 }
 
 public class SharedControlsBrowserTests
@@ -171,17 +181,21 @@ public class SharedControlsBrowserTests
     [SharedControlsBrowserFact]
     public Task SharedControlsInChromium() => RunBrowserAsync("SHARED_CONTROLS_BROWSER_SCRIPT");
 
+    [SharedControlsBrowserFact]
+    public Task Error_matches_reference_geometry_in_Chromium() => RunBrowserAsync("SHARED_CONTROLS_BROWSER_SCRIPT", "recovery-parity.cjs", "error");
+
     [SharedControlsBrowserFact("AUTH_LAYOUT_BROWSER_SCRIPT")]
     public Task AuthLayoutInChromium() => RunBrowserAsync("AUTH_LAYOUT_BROWSER_SCRIPT");
 
-    private static async Task RunBrowserAsync(string scriptVariable)
+    private static async Task RunBrowserAsync(string scriptVariable, string? siblingScript = null, string? scriptArgument = null)
     {
         var script = Environment.GetEnvironmentVariable(scriptVariable)!;
         using var factory = new SharedControlsFactory();
         factory.UseKestrel(options => options.Listen(IPAddress.Loopback, 0));
         using var client = factory.CreateClient();
         var start = new ProcessStartInfo("node") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
-        start.ArgumentList.Add(script);
+        start.ArgumentList.Add(siblingScript is null ? script : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(script))!, siblingScript));
+        if (scriptArgument is not null) start.ArgumentList.Add(scriptArgument);
         start.Environment["TRACEBACK_URL"] = factory.Services.GetRequiredService<IServer>()
             .Features.Get<IServerAddressesFeature>()!.Addresses.Single();
         using var browser = Process.Start(start)!;
