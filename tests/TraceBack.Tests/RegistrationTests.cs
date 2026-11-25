@@ -75,6 +75,7 @@ public sealed class RegistrationTests
         using var duplicate = await fresh.PostAsync(Register, Fields("Another Name", "ALEX@example.com", "duplicate-fixture", Token(await fresh.GetStringAsync(Register))));
         Assert.Equal(HttpStatusCode.OK, duplicate.StatusCode);
         var html = await duplicate.Content.ReadAsStringAsync();
+        Assert.Contains("This email is already registered", html);
         Assert.Contains("An account with this email already exists.", html);
         Assert.Contains("href=\"#Email\"", html);
         Assert.Contains("value=\"Another Name\"", html);

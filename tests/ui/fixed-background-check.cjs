@@ -162,7 +162,7 @@ async function checkMotion(page, label, regressions) {
               }
               if (evidence) save(`${label}-rest`, await capture(page));
               results.push(await checkScroll(page, label));
-              if (['guest-home', 'member-edit'].includes(key)) await checkMotion(page, label, regressions);
+              if (['guest-home', 'guest-login', 'guest-register', 'member-edit'].includes(key)) await checkMotion(page, label, regressions);
             }
             assert.deepEqual(errors, []);
           } finally { await context.close(); }

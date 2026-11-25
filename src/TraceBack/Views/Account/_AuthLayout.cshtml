@@ -5,14 +5,14 @@
 }
 
 <div class="tb-auth">
-    <header class="tb-auth__context">
-        <h1 id="auth-heading">@ViewData["Title"]</h1>
-        <p id="auth-description">@ViewData["AuthDescription"]</p>
-    </header>
-
     <form asp-controller="Account" asp-action="@(ViewData["AuthAction"] as string)"
-          asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" class="form-card tb-auth__form"
+          asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" class="tb-auth__form"
           aria-labelledby="auth-heading" aria-describedby="auth-description" novalidate>
+        <header class="tb-auth__heading">
+            <h1 id="auth-heading">@ViewData["Title"]</h1>
+            <p id="auth-description">@ViewData["AuthDescription"]</p>
+        </header>
+
         @if (IsSectionDefined("Feedback"))
         {
             @await RenderSectionAsync("Feedback")
@@ -33,6 +33,11 @@
 
         <p class="tb-auth__alternate">@await RenderSectionAsync("AlternateAccount")</p>
     </form>
+
+    <aside class="tb-auth__context">
+        <p class="tb-auth__tagline"><span>Your campus.</span> <span>A way back.</span></p>
+        <p>@ViewData["AuthContext"]</p>
+    </aside>
 </div>
 
 @section Styles {

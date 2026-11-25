@@ -32,6 +32,7 @@ public class AccountController : Controller
         var user = await accounts.LoginAsync(form);
         if (user is null)
         {
+            ViewData["ServerValidationHeading"] = "Unable to sign in";
             ModelState.AddModelError(string.Empty, "The email or password is incorrect.");
             return View(form);
         }
@@ -60,6 +61,7 @@ public class AccountController : Controller
         var user = await accounts.RegisterAsync(form);
         if (user is null)
         {
+            ViewData["ServerValidationHeading"] = "This email is already registered";
             ModelState.AddModelError(nameof(form.Email), "An account with this email already exists.");
             return View(form);
         }

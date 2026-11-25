@@ -1,9 +1,17 @@
 @{
     var fieldIds = Model as IReadOnlyDictionary<string, string?>;
+    var serverHeading = ViewData["ServerValidationHeading"] as string;
 }
 <div class="tb-feedback tb-feedback--error tb-validation-summary" data-tb-validation-summary role="alert"
      tabindex="-1" hidden="@ViewData.ModelState.IsValid">
-    <div class="tb-feedback__message"><partial name="_Icon" model='"triangle-alert"' /><strong>Please correct the following:</strong></div>
+    <div class="tb-feedback__message">
+        <partial name="_Icon" model='"triangle-alert"' />
+        <strong class="tb-validation-summary__prompt">Please correct the following:</strong>
+        @if (serverHeading is not null)
+        {
+            <strong class="tb-validation-summary__server-heading">@serverHeading</strong>
+        }
+    </div>
     <ul>
         @foreach (var entry in ViewData.ModelState)
         {
@@ -13,7 +21,7 @@
             foreach (var error in entry.Value.Errors)
             {
                 var message = string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Check the submitted value." : error.ErrorMessage;
-                <li>
+                <li data-tb-server-error="@(serverHeading is null ? null : string.Empty)">
                     @if (!string.IsNullOrEmpty(id))
                     {
                         <a href="#@Uri.EscapeDataString(id)">@message</a>
