@@ -82,6 +82,8 @@
     const selectionHelp = fields?.querySelector('[data-map-selection-help]');
     const disclosure = fields?.querySelector('[data-map-coordinates]');
     const coordinateValue = fields?.querySelector('[data-map-coordinate-value]');
+    const selectionActions = fields?.querySelector('[data-map-selection-actions]');
+    const externalMap = fields?.querySelector('[data-map-external]');
     const { tileUrl, tileAttribution, leafletSrc } = root.dataset;
     const maxZoom = Math.min(19, Math.max(2, Number.parseInt(root.dataset.maxZoom, 10) || 18));
     const attribution = safeAttributionHtml(tileAttribution || '');
@@ -90,6 +92,7 @@
       ? 'Map tiles unavailable. You can still enter coordinates manually.'
       : 'Map preview unavailable. Saved coordinates and the Google Maps link are still available.';
     let point = editor ? readPoint(lat.value, lng.value) : readPoint(root.dataset.latitude, root.dataset.longitude);
+    const savedPoint = fields?.querySelector('[data-map-saved-pin="true"]') ? point : null;
     let map;
     let marker;
     let tiles;
@@ -138,14 +141,21 @@
 
     function syncSelection() {
       const hasText = !!(lat.value.trim() || lng.value.trim());
-      selection.textContent = point ? 'Map pin selected.' : 'No map location selected.';
+      const unchanged = point && savedPoint && point.every((value, index) => value === savedPoint[index]);
+      selection.closest('.map-selection').toggleAttribute('data-map-has-point', !!point);
+      selection.textContent = point ? (unchanged ? 'Saved map pin' : 'Map pin selected') : 'Choose a point';
       selectionHelp.textContent = hasText && !readPoint(lat.value, lng.value)
         ? (point ? 'Correct both coordinates to move the displayed pin.' : 'Enter both valid coordinates to place the pin.')
-        : point ? 'The pin marks the selected point, not a verified address.'
-          : 'Choose a point on the map or enter latitude and longitude.';
+        : point ? 'Selected point, not a verified address.'
+          : 'Select the map or enter coordinates below.';
+      if (point && disclosure.hidden) disclosure.open = true;
       disclosure.hidden = !point;
       if (!point) disclosure.open = false;
-      coordinateValue.textContent = point ? point.map(value => value.toFixed(6)).join(', ') : '';
+      const coordinates = point?.map(value => value.toFixed(6));
+      coordinateValue.textContent = coordinates ? coordinates.join(', ') : '';
+      selectionActions.hidden = !coordinates;
+      if (coordinates) externalMap.href = `https://www.google.com/maps/search/?api=1&query=${coordinates.join('%2C')}`;
+      else externalMap.removeAttribute('href');
       if (clear) clear.hidden = !hasText;
     }
 
@@ -197,8 +207,9 @@
     }
 
     async function start(retrying = false) {
-      if (retrying && document.activeElement === retry) canvas.focus({ preventScroll: true });
+      const restoreFocus = retrying && document.activeElement === retry;
       showState('loading', loading);
+      if (restoreFocus) canvas.focus({ preventScroll: true });
       try {
         if (!window.L && retrying) await reloadLeaflet(leafletSrc);
         if (!window.L) throw new Error('Leaflet unavailable');

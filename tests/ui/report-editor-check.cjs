@@ -5,10 +5,12 @@ const { join } = require('node:path');
 const { mkdirSync, mkdtempSync, rmSync } = require('node:fs');
 const { chromium } = require('playwright');
 const media = require('./report-editor-media.cjs');
+const parity = require('./report-editor-parity.cjs');
 const base = process.env.TRACEBACK_URL || 'http://127.0.0.1:5187';
 assert.match(base, /^http:\/\/127\.0\.0\.1:\d+$/);
 const names = ['What happened', 'Where and when', 'How to reconnect', 'Image'];
 const tracker = page => page.getByRole('navigation', { name: 'In this report' });
+const blockLiveTiles = context => context.route('https://tile.openstreetmap.org/**', route => route.abort());
 
 async function openEditor(page) {
   await page.goto(`${base}/Items/Create`);
@@ -16,7 +18,14 @@ async function openEditor(page) {
 }
 
 async function current(page, name) {
-  await page.waitForFunction(name => document.querySelector('[data-report-tracker] [aria-current="step"]')?.textContent.includes(name), name, { timeout: 5000 });
+  try {
+    await page.waitForFunction(name => document.querySelector('[data-report-tracker] [aria-current="step"]')?.textContent.includes(name), name, { timeout: 5000 });
+  } catch (error) {
+    const state = await page.evaluate(() => ({ current: document.querySelector('[data-report-current]').textContent,
+      hash: location.hash, y: scrollY, height: document.scrollingElement.scrollHeight,
+      headings: [...document.querySelectorAll('.tb-report-heading')].map(h => [h.id, h.getBoundingClientRect().top]) }));
+    throw new Error(`Expected ${name}: ${JSON.stringify(state)}`, { cause: error });
+  }
   assert.equal(await tracker(page).locator('[aria-current]').count(), 1);
 }
 
@@ -51,6 +60,7 @@ async function nativeZoom(storageState) {
       await page.evaluate(() => new Promise(resolve => chrome.settingsPrivate.setDefaultZoom(2, resolve)));
       await context.addCookies(storageState.cookies);
       await media.fixture(context);
+      await blockLiveTiles(context);
       await openEditor(page);
       assert.deepEqual(await page.evaluate(() => [innerWidth, innerHeight, devicePixelRatio, document.documentElement.scrollWidth]), [320, 450, 2, 320]);
       await tracker(page).getByRole('link', { name: names[2] }).press('Enter');
@@ -74,7 +84,7 @@ async function nativeZoom(storageState) {
 async function main() {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH });
   try {
-    const account = await browser.newContext({ javaScriptEnabled: false });
+    const account = await browser.newContext({ javaScriptEnabled: false, reducedMotion: 'reduce' });
     const manual = await account.newPage();
     await manual.goto(`${base}/Account/Register`);
     const registered = await manual.request.post(`${base}/Account/Register`, {
@@ -124,7 +134,7 @@ async function main() {
     await manual.getByRole('link', { name: 'Edit report' }).click();
     const editUrl = manual.url();
     assert.equal(await manual.getByRole('radio').count(), 0);
-    const locked = manual.getByRole('textbox', { name: 'Type' });
+    const locked = manual.getByRole('textbox', { name: 'Report type' });
     assert.equal(await locked.inputValue(), 'Found');
     assert(await locked.evaluate(input => input.readOnly));
     const stale = await account.newPage();
@@ -147,12 +157,20 @@ async function main() {
     await account.close();
     console.log('No JavaScript: anchors, icons, validation redisplay, manual pin, publish, locked Edit save, stale 409, reload and Dashboard Cancel passed');
 
+    if (process.env.EDITOR_STORED_PHOTO === '1') {
+      for (const width of [1440, 390]) for (const colorScheme of ['light', 'dark']) {
+        await parity(browser, storageState, base, width, colorScheme);
+      }
+    }
     const fallback = await browser.newContext({ storageState });
+    await blockLiveTiles(fallback);
     await fallback.addInitScript(() => { Object.defineProperty(navigator, 'mediaDevices', { value: undefined }); });
     const fallbackPage = await fallback.newPage();
     await openEditor(fallbackPage);
     assert(!await fallbackPage.getByRole('button', { name: 'Take photo' }).isVisible());
-    await fallbackPage.getByLabel('Photo (optional)').setInputFiles(media.photo);
+    const chooser = fallbackPage.waitForEvent('filechooser');
+    await fallbackPage.getByRole('button', { name: 'Upload image' }).press('Enter');
+    await (await chooser).setFiles(media.photo);
     await fallbackPage.getByText('Image ready to publish').waitFor();
     await fallbackPage.getByRole('button', { name: 'Remove selected photo' }).click();
     await media.pendingPublish(fallbackPage);
@@ -166,9 +184,10 @@ async function main() {
     for (const width of [1440, 896, 895, 390, 320]) for (const colorScheme of ['light', 'dark']) {
       const mobile = width < 896;
       const context = await browser.newContext({ storageState, viewport: { width, height: width === 1440 ? 1040 : 844 }, colorScheme, hasTouch: mobile, reducedMotion: 'reduce' });
+
       const referenceWidth = [1440, 390].includes(width);
       if (referenceWidth) await media.fixture(context);
-      await context.route('**://tile.openstreetmap.org/**', route => route.abort());
+      await blockLiveTiles(context);
       const page = await context.newPage();
       const errors = [];
       page.on('pageerror', error => errors.push(error.message));
@@ -192,7 +211,7 @@ async function main() {
       await page.keyboard.press('Tab');
       assert(await page.locator('#location').evaluate(node => document.activeElement === node));
       await clearOfShell(page, page.locator('#location'));
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }));
       await current(page, names[3]);
       if (mobile) assert.equal(await tracker(page).locator('[data-report-current]').innerText(), names[3]);
       if (referenceWidth) await media.review(page, width, colorScheme);
@@ -220,6 +239,7 @@ async function main() {
       await context.close();
     }
     const guard = await browser.newContext({ storageState });
+    await blockLiveTiles(guard);
     const save = await guard.newPage();
     await save.goto(editUrl);
     await media.pendingEditorSubmit(save, 'Edit', 'Saving…', 'Guarded save');

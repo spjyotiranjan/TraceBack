@@ -11,7 +11,7 @@
      data-tile-attribution="@(Configuration["MapTiles:AttributionHtml"] ?? "&copy; OpenStreetMap contributors")"
      data-max-zoom="@(Configuration["MapTiles:MaxZoom"] ?? "18")"
      data-leaflet-src="@Url.Content("~/lib/leaflet/leaflet.js")">
-    <div class="map-canvas" data-map-canvas role="region" aria-label="@label" tabindex="-1"></div>
+    <div class="map-canvas" data-map-canvas role="region" aria-label="@label" aria-describedby="@(Model.Editor ? "map-instructions" : null)" tabindex="-1"></div>
     <p class="map-status" data-map-status role="status">@(Model.Editor ? "The map needs JavaScript. Enter coordinates instead." : "JavaScript is off or the map script did not load. The saved coordinates are still available.")</p>
     <button class="btn btn-outline-primary map-retry" type="button" data-map-retry hidden>@(Model.Editor ? "Retry map" : "Retry map preview")</button>
     @if (!Model.Editor && Model.Point is { } point)

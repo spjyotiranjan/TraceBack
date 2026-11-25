@@ -1,6 +1,6 @@
 export const maxPhotoBytes = 5 * 1024 * 1024;
 
-export function connectCamera(opener, input, photoChanged) {
+export function connectCamera(opener, input, photoChanged, browse) {
   const dialog = document.querySelector('[data-report-camera]');
   if (!dialog?.showModal || !navigator.mediaDevices?.getUserMedia || !window.DataTransfer ||
       !HTMLCanvasElement.prototype.toBlob) {
@@ -46,6 +46,7 @@ export function connectCamera(opener, input, photoChanged) {
 
   function setState(state, message) {
     status.textContent = message;
+    status.classList.toggle('visually-hidden', state === 'review' || state === 'live');
     frame.hidden = state === 'error';
     video.hidden = state === 'review';
     review.hidden = state !== 'review';
@@ -126,7 +127,7 @@ export function connectCamera(opener, input, photoChanged) {
       first.focus();
     }
   });
-  upload.addEventListener('click', () => { close(); input.focus(); input.click(); });
+  upload.addEventListener('click', () => { close(); browse.focus(); input.click(); });
   capture.addEventListener('click', async () => {
     if (!stream || capture.disabled) return;
     const request = generation;
