@@ -13,6 +13,7 @@
     };
     MapLocationRules.TryNormalize(Model.Form.MapLocation, out var validPoint, out _);
     var hasPoint = validPoint is not null;
+    var showingSavedPin = editing && Model.HasSavedPin && hasPoint && Context.Request.Method == "GET";
     var pairInvalid = ViewData.ModelState["MapLocation"]?.Errors.Count > 0;
     var latitudeInvalid = pairInvalid || ViewData.ModelState["MapLocation.Latitude"]?.Errors.Count > 0;
     var longitudeInvalid = pairInvalid || ViewData.ModelState["MapLocation.Longitude"]?.Errors.Count > 0;
@@ -33,7 +34,9 @@
     </nav>
     <div class="tb-report-editor__content">
     <h1>@ViewData["Title"]</h1>
-    <p class="text-muted">Include useful details, but keep personal contact information out of public fields. Fields marked required must be completed.</p>
+    <p class="tb-report-editor__intro text-muted">@(editing
+        ? "Update the report details. Keep personal contact information out of public fields."
+        : "Help someone recognize the item. Keep personal contact details out of public fields.")</p>
     <form asp-route="default" asp-route-controller="Items" asp-route-action="@(editing ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="form-card report-form" novalidate>
         @if (Model.EditRevision is long revision)
         {
@@ -44,24 +47,27 @@
             ["Type"] = editing ? null : reportType == "Found" ? "type-found" : "type", ["Title"] = "title", ["Category"] = "category",
             ["Description"] = "description", ["Location"] = "location", ["MapLocation"] = "latitude",
             ["MapLocation.Latitude"] = "latitude", ["MapLocation.Longitude"] = "longitude",
-            ["DateReported"] = "date", ["ContactPreference"] = "contact", ["ImageFile"] = "image"
+            ["DateReported"] = "date", ["ContactPreference"] = "contact", ["ImageFile"] = "report-image-heading"
         })' />
 
         <section class="form-section tb-form-section" aria-labelledby="report-details-heading">
             <h2 id="report-details-heading" class="tb-report-heading" tabindex="-1">@sections[0].Label</h2>
         @if (editing)
         {
-            <div class="mb-3">
-                <label class="form-label" for="type-locked">Type</label>
-                <input id="type-locked" class="form-control" name="Type" value="@reportType" readonly aria-describedby="type-help type-error" />
-                <p id="type-help" class="form-text">Report type cannot be changed after publishing.</p>
+            <div class="tb-report-field tb-report-field--type-locked">
+                <label class="form-label" for="type-locked">Report type</label>
+                <div class="tb-report-type-locked">
+                    <input id="type-locked" class="form-control" name="Type" value="@reportType" readonly aria-describedby="type-help type-error" />
+                    <partial name="_Icon" model='"lock-keyhole"' />
+                </div>
+                <p id="type-help" class="form-text">Report type cannot change after publishing.</p>
                 <span id="type-error" class="text-danger small">@Html.ValidationMessage("Type")</span>
             </div>
         }
         else
         {
-            <fieldset class="mb-3">
-                <legend class="form-label">Type <span class="required">required</span></legend>
+            <fieldset class="tb-report-field tb-report-field--type">
+                <legend class="form-label">Report type <span aria-hidden="true">*</span></legend>
                 <div class="tb-report-types">
                     <input class="visually-hidden" id="type" name="Type" type="radio" value="Lost" checked="@(reportType == "Lost")" required aria-describedby="type-error" aria-invalid="@(typeInvalid ? "true" : null)" />
                     <label for="type"><partial name="_Icon" model='"search-x"' /> Lost</label>
@@ -72,37 +78,40 @@
             </fieldset>
         }
 
-        <div class="mb-3">
-            <label class="form-label" for="title">Title <span class="required">required</span></label>
+        <div class="tb-report-field">
+            <label class="form-label" for="title">Title <span aria-hidden="true">*</span></label>
             <input id="title"
                    name="Title"
                    class="form-control"
                    value="@Model.Form.Title"
+                   placeholder="A short, recognizable name"
                    maxlength="120" required
                    aria-invalid="@Invalid("Title")"
                    aria-describedby="title-error" />
             <span id="title-error" class="text-danger small">@Html.ValidationMessage("Title")</span>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label" for="category">Category <span class="required">required</span></label>
+        <div class="tb-report-field tb-report-field--category">
+            <label class="form-label" for="category">Category <span aria-hidden="true">*</span></label>
             <input id="category"
                    name="Category"
                    class="form-control"
                    value="@Model.Form.Category"
+                   placeholder="e.g. Accessories"
                    maxlength="80" required
                    aria-invalid="@Invalid("Category")"
                    aria-describedby="category-help category-error" />
-            <div id="category-help" class="form-text">Examples: Electronics, Clothing, Keys</div>
+            <div id="category-help" class="form-text">Free text, such as Electronics or Keys</div>
             <span id="category-error" class="text-danger small">@Html.ValidationMessage("Category")</span>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label" for="description">Description <span class="required">required</span></label>
+        <div class="tb-report-field">
+            <label class="form-label" for="description">Description <span aria-hidden="true">*</span></label>
             <textarea id="description"
                       name="Description"
                       class="form-control"
                       rows="5"
+                      placeholder="Describe the color, marks and where you last saw or found it."
                       maxlength="2000" required
                       aria-invalid="@Invalid("Description")"
                       aria-describedby="description-error">@Model.Form.Description</textarea>
@@ -112,64 +121,74 @@
 
         <section class="form-section tb-form-section" aria-labelledby="report-place-heading">
             <h2 id="report-place-heading" class="tb-report-heading" tabindex="-1">@sections[1].Label</h2>
-        <div class="mb-3">
-            <label class="form-label" for="location">Location description <span class="required">required</span></label>
+        <div class="tb-report-field tb-report-field--location">
+            <label class="form-label" for="location">Location description <span aria-hidden="true">*</span></label>
             <input id="location"
                    name="Location"
                    class="form-control"
                    value="@Model.Form.Location"
+                   placeholder="A landmark or nearby public place"
                    maxlength="120" required
                    aria-invalid="@Invalid("Location")"
                    aria-describedby="location-help location-error" />
-            <div id="location-help" class="form-text">Add context people can recognize, such as the north library entrance. This is your description, not a verified pin address.</div>
+            <div id="location-help" class="form-text">Reporter-written context, not a verified address.</div>
             <span id="location-error" class="text-danger small">@Html.ValidationMessage("Location")</span>
         </div>
 
-        <fieldset class="mb-3">
-            <legend class="form-label">Choose a map location @if (!editing) { <span class="required">required</span> }</legend>
-            <p class="form-text">Anyone who can view this report can see the pin. For a private place, choose a nearby public point instead.</p>
+        <fieldset class="tb-report-field tb-report-field--map">
+            <legend class="form-label">Choose a map location @if (!editing) { <span aria-hidden="true">*</span> }</legend>
+            <p class="tb-report-map-privacy">Select a nearby public point. Anyone who can view this report can see the pin.</p>
+            <div class="tb-report-pin-card" data-map-saved-pin="@(showingSavedPin ? "true" : null)">
+                <div class="map-selection" role="status" aria-live="polite" aria-atomic="true" data-map-has-point="@(hasPoint ? "true" : null)">
+                    <div class="tb-report-pin-card__heading">
+                        <partial name="_Icon" model='"map-pin"' />
+                        <strong data-map-selection>@(hasPoint ? showingSavedPin ? "Saved map pin" : "Map pin selected" : "Choose a point")</strong>
+                    </div>
+                    <span class="map-selection-help" data-map-selection-help>@(hasPoint ? "Selected point, not a verified address." : "Select the map or enter coordinates below.")</span>
+                </div>
+                <partial name="_ReportMap" model="(true, (MapLocation?)null)" />
+                <div class="tb-report-pin-card__actions" data-map-selection-actions hidden="@(!hasPoint)">
+                    <details class="map-coordinates" data-map-coordinates hidden="@(!hasPoint)" open="@(hasPoint)">
+                        <summary class="btn btn-outline-secondary"><span>Show coordinates</span><span>Hide coordinates</span></summary>
+                        <span class="tb-report-pin-card__value" data-map-coordinate-value>@(hasPoint ? validPoint!.Latitude.ToString("F6", CultureInfo.InvariantCulture) + ", " + validPoint.Longitude.ToString("F6", CultureInfo.InvariantCulture) : "")</span>
+                    </details>
+                    <a class="map-external-link" data-map-external href="@MapLocationRules.GoogleMapsUrl(validPoint)" target="_blank" rel="noopener noreferrer" aria-describedby="map-external-help">View in Google Maps</a>
+                    <span id="map-external-help" class="visually-hidden">Opens a new tab and shares the selected coordinates with Google.</span>
+                </div>
+            </div>
+            <p class="@(editing ? "visually-hidden" : "tb-report-map-instructions")" id="map-instructions">Click or tap to place a pin. Click another point or drag the pin to move it. You can also enter coordinates below.</p>
+            @if (!Model.HasSavedPin)
+            {
+                <button class="btn btn-outline-secondary mt-2" type="button" data-map-clear hidden>Clear selection</button>
+            }
             @if (editing && !Model.HasSavedPin)
             {
-                <p class="form-text">Map location not added to this older report. You can save it without a pin.</p>
+                <p class="form-text">No pin was saved on this older report. You can save it without a pin.</p>
             }
             else if (editing)
             {
                 <p class="form-text">Leave both coordinates blank to keep the saved pin unchanged.</p>
             }
-            <div class="map-selection" role="status" aria-live="polite" aria-atomic="true">
-                <span class="d-block">Selected location</span>
-                <strong data-map-selection>@(hasPoint ? "Map pin selected." : "No map location selected.")</strong>
-                <span class="d-block map-selection-help" data-map-selection-help>@(hasPoint ? "The pin marks the selected point, not a verified address." : "Choose a point on the map or enter latitude and longitude.")</span>
-            </div>
-            <details class="map-coordinates" data-map-coordinates hidden="@(!hasPoint)">
-                <summary>Show coordinates</summary>
-                <span data-map-coordinate-value>@(hasPoint ? validPoint!.Latitude.ToString("F6", CultureInfo.InvariantCulture) + ", " + validPoint.Longitude.ToString("F6", CultureInfo.InvariantCulture) : "")</span>
-            </details>
-            <div class="row g-2">
-                <div class="col-sm-6">
-                    <label class="form-label" for="latitude">Latitude @if (!editing) { <span class="required">required</span> }</label>
-                    @Html.TextBox("MapLocation.Latitude", Model.Form.MapLocation?.Latitude?.ToString(CultureInfo.InvariantCulture) ?? "",
-                        new { id = "latitude", inputmode = "decimal", @class = "form-control", aria_describedby = "map-location-help map-location-error latitude-error", aria_invalid = latitudeInvalid ? "true" : "false", data_map_latitude = "" })
+            <div class="tb-report-coordinate-fields">
+                <div>
+                    <label class="form-label" for="latitude">Latitude @if (!editing) { <span aria-hidden="true">*</span> }</label>
+                    @Html.TextBox("MapLocation.Latitude", Model.Form.MapLocation?.Latitude?.ToString("F6", CultureInfo.InvariantCulture) ?? "",
+                        new { id = "latitude", inputmode = "decimal", placeholder = "-90 to 90", @class = "form-control", aria_required = editing ? null : "true", aria_describedby = "map-instructions map-location-help map-location-error latitude-error", aria_invalid = latitudeInvalid ? "true" : "false", data_map_latitude = "" })
                     <span id="latitude-error" class="text-danger small">@Html.ValidationMessage("MapLocation.Latitude")</span>
                 </div>
-                <div class="col-sm-6">
-                    <label class="form-label" for="longitude">Longitude @if (!editing) { <span class="required">required</span> }</label>
-                    @Html.TextBox("MapLocation.Longitude", Model.Form.MapLocation?.Longitude?.ToString(CultureInfo.InvariantCulture) ?? "",
-                        new { id = "longitude", inputmode = "decimal", @class = "form-control", aria_describedby = "map-location-help map-location-error longitude-error", aria_invalid = longitudeInvalid ? "true" : "false", data_map_longitude = "" })
+                <div>
+                    <label class="form-label" for="longitude">Longitude @if (!editing) { <span aria-hidden="true">*</span> }</label>
+                    @Html.TextBox("MapLocation.Longitude", Model.Form.MapLocation?.Longitude?.ToString("F6", CultureInfo.InvariantCulture) ?? "",
+                        new { id = "longitude", inputmode = "decimal", placeholder = "-180 to 180", @class = "form-control", aria_required = editing ? null : "true", aria_describedby = "map-instructions map-location-help map-location-error longitude-error", aria_invalid = longitudeInvalid ? "true" : "false", data_map_longitude = "" })
                     <span id="longitude-error" class="text-danger small">@Html.ValidationMessage("MapLocation.Longitude")</span>
                 </div>
             </div>
-            <p id="map-location-help" class="form-text">Click or tap the map to place a pin; click another point or drag the pin to move it. Or enter both coordinates. Latitude: -90 to 90. Longitude: -180 to 180. Use at most six decimal places.</p>
+            <p id="map-location-help" class="form-text">Latitude −90 to 90 · Longitude −180 to 180. Use at most six decimal places.</p>
             <span id="map-location-error" class="text-danger small d-block" role="alert">@Html.ValidationMessage("MapLocation")</span>
-            <partial name="_ReportMap" model="(true, (MapLocation?)null)" />
-            @if (!Model.HasSavedPin)
-            {
-                <button class="btn btn-outline-secondary mt-2" type="button" data-map-clear hidden>Clear selection</button>
-            }
         </fieldset>
 
-        <div class="mb-3">
-            <label class="form-label" for="date">Date <span class="required">required</span></label>
+        <div class="tb-report-field">
+            <label class="form-label" for="date">Date reported <span aria-hidden="true">*</span></label>
             @Html.TextBox("DateReported", Model.Form.DateReported.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 new { id = "date", type = "date", @class = "form-control", required = "required", aria_describedby = "date-error", aria_invalid = Invalid("DateReported") })
             <span id="date-error" class="text-danger small">@Html.ValidationMessage("DateReported")</span>
@@ -178,29 +197,29 @@
 
         <section class="form-section tb-form-section" aria-labelledby="report-contact-heading">
             <h2 id="report-contact-heading" class="tb-report-heading" tabindex="-1">@sections[2].Label</h2>
-        <div class="mb-3">
-            <label class="form-label" for="contact">Contact preference <span class="required">required</span></label>
+        <div class="tb-report-field">
+            <label class="form-label" for="contact">Contact preference <span aria-hidden="true">*</span></label>
             <input id="contact"
                    name="ContactPreference"
                    class="form-control"
                    value="@Model.Form.ContactPreference"
+                   placeholder="e.g. Meet at the campus help desk"
                    maxlength="120" required
                    aria-invalid="@Invalid("ContactPreference")"
                    aria-describedby="contact-help contact-error" />
-            <div id="contact-help" class="form-text">For example, meet at the campus help desk. This is public.</div>
+            <div id="contact-help" class="form-text">Public to viewers. Keep personal contact details private.</div>
             <span id="contact-error" class="text-danger small">@Html.ValidationMessage("ContactPreference")</span>
         </div>
         </section>
 
         <partial name="_ReportImagePicker" model="Model" />
-        <partial name="_DraftCanvas" model="Model" />
 
         <div class="report-form-actions">
             <button class="btn btn-primary" type="submit" data-tb-pending="@(editing ? "Saving…" : "Publishing…")">
                 <span class="tb-report-submit-label">@(editing ? "Save changes" : "Publish report")</span>
                 <span class="tb-report-submit-pending" aria-hidden="true">@(editing ? "Saving…" : "Publishing…")</span>
             </button>
-            <a class="btn btn-outline-primary" asp-controller="Dashboard" asp-action="Index">Cancel</a>
+            <a class="btn btn-outline-secondary" asp-controller="Dashboard" asp-action="Index">Cancel</a>
             <partial name="_PendingStatus" />
         </div>
     </form>
@@ -220,6 +239,5 @@
     <script type="module" src="~/js/report-image.js" asp-append-version="true"></script>
     <script src="~/lib/leaflet/leaflet.js" defer></script>
     <script src="~/js/report-map.js" asp-append-version="true" defer></script>
-    <script src="~/js/record-graphics.js" asp-append-version="true" defer></script>
     <script src="~/js/report-editor.js" asp-append-version="true" defer></script>
 }

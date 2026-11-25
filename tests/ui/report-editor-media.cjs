@@ -52,7 +52,7 @@ async function review(page, width, colorScheme, evidencePrefix = 'camera') {
   const previousPreview = await preview.getAttribute('src');
   await input.setInputFiles(photo);
   assert(await page.evaluate(url => revokedPreviews.includes(url), previousPreview));
-  await page.getByRole('button', { name: 'Remove selected photo' }).click();
+  await page.getByRole('button', { name: /^(Remove selected photo|Remove replacement)$/ }).click();
   assert.equal(await input.evaluate(el => el.files.length), 0);
   await page.locator('#title').fill('Keep this draft');
   await page.evaluate(() => { window.cameraDenied = true; });
@@ -77,12 +77,12 @@ async function currentPhoto(page) {
   const preview = page.locator('[data-preview-image]');
   const src = await preview.getAttribute('src');
   assert.match(src, /\/Items\/Image\/[a-f0-9]{24}$/);
-  await page.getByRole('button', { name: 'Remove current image' }).press('Enter');
+  await page.getByRole('button', { name: 'Remove image' }).press('Enter');
   assert(await page.locator('#remove-image').isChecked());
   await page.getByRole('button', { name: 'Undo remove' }).press('Enter');
   assert(!await page.locator('#remove-image').isChecked());
   assert(await page.locator('[data-preview-status]').evaluate(el => el === document.activeElement));
-  await page.getByRole('button', { name: 'Remove current image' }).click();
+  await page.getByRole('button', { name: 'Remove image' }).click();
   await input.setInputFiles(photo);
   assert(!await page.locator('#remove-image').isChecked());
   assert.match(await preview.getAttribute('src'), /^blob:/);

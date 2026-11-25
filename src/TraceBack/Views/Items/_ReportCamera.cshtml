@@ -1,16 +1,16 @@
 <dialog class="tb-report-camera" aria-labelledby="report-camera-title" aria-describedby="report-camera-help" data-report-camera>
-    <h2 id="report-camera-title" class="h5" tabindex="-1" autofocus>Take a photo</h2>
+    <h2 id="report-camera-title" tabindex="-1" autofocus>Take a photo</h2>
     <p id="report-camera-help">Center the item in the frame.</p>
     <div class="tb-report-camera__frame" data-camera-frame>
         <video autoplay muted playsinline aria-label="Live camera preview" data-camera-video></video>
         <img alt="Captured photo to review" data-camera-review hidden />
     </div>
-    <p class="form-text" role="status" data-camera-status></p>
+    <p class="form-text tb-report-camera__status" role="status" data-camera-status></p>
     <div class="tb-report-camera__actions">
-        <button class="btn btn-outline-primary" type="button" data-camera-cancel>Cancel</button>
-        <button class="btn btn-outline-primary" type="button" data-camera-retake hidden>Retake photo</button>
+        <button class="btn btn-outline-secondary" type="button" data-camera-cancel>Cancel</button>
         <button class="btn btn-primary" type="button" data-camera-capture disabled>Capture photo</button>
         <button class="btn btn-primary" type="button" data-camera-confirm hidden>Use this photo</button>
         <button class="btn btn-primary" type="button" data-camera-upload hidden>Upload image</button>
     </div>
+    <button class="tb-report-camera__retake" type="button" data-camera-retake hidden>Retake photo</button>
 </dialog>

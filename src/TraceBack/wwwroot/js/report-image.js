@@ -4,6 +4,8 @@ const editor = document.querySelector('[data-image-editor]');
 if (editor && window.URL?.createObjectURL) {
   const find = selector => editor.querySelector(selector);
   const input = find('#image');
+  const browse = find('[data-photo-browse]');
+  const browseLabel = find('[data-photo-browse-label]');
   const remove = find('#remove-image');
   const current = editor.dataset.currentImageUrl;
   const preview = find('[data-image-preview]');
@@ -37,6 +39,7 @@ if (editor && window.URL?.createObjectURL) {
     find('[data-image-removal]').hidden = !removing;
     removeSelection.hidden = !file;
     removeCurrent.hidden = !!file || !current;
+    browseLabel.textContent = file || current ? 'Replace image' : 'Upload image';
   }
 
   function photoChanged() {
@@ -60,12 +63,12 @@ if (editor && window.URL?.createObjectURL) {
   if (remove) find('[data-native-remove]').hidden = true;
   find('[data-preview-actions]').hidden = false;
   input.addEventListener('change', photoChanged);
-  find('[data-replace-image]').addEventListener('click', () => { input.focus(); input.click(); });
+  browse.addEventListener('click', () => input.click());
   removeSelection.addEventListener('click', () => {
     input.value = '';
     photoChanged();
     announcement.textContent = current ? 'Current image restored.' : 'Selected photo removed.';
-    input.focus();
+    browse.focus();
   });
   removeCurrent.addEventListener('click', () => {
     input.value = '';
@@ -79,8 +82,11 @@ if (editor && window.URL?.createObjectURL) {
     render();
     status.focus();
   });
-  connectCamera(find('[data-take-photo]'), input, photoChanged);
+  connectCamera(find('[data-take-photo]'), input, photoChanged, browse);
   window.addEventListener('pagehide', clearPreview);
   window.addEventListener('pageshow', event => { if (event.persisted) render(); });
   render();
+  browse.hidden = false;
+  input.hidden = true;
+  find('[data-photo-label]').hidden = true;
 }

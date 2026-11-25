@@ -7,6 +7,7 @@
   if (!headings.length || headings.some(heading => !heading)) return;
 
   const caption = tracker.querySelector('[data-report-current]');
+  const initialHash = location.hash;
   const header = document.querySelector('.site-header');
   const dock = document.querySelector('.tb-member-dock');
   const mobile = matchMedia('(width < 56rem)');
@@ -26,7 +27,10 @@
   };
   const update = () => {
     tick = 0;
-    if (jump && Math.abs(scrollY - jump.top) <= 2) {
+    // Browser scroll anchoring can keep the target at the same viewport offset
+    // while tiles, validation copy, or images above it change the document height.
+    if (jump && (Math.abs(scrollY - jump.top) <= 2 ||
+        Math.abs(headings[jump.index].getBoundingClientRect().top - jump.offset) <= 2)) {
       activate(jump.index);
       return;
     }
@@ -44,7 +48,7 @@
   // An anchor near the end can stop short of the reading line. Keep its label
   // until the reader actually moves away from the anchor's scroll position.
   const rememberJump = index => {
-    jump = { index, top: scrollY };
+    jump = { index, top: scrollY, offset: headings[index].getBoundingClientRect().top };
     activate(index);
   };
   const followHash = () => {
@@ -62,22 +66,28 @@
     }
     link.addEventListener('click', event => {
       if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      // Commit the anchor and its scroll together. A later hashchange scroll
+      // must not pull a reader back after they have continued down the form.
+      event.preventDefault();
+      if (location.hash !== link.hash) history.pushState(null, '', link.hash);
       heading.focus({ preventScroll: true });
-      activate(i);
-      // Leave fragment navigation and browser history to the real link.
-      requestAnimationFrame(() => { if (location.hash === link.hash) rememberJump(i); });
+      heading.scrollIntoView({ block: 'start', behavior: 'instant' });
+      rememberJump(i);
     });
   });
 
   editor.addEventListener('focusin', event => {
     const control = event.target;
     if (tracker.contains(control) || headings.includes(control)) return;
-    requestAnimationFrame(() => {
-      if (document.activeElement !== control) return;
+    const obscured = () => {
       const rect = control.getBoundingClientRect();
       const dockBounds = dock?.getBoundingClientRect();
       const bottom = dockBounds?.height ? dockBounds.top : innerHeight;
-      if (rect.top < clearance() || rect.bottom > bottom) {
+      return rect.top < clearance() || rect.bottom > bottom;
+    };
+    if (!obscured()) return;
+    requestAnimationFrame(() => {
+      if (document.activeElement === control && obscured()) {
         control.scrollIntoView({ block: 'center', behavior: 'instant' });
       }
     });
@@ -88,5 +98,8 @@
   addEventListener('scroll', scheduleUpdate, { passive: true });
   addEventListener('resize', () => { jump = null; scheduleUpdate(); });
   addEventListener('hashchange', followHash);
-  addEventListener('pageshow', scheduleUpdate);
+  addEventListener('pageshow', event => {
+    if (!event.persisted && initialHash && location.hash === initialHash) followHash();
+    else scheduleUpdate();
+  });
 })();

@@ -81,7 +81,8 @@ async function main() {
       assert.match(await status(page).textContent(), /tiles unavailable/i);
       const title = await page.locator('#title').inputValue();
       assert.deepEqual(await point(page), moved);
-      await canvas(page).click({ position });
+      assert(!await canvas(page).isVisible(), 'Do not expose zoom or pin controls over unavailable tiles');
+      await canvas(page).dispatchEvent('click');
       assert.deepEqual(await point(page), moved, 'No pin changes against an unavailable basemap');
       state = 'ok';
       await retry(page).focus();
