@@ -3,7 +3,7 @@
     var id = $"confirm-{Model.Action.ToLowerInvariant()}";
     var style = Model.Destructive ? "danger" : "secondary";
 }
-<button class="btn btn-outline-@style" type="button" data-confirmation-open="@id" aria-haspopup="dialog" hidden>@Model.Label</button>
+<button class="btn btn-outline-@style" type="button" data-confirmation-open="@id" aria-haspopup="dialog" hidden><partial name="_Icon" model='@(Model.Destructive ? "trash-2" : "check")' />@Model.Label</button>
 <dialog id="@id" class="tb-confirmation" aria-labelledby="@(id)-title" aria-describedby="@(id)-description">
     <h2 id="@(id)-title" class="h4">@Model.Title</h2>
     <p id="@(id)-description">@Model.Consequence</p>

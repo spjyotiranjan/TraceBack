@@ -22,10 +22,6 @@ html { scrollbar-color: var(--tb-control-border) var(--tb-canvas); }
 .tb-draft__caption h2, .tb-draft__caption p > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .tb-draft__caption p, .tb-draft__caption > strong { font-size: .875rem; }
 
-/* Shared record framing: calm on decision screens, expressive around evidence. */
-.detail-report__media { padding: 12px; background: var(--tb-record-ground); border-bottom: 3px solid var(--tb-action); }
-.detail-report__media .detail-image, .detail-report__media .detail-placeholder { border-radius: 0; }
-.detail-report .detail-report__layout { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
 .tb-account { position: relative; }
 
 .tb-workspace-heading { padding: 1.5rem; background: var(--tb-record-ground); border-bottom: 3px solid var(--tb-action); }
@@ -42,9 +38,6 @@ html { scrollbar-color: var(--tb-control-border) var(--tb-canvas); }
 
   .tb-draft__canvas { display: grid; grid-template-columns: 1fr 1fr; }
   .tb-draft__media { height: 210px; }
-}
-@media (max-width: 767px) {
-  .detail-report .detail-report__layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 599px) {
   .tb-result-board { padding: 1rem; }

@@ -11,6 +11,7 @@ const details = `${base}/Items/Details/${id}`;
 const evidence = process.env.TRACEBACK_CLAIM_EVIDENCE;
 const claimRoute = '**/Claims/Create?*';
 const focused = locator => locator.evaluate(el => el === document.activeElement);
+const filled = 'It has a small dent near the base and my initials are scratched under the lid. I last had it at the library on Tuesday.';
 
 async function capture(page, name) {
   if (!evidence) return;
@@ -20,6 +21,7 @@ async function capture(page, name) {
 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
+  const referenceGeometry = [];
   try {
     for (const width of [1440, 390]) {
       for (const theme of ['light', 'dark']) {
@@ -30,6 +32,9 @@ async function capture(page, name) {
         });
         await context.addCookies([{ name, value, url: base }]);
         const page = await context.newPage();
+        const suffix = `${width}-${theme}`;
+        // Do not request external tile imagery during claim journeys.
+        await page.route('**/tile.openstreetmap.org/**', route => route.abort());
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(details);
@@ -61,12 +66,15 @@ async function capture(page, name) {
           return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('button') === el;
         }), 'action remains reachable at short viewport height');
         if (theme === 'dark') assert.equal(await drawer.evaluate(el => getComputedStyle(el).animationName), 'none');
+        else assert.equal(await drawer.evaluate(el => getComputedStyle(el).animationName), 'claim-enter');
         await page.keyboard.press('Escape');
         await drawer.waitFor({ state: 'hidden' });
         assert(await opener.evaluate(el => el === document.activeElement));
         if (width === 390) await page.setViewportSize({ width, height: 844 });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
         if (width === 390) await opener.tap();
         else await opener.click();
+        await capture(page, `long-title-${suffix}`);
         await message.fill('Blue');
         await drawer.getByText('4 / 1,000').waitFor();
         const validation = drawer.locator('[data-tb-validation-summary]');
@@ -85,7 +93,22 @@ async function capture(page, name) {
         await opener.click();
         await drawer.getByText('Blue water bottle').waitFor();
         await page.waitForFunction(() => document.querySelector('[data-claim-drawer] img')?.naturalWidth > 0);
-        await capture(page, `drawer-${width}-${theme}`);
+        const visual = await drawer.evaluate(el => {
+          const box = selector => { const { x, y, width, height } = el.querySelector(selector).getBoundingClientRect(); return [x - el.getBoundingClientRect().x, y, width, height]; };
+          const actions = el.querySelector('.claim-form__actions');
+          return { header: box('header'), item: box('.claim-form__item'), privacy: box('.claim-form__privacy'), field: box('textarea'), footer: box('.claim-form__actions'), footerSurface: getComputedStyle(actions).backgroundColor, backdrop: getComputedStyle(el, '::backdrop').backgroundColor };
+        });
+        referenceGeometry.push({ width, theme, ...visual });
+        await capture(page, `drawer-${suffix}`);
+        await message.fill('Blue');
+        await submit.click();
+        await validation.getByRole('link').waitFor();
+        await capture(page, `validation-${suffix}`);
+        await page.keyboard.press('Escape');
+        await drawer.waitFor({ state: 'hidden' });
+        await opener.click();
+        await message.fill(filled);
+        await capture(page, `filled-${suffix}`);
 
         if (width === 1440 && theme === 'light') {
           let release;
@@ -96,12 +119,11 @@ async function capture(page, name) {
             assert.equal(route.request().headers()['x-traceback-claim'], 'drawer');
             const body = new URLSearchParams(route.request().postData());
             assert(body.get('__RequestVerificationToken'));
-            assert.equal(body.get('Message'), 'The bottle has initials below its lid.');
+            assert.equal(body.get('Message'), filled);
             posts++;
             await barrier;
             await route.continue();
           });
-          await message.fill('The bottle has initials below its lid.');
           assert.deepEqual(await submit.evaluate(el => {
             el.form.requestSubmit();
             el.form.requestSubmit();
@@ -111,6 +133,9 @@ async function capture(page, name) {
           release();
           await page.waitForURL('**/Dashboard');
           await page.getByText(/Your claim was submitted/).waitFor();
+          await capture(page, 'dashboard-success-1440-light');
+          await page.reload();
+          assert.equal(await page.getByText(/Your claim was submitted/).count(), 0);
           await page.unroute(claimRoute);
           assert.equal(posts, 1);
           await page.goto(`${base}/Items/Details/${photoId}`);
@@ -122,6 +147,18 @@ async function capture(page, name) {
           await validation.getByText(/You may already have a claim/).waitFor();
           assert.equal(await message.inputValue(), 'Private text retained on duplicate.');
           await capture(page, 'duplicate-1440-light');
+        } else {
+          // Hold the real duplicate POST to capture its pending presentation.
+          let release;
+          const barrier = new Promise(resolve => { release = resolve; });
+          await page.route(claimRoute, async route => { await barrier; await route.continue(); }, { times: 1 });
+          await submit.evaluate(el => el.form.requestSubmit());
+          await drawer.locator('.claim-form__pending-label').waitFor();
+          await capture(page, `pending-${suffix}`);
+          release();
+          await validation.getByText(/You may already have a claim/).waitFor();
+          assert.equal(await message.inputValue(), filled);
+          await capture(page, `duplicate-${suffix}`);
         }
         if (width === 390 && theme === 'dark') {
           await message.fill('Keep this private draft on failure.');
@@ -199,4 +236,13 @@ async function capture(page, name) {
     await standalone.close();
     console.log('Claim direct route: native pending, one POST, duplicate draft/focus and Cancel passed');
   } finally { await browser.close(); }
+  console.log(`PDF 08 geometry ${JSON.stringify(referenceGeometry)}`);
+  for (const { width, theme, item, privacy, field, footer, footerSurface, backdrop } of referenceGeometry) {
+    assert.equal(item[3], 96, `PDF 08 ${width} ${theme} item card height`);
+    assert.equal(privacy[3], 103, `PDF 08 ${width} ${theme} privacy card height`);
+    assert.equal(field[3], 156, `PDF 08 ${width} ${theme} message box height`);
+    assert.equal(footer[3], 92, `PDF 08 ${width} ${theme} footer height`);
+    assert.notEqual(footerSurface, 'rgba(0, 0, 0, 0)');
+    assert.equal(backdrop, 'rgba(13, 16, 34, 0.58)');
+  }
 })().catch(error => { console.error(error); process.exitCode = 1; });

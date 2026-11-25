@@ -27,9 +27,10 @@ if (description) {
 const mediaColumn = document.querySelector('.detail-report__media-column');
 if (mediaColumn) {
   const update = () => {
-    const inset = parseFloat(getComputedStyle(mediaColumn).top);
-    // Use ordinary document flow whenever any part of the rail would be off-screen.
-    mediaColumn.classList.toggle('is-sticky', mediaColumn.offsetHeight + inset * 2 <= window.innerHeight);
+    const top = parseFloat(getComputedStyle(mediaColumn).top);
+    const bottom = parseFloat(getComputedStyle(document.documentElement).scrollPaddingBottom);
+    // Let the whole rail remain reachable between the shell's actual clearances.
+    mediaColumn.classList.toggle('is-sticky', mediaColumn.offsetHeight + top + bottom <= window.innerHeight);
   };
 
   new ResizeObserver(update).observe(mediaColumn);
