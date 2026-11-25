@@ -9,6 +9,51 @@ namespace TraceBack.Tests;
 
 public sealed partial class ReportAuthorizationTests
 {
+    [ReportBrowserFact]
+    public async Task Browse_layout_in_chromium()
+    {
+        var rows = new List<Item>();
+        var fixture = new FakeItemService
+        {
+            ServeValidImage = true,
+            SearchResults = search => (search.Query, search.Type, search.Page) switch
+            {
+                ("Headphones", _, 3) => throw new InvalidOperationException("Fixture search failure"),
+                ("Headphones", _, _) => [rows[1]],
+                (null, "Found", _) => [rows[0]],
+                (null, null, 2) => [rows[3], rows[6]],
+                (null, _, > 2) => [],
+                ("Green headphones", _, _) => [],
+                _ => rows.Take(6).ToList()
+            }
+        };
+        fixture.Item.Title = "Blue water bottle";
+        fixture.Item.Type = "Found";
+        fixture.Item.Location = "Library entrance";
+        fixture.Item.Category = "Accessories";
+        fixture.Item.DateReported = new DateTime(2026, 11, 18, 0, 0, 0, DateTimeKind.Utc);
+        rows.AddRange([
+            fixture.Item,
+            Row("Black headphones", "Lost", "Engineering Building, Room 204", "Electronics", 17, "fixture.png"),
+            Row("Silver key ring", "Found", "Student Centre reception", "Keys", 16, "fixture.png"),
+            Row("Coral umbrella", "Lost", "South campus bus stop", "Accessories", 15, "fixture.png"),
+            Row("Canvas tote bag", "Found", "Arts Building, ground floor", "Bags", 14),
+            Row("TI-84 graphing calculator", "Lost", "Science building, second-floor study area", "Electronics", 13, "invalid.png"),
+            Row("Black laptop sleeve with a small front pocket, a blue zipper pull and a name tag", "Found",
+                "North Engineering Building, second-floor study area near the pedestrian bridge and the library", "Accessories", 12)
+        ]);
+        fixture.AdditionalItems.AddRange(rows.Skip(1));
+
+        await RunReportBrowserAsync(new FakeItemService { EmptySearch = true }, "tests/ui/browse-layout-check.cjs");
+        await RunReportBrowserAsync(fixture, "tests/ui/browse-layout-check.cjs");
+
+        static Item Row(string title, string type, string location, string category, int day, string? key = null) => new()
+        {
+            Title = title, Type = type, Status = "Active", Location = location, Category = category,
+            DateReported = new DateTime(2026, 11, day, 0, 0, 0, DateTimeKind.Utc), ImageKey = key
+        };
+    }
+
     [Theory]
     [InlineData("/Items", null, null, "Active", null, null)]
     [InlineData("/Items?Type=some&Status=other&Category=%20", null, null, "Active", null, null)]

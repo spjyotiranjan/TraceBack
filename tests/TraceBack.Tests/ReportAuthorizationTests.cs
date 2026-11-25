@@ -744,10 +744,11 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         public Task<StoredImage?> GetImageAsync(string id, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref readCount);
-            var bytes = ServeValidImage && id == Item.Id
+            var fixturePhoto = AdditionalItems.Any(item => item.Id == id && item.ImageKey == "fixture.png");
+            var bytes = ServeValidImage && (id == Item.Id || fixturePhoto)
                 ? Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAADAAAAAkCAIAAABAJy5dAAAAaklEQVR4nO3OQQ3AIABDUXxgAzPThhHOmOCAgNmYBEhoAytN/vnnhVz6UYXtAoMMMugHoJieYXeDqCYVEM8kBCKZtEAMkxwIblIEYU2iIKDpPFBtL6oZ03AiDYKY1EHrJjxoMYMMMqiSQR9CcNyk4n86hQAAAABJRU5ErkJggg==")
                 : ImageBytes;
-            var hasImage = id == Item.Id || AdditionalItems.Any(item => item.Id == id && item.ImageKey == "invalid.png");
+            var hasImage = id == Item.Id || fixturePhoto || AdditionalItems.Any(item => item.Id == id && item.ImageKey == "invalid.png");
             return Task.FromResult<StoredImage?>(hasImage ? new StoredImage(bytes, "image/png") : null);
         }
 
