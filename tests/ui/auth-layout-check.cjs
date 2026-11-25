@@ -21,17 +21,21 @@ async function checkForm(page, route, width, theme) {
   const login = route === 'Login';
   const target = `${base}/Account/${route}${login ? '?returnUrl=%2FItems' : ''}`;
   assert.equal((await page.goto(target)).status(), 200);
-  const title = page.getByRole('heading', { level: 1, name: login ? 'Sign in' : 'Create an account' });
+  const name = login ? 'Sign in' : 'Create account';
   const intro = page.locator('.tb-auth__context');
-  const form = page.getByRole('form', { name: login ? 'Sign in' : 'Create an account' });
-  const [context, panel] = await Promise.all([title.boundingBox(), form.boundingBox()]);
-  assert(context && panel, 'The page must expose a visible, named auth form');
+  const form = page.getByRole('form', { name, exact: true });
+  const title = form.getByRole('heading', { level: 1, name, exact: true });
+  const [heading, panel] = await Promise.all([title.boundingBox(), form.boundingBox()]);
+  assert(heading && panel && heading.y >= panel.y, 'The form must contain the visible page heading');
   if (width >= 896) {
+    assert.match(await intro.innerText(), /Your campus\.\s+A way back\./);
+    const context = await intro.boundingBox();
     assert(context.x + context.width <= panel.x);
     assert.equal(panel.width, 440);
   } else {
-    assert(context.y + context.height <= panel.y);
+    assert(!await intro.isVisible(), 'The desktop message is omitted on narrow screens');
     assert.equal(panel.width, Math.min(350, width - 40));
+    assert.equal(await title.evaluate(e => getComputedStyle(e).textAlign), 'center');
   }
   assert(await page.evaluate(() => document.documentElement.scrollWidth === innerWidth));
   const art = page.locator('[data-route-art="auth"]');
@@ -39,9 +43,10 @@ async function checkForm(page, route, width, theme) {
   assert.match(await art.evaluate(e => getComputedStyle(e, '::before').backgroundImage), /auth-(desktop|phone)-(dark|light)-a\.svg/);
   assert.equal(await art.evaluate(e => getComputedStyle(e, '::before').animationName), 'none');
   assert.equal(await art.evaluate(e => getComputedStyle(e, '::after').display), 'none');
-  await checkContrast(title, intro);
-  await checkContrast(intro.locator('p'), intro);
-  for (const label of await form.locator('label').all()) await checkContrast(label, form);
+  const canvas = page.locator('body');
+  await checkContrast(title, canvas);
+  await checkContrast(form.locator('#auth-description'), canvas);
+  for (const label of await form.locator('label').all()) await checkContrast(label, canvas);
   assert.equal(await form.getAttribute('method'), 'post');
   assert.equal(await form.evaluate(e => e.action), target);
   assert.equal(await form.locator('input[name=__RequestVerificationToken]').count(), 1);
@@ -51,18 +56,35 @@ async function checkForm(page, route, width, theme) {
   const submit = form.getByRole('button', { name: login ? 'Sign in' : 'Create account' });
   const alternate = page.locator('.tb-auth__alternate').getByRole('link');
   assert.equal(await alternate.getAttribute('href'), `/Account/${login ? 'Register' : 'Login'}`);
-  await checkContrast(alternate, form);
+  await checkContrast(alternate, canvas);
+  assert.equal(await alternate.locator('..').evaluate(e => getComputedStyle(e).textAlign), 'center');
   assert.equal(await email.getAttribute('autocomplete'), 'email');
   assert.equal(await password.getAttribute('autocomplete'), login ? 'current-password' : 'new-password');
   assert.equal(await password.getAttribute('type'), 'password');
   assert.equal(await password.getAttribute('value'), null);
-  if (!login) assert.equal(await form.getByLabel('Full name (2–80 characters)', { exact: true }).getAttribute('autocomplete'), 'name');
-  await email.focus();
+  assert.equal(await email.getAttribute('placeholder'), 'name@example.com');
+  assert.equal(await password.getAttribute('placeholder'), login ? 'Enter your password' : 'Create a password');
+  assert.equal(await form.locator('svg[aria-hidden="true"] use[href$="#lock-keyhole"]').count(), 1);
+  const emailBox = await email.boundingBox();
+  assert.equal(emailBox.height, 52);
+  if (width === 1440) assert.equal(emailBox.x, 840);
+  if (width === 390) assert.equal(emailBox.x, 20);
+  assert((await submit.boundingBox()).height >= 48);
+  if (!login) {
+    const nameField = form.getByLabel('Full name (2–80 characters)', { exact: true });
+    assert.equal(await nameField.getAttribute('autocomplete'), 'name');
+    await nameField.focus();
+    await page.keyboard.press('Tab');
+    assert(await email.evaluate(e => e === document.activeElement));
+  } else await email.focus();
   await page.keyboard.press('Tab');
   assert(await password.evaluate(e => e === document.activeElement && getComputedStyle(e).outlineStyle === 'solid'));
+  await page.keyboard.press('Tab');
+  assert(await submit.evaluate(e => e === document.activeElement));
+  await page.keyboard.press('Tab');
+  assert(await alternate.evaluate(e => e === document.activeElement));
   if (process.env.AUTH_SCREENSHOTS && [1440, 390].includes(width)) {
-    await email.blur();
-    await password.blur();
+    await alternate.blur();
     await page.screenshot({ path: path.join(process.env.AUTH_SCREENSHOTS, `${route}-${theme}-${width}.png`), fullPage: true });
   }
 
@@ -92,8 +114,8 @@ async function checkForm(page, route, width, theme) {
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(process.env.AUTH_SCREENSHOTS, 'Register-validation-dark-390.png'), fullPage: true });
   }
-  if (!login && [1440, 390].includes(width)) {
-    await form.getByLabel('Full name').fill('Alex Morgan');
+  if ([1440, 390].includes(width)) {
+    if (!login) await form.getByLabel('Full name').fill('Alex Morgan');
     await email.fill('alex@example.test');
     await password.fill('browser-fixture');
     let posts = 0;
@@ -109,19 +131,24 @@ async function checkForm(page, route, width, theme) {
         const status = button.form.querySelector('[data-tb-pending-status]');
         const repeatCanceled = !button.form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true, submitter: button }));
         button.form.requestSubmit(button);
+        const b = button.getBoundingClientRect(), s = status.getBoundingClientRect();
         return { role: status.getAttribute('role'), text: status.textContent,
-          unavailable: button.getAttribute('aria-disabled'), repeatCanceled };
+          unavailable: button.getAttribute('aria-disabled'), repeatCanceled,
+          withinButton: s.top >= b.top && s.bottom <= b.bottom && s.left >= b.left && s.right <= b.right };
       }),
       page.waitForRequest(r => r.isNavigationRequest() && r.method() === 'POST'),
       page.waitForNavigation({ waitUntil: 'domcontentloaded' })
     ]);
-    assert.deepEqual(pending, { role: 'status', text: 'Creating account…', unavailable: 'true', repeatCanceled: true });
+    assert.deepEqual(pending, { role: 'status', text: login ? 'Signing in…' : 'Creating account…',
+      unavailable: 'true', repeatCanceled: true, withinButton: true });
     assert.equal(posts, 1);
     assert(new URLSearchParams(sent.postData()).get('__RequestVerificationToken'));
     assert.equal(await submit.getAttribute('aria-disabled'), null);
   }
-  await alternate.click();
-  assert.equal(new URL(page.url()).pathname, `/Account/${login ? 'Register' : 'Login'}`);
+  await Promise.all([
+    page.waitForURL(url => url.pathname === `/Account/${login ? 'Register' : 'Login'}`),
+    width <= 390 ? alternate.tap() : alternate.click()
+  ]);
 }
 
 async function checkNativeZoom() {

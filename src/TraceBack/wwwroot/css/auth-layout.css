@@ -1,32 +1,45 @@
 .tb-auth {
   --tb-auth-gutter: max(20px, env(safe-area-inset-left), env(safe-area-inset-right));
-  display: grid;
-  gap: 1rem;
   inline-size: min(21.875rem, 100%, calc(100vw - 2 * var(--tb-auth-gutter)));
-  margin-inline: auto;
-  margin-block: clamp(.75rem, 3vw, 2.5rem);
-  overflow-wrap: anywhere;
+  margin: 1.75rem auto 0;
 }
 
-.tb-auth__context, .tb-auth__form {
-  min-inline-size: 0;
-  padding: clamp(1.25rem, 3vw, 2rem);
-  background: var(--tb-surface);
-  border: 1px solid var(--tb-divider);
-  border-radius: var(--tb-radius-panel);
-}
+.tb-auth__form { min-inline-size: 0; }
+.tb-auth__context { display: none; }
+.tb-auth__heading { margin-block-end: 1.5rem; text-align: center; }
+.tb-auth__heading h1 { margin: 0 0 .5rem; }
+.tb-auth__heading p { max-inline-size: 20rem; margin: 0 auto; color: var(--tb-ink-muted); line-height: 1.25; }
 
-.tb-auth__context h1 { margin-block: 0 .5rem; }
-.tb-auth__context p { margin: 0; color: var(--tb-ink-muted); }
-.tb-auth__form { box-shadow: var(--tb-shadow); }
-.tb-auth__fields { display: grid; gap: 1rem; }
-.tb-auth__submit { margin-block-start: 1.5rem; }
-.tb-auth__alternate {
-  margin: 1rem 0 0;
-  padding-block-start: .5rem;
-  border-block-start: 1px solid var(--tb-divider);
+.tb-auth__fields { display: grid; gap: 1.5rem; }
+.tb-auth__fields .tb-field { gap: .75rem; }
+.tb-auth__fields .form-label { font-size: .875rem; line-height: 1.25rem; }
+.tb-auth__fields .form-control { min-block-size: 3.25rem; padding-inline: 1rem; }
+.tb-auth__password { position: relative; }
+.tb-auth__password .tb-icon {
+  position: absolute;
+  inset-inline-start: 1rem;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
   color: var(--tb-ink-muted);
+  pointer-events: none;
 }
+.tb-auth__password .form-control { padding-inline-start: 2.75rem; }
+
+.tb-auth__submit { display: grid; margin-block-start: 1.75rem; }
+.tb-auth__submit > * { grid-area: 1 / 1; }
+.tb-auth__submit .tb-button { min-block-size: 3rem; }
+/* Use the existing live region as the visible pending label without changing the button's accessible name. */
+.tb-auth__submit .tb-pending-status {
+  place-self: center;
+  margin: 0;
+  max-inline-size: 100%;
+  color: var(--tb-on-action);
+  font: var(--tb-type-button);
+  text-align: center;
+  pointer-events: none;
+}
+.tb-auth__submit [data-tb-is-pending] > span { opacity: 0; }
+.tb-auth__alternate { margin: .5rem 0 0; color: var(--tb-ink-muted); text-align: center; }
 .tb-auth__alternate a {
   display: inline-flex;
   align-items: center;
@@ -36,14 +49,60 @@
   text-decoration: underline;
 }
 
+.tb-auth .tb-validation-summary { gap: .25rem; font-size: .875rem; line-height: 1.25rem; }
+.tb-auth .tb-feedback__message .tb-icon { display: none; }
+.tb-auth .tb-validation-summary__server-heading { display: none; }
+/* Client validation replaces the server list items, which restores the generic prompt on retry. */
+.tb-auth .tb-validation-summary:has([data-tb-server-error]) .tb-validation-summary__server-heading { display: inline; }
+.tb-auth .tb-validation-summary:has([data-tb-server-error]) .tb-validation-summary__prompt { display: none; }
+.tb-auth .tb-validation-summary:has([data-tb-server-error]) ul { padding-inline-start: 0; list-style-type: none; }
+
+@media (width < 56rem) {
+  .tb-auth__form { position: relative; isolation: isolate; }
+  .tb-auth__form::before {
+    content: '';
+    position: absolute;
+    inset: -2.5rem -.75rem -1rem;
+    z-index: -1;
+    border-radius: 1.5rem;
+    background: color-mix(in srgb, var(--tb-canvas) 82%, transparent);
+    pointer-events: none;
+  }
+}
+
 /* Match the shared navigation breakpoint. Keep vertical overflow in the document. */
 @media (min-width: 56rem) {
+  .main-content:has(> .tb-auth) { max-inline-size: 78rem; }
   .tb-auth {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 27.5rem);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 27.5rem;
+    grid-template-areas: 'context form';
     gap: clamp(2rem, 6vw, 6rem);
-    align-items: start;
-    inline-size: min(100%, 61rem);
-    margin-block: clamp(2rem, 8vh, 6rem);
+    align-items: center;
+    inline-size: min(100%, 75rem);
+    min-block-size: 36.5rem;
+    margin: 0 auto;
+    padding-inline-end: clamp(0rem, calc(12vw - 7rem), 2.5rem);
   }
-  .tb-auth__context { margin-block-start: clamp(1rem, 4vw, 3rem); }
+  .tb-auth__form { grid-area: form; }
+  .tb-auth__heading { text-align: start; }
+  .tb-auth__heading p { max-inline-size: none; margin: 0; line-height: 1.5; }
+  .tb-auth__context {
+    display: block;
+    grid-area: context;
+    align-self: start;
+    margin-block-start: 10.25rem;
+    color: var(--tb-ink-muted);
+  }
+  .tb-auth__context p { max-inline-size: 33rem; margin: 0; }
+  .tb-auth__context p + p { margin-block-start: .75rem; }
+  .tb-auth__tagline {
+    color: var(--tb-ink);
+    font: 700 clamp(2.5rem, 4vw, 3rem)/1.1667 var(--tb-font-family);
+  }
+  .tb-auth__tagline span { display: block; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .tb-auth__form::before { background: var(--tb-canvas); }
 }

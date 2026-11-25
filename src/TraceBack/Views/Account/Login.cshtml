@@ -3,6 +3,7 @@
     Layout = "~/Views/Account/_AuthLayout.cshtml";
     ViewData["Title"] = "Sign in";
     ViewData["AuthDescription"] = "Return to your reports and claims.";
+    ViewData["AuthContext"] = "Post reports, follow your claims and help belongings find their way home.";
     ViewData["AuthAction"] = "Login";
     ViewData["AuthSubmit"] = "Sign in";
     ViewData["AuthPendingText"] = "Signing in…";
@@ -10,16 +11,19 @@
 
 <div class="tb-field">
     <label asp-for="Email" class="form-label">Email address</label>
-    <input asp-for="Email" tb-field tb-error="Email-validation" class="form-control" autocomplete="email" />
+    <input asp-for="Email" tb-field tb-error="Email-validation" class="form-control" autocomplete="email" placeholder="name@example.com" />
     <span id="Email-validation" asp-validation-for="Email" class="tb-field__error"></span>
 </div>
 
 <div class="tb-field">
     <label asp-for="Password" class="form-label">Password</label>
-    <input asp-for="Password" tb-field tb-error="Password-validation" type="password" class="form-control" autocomplete="current-password" />
+    <div class="tb-auth__password">
+        <partial name="_Icon" model='"lock-keyhole"' />
+        <input asp-for="Password" tb-field tb-error="Password-validation" type="password" class="form-control" autocomplete="current-password" placeholder="Enter your password" />
+    </div>
     <span id="Password-validation" asp-validation-for="Password" class="tb-field__error"></span>
 </div>
 
 @section AlternateAccount {
-    New here? <a asp-controller="Account" asp-action="Register">Create an account</a>.
+    New here? <a asp-controller="Account" asp-action="Register">Create an account</a>
 }

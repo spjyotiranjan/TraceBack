@@ -79,6 +79,7 @@ public sealed class SignInTests
             using var blank = await client.PostAsync(url, Fields(string.Empty, string.Empty, token));
             Assert.Equal(HttpStatusCode.OK, blank.StatusCode);
             var blankHtml = await blank.Content.ReadAsStringAsync();
+            Assert.Contains("Please correct the following:", blankHtml);
             Assert.Contains("href=\"#Email\"", blankHtml);
             Assert.Contains("href=\"#Password\"", blankHtml);
 
@@ -94,6 +95,7 @@ public sealed class SignInTests
                 using var failed = await client.PostAsync(url, Fields(email, "private-wrong-value", token));
                 Assert.Equal(HttpStatusCode.OK, failed.StatusCode);
                 var failedHtml = await failed.Content.ReadAsStringAsync();
+                Assert.Contains("Unable to sign in", failedHtml);
                 Assert.Contains("The email or password is incorrect.", failedHtml);
                 Assert.Contains($"value=\"{email}\"", failedHtml);
                 Assert.Contains($"action=\"{url}\"", failedHtml);
