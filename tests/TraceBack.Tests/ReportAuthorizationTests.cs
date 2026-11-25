@@ -511,7 +511,7 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         using var legacy = await client.GetAsync($"/Items/Details/{reports.Item.Id}");
         var legacyMarkup = await legacy.Content.ReadAsStringAsync();
         Assert.Contains("Library", legacyMarkup);
-        Assert.Contains("Location description: Library", legacyMarkup);
+        Assert.Contains("<dt>Location description</dt>", legacyMarkup);
         Assert.Contains("Map location not added to this older report.", legacyMarkup);
         Assert.DoesNotContain("google.com/maps/search", legacyMarkup);
 
@@ -519,7 +519,8 @@ public sealed partial class ReportAuthorizationTests(ITestOutputHelper output)
         using var mapped = await client.GetAsync($"/Items/Details/{reports.Item.Id}");
         var mappedMarkup = await mapped.Content.ReadAsStringAsync();
         Assert.Contains("Address unavailable for this pin.", mappedMarkup);
-        Assert.Contains("Location description: Library", mappedMarkup);
+        Assert.Contains("<dt>Location description</dt>", mappedMarkup);
+        Assert.Matches(@"<dd>\s*Library\s*<span", mappedMarkup);
         Assert.Contains("<summary>Show coordinates</summary>", mappedMarkup);
         Assert.DoesNotContain("Coordinates:", mappedMarkup);
         Assert.Contains("20.296058", mappedMarkup);

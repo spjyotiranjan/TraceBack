@@ -1,13 +1,13 @@
 @model TraceBack.Models.Item
 
-<dl class="detail-list tb-fact-list" aria-label="Report facts">
+<dl class="detail-report__fact-list">
     <div><dt>Category</dt><dd>@Model.Category</dd></div>
-    <div class="tb-location-fact">
-        <dt>Location</dt>
+    <div><dt>Reported</dt><dd>@Model.DateReported.ToString("d MMM yyyy")</dd></div>
+    <div class="detail-report__location-fact">
+        <dt>Location description</dt>
         <dd>
-            <p class="mb-0">Location description: @Model.Location <span class="d-block form-text">Written by the reporter; this is not a verified address.</span></p>
+            @Model.Location
+            <span class="d-block form-text">Written by the reporter. This is not a verified address.</span>
         </dd>
     </div>
-    <div><dt>Reported</dt><dd>@Model.DateReported.ToString("d MMM yyyy")</dd></div>
-    <div><dt>Contact preference</dt><dd>@Model.ContactPreference</dd></div>
 </dl>

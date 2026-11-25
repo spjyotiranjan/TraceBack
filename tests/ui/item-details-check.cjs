@@ -18,12 +18,70 @@ async function visit(page, index = 0) {
   assert.equal(response.status(), 200);
 }
 
-async function reflow(page) {
-  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no horizontal overflow');
-  assert(await page.locator('h1').evaluate(el => el.scrollHeight === el.clientHeight), 'title not clipped');
+async function snapshot(page, state, suffix, scroll = 0) {
+  if (!evidence) return;
+  await fs.mkdir(evidence, { recursive: true });
+  await page.evaluate(top => window.scrollTo({ top, behavior: 'instant' }), scroll);
+  await page.screenshot({ path: path.join(evidence, `${state}-${suffix}.png`) });
 }
 
-async function discussionJourney(page, touch) {
+async function referenceStates(page, suffix) {
+  if (!evidence) return;
+  const comments = [
+    { id: '1', authorName: 'Mira S.', authorId: 'mira', createdAt: '2026-11-18T12:00:00Z', body: 'Thanks for posting this. Was it near the main doors?' },
+    { id: '2', authorName: 'Jordan L.', authorId: 'jordan', createdAt: '2026-11-18T12:00:00Z', body: 'I checked the library front desk this morning.' }
+  ];
+  let thread = 'ready';
+  let release;
+  await page.route('**/Comments?*', async route => {
+    if (thread === 'loading') await new Promise(resolve => { release = resolve; });
+    if (thread === 'error') return route.fulfill({ status: 503 });
+    const parentId = new URL(route.request().url()).searchParams.get('parentId');
+    return route.fulfill({ json: { nextCursor: null, comments: parentId ? [] : comments } });
+  });
+  await page.route('**/Items/Image/*', route => route.fulfill({ contentType: 'image/png', body: tilePng }));
+  for (const [index, state] of [[4, 'found'], [5, 'owner'], [11, 'lost'], [7, 'resolved'], [6, 'claimed'], [8, 'no-photo'], [10, 'legacy']]) {
+    await visit(page, index);
+    await page.locator('[data-discussion-root]').getByText(comments[0].body).waitFor();
+    await snapshot(page, state, suffix);
+    if (state === 'found' || state === 'owner') {
+      const top = await page.locator('.detail-report__facts').evaluate(el => el.getBoundingClientRect().top + scrollY - 125);
+      await snapshot(page, `${state}-facts`, suffix, top);
+    }
+    if (state === 'owner') {
+      for (const [button, scenario] of [['Mark resolved', 'confirm-resolve'], ['Delete report', 'confirm-delete']]) {
+        await page.getByRole('button', { name: button, exact: true }).click();
+        await page.getByRole('dialog').waitFor();
+        await snapshot(page, scenario, suffix, await page.evaluate(() => scrollY));
+        await page.keyboard.press('Escape');
+        await page.getByRole('dialog').waitFor({ state: 'hidden' });
+      }
+    }
+  }
+  await page.unroute('**/Items/Image/*');
+  await visit(page, 9);
+  await page.getByText('The report photo could not load.').waitFor();
+  await snapshot(page, 'photo-error', suffix);
+  for (const state of ['loading', 'error']) {
+    thread = state;
+    await visit(page, 4);
+    const root = page.locator('[data-discussion-root]');
+    await (state === 'loading' ? page.locator('[data-discussion-root][aria-busy="true"]') : root.getByRole('button', { name: 'Retry comments' })).waitFor();
+    const top = await page.locator('.discussion').evaluate(el => el.getBoundingClientRect().top + scrollY - 125);
+    await snapshot(page, `thread-${state}`, suffix, top);
+    if (release) { release(); release = null; }
+    if (state === 'loading') await root.getByText(comments[0].body).waitFor();
+  }
+  await page.unroute('**/Comments?*');
+}
+
+async function reflow(page) {
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no horizontal overflow');
+  const title = await page.locator('h1').evaluate(el => [getComputedStyle(el).overflowY, el.scrollHeight - el.clientHeight]);
+  assert(title[0] === 'visible' && title[1] <= 2, `title not clipped; overflow and subpixel difference: ${title}`);
+}
+
+async function discussionJourney(page, touch, suffix) {
   let cursorRequests = 0;
   const comments = Array.from({ length: 15 }, (_, i) => ({
     id: String(i), authorName: 'Fixture reader', authorId: 'reader',
@@ -42,6 +100,7 @@ async function discussionJourney(page, touch) {
   await visit(page, 1);
   const region = page.getByRole('region', { name: 'Comment thread' });
   await region.getByText('Deleted comment', { exact: true }).waitFor({ timeout: 2000 });
+  assert.equal(await region.getByText('Deleted comment', { exact: true }).locator('..').locator('.discussion-avatar').count(), 0);
   await region.focus();
   await region.getByText('Surviving reply').waitFor();
   await page.keyboard.press('Shift+Tab');
@@ -60,7 +119,15 @@ async function discussionJourney(page, touch) {
   assert.equal(await region.getByRole('button', { name: /load more/i }).count(), 0);
   await region.getByText('Comment 1', { exact: true }).locator('..').getByRole('button', { name: 'Reply' }).click();
   const composer = page.getByRole('form', { name: 'Comment composer' });
+  const attachment = composer.getByRole('button', { name: 'Attach image' });
+  const post = composer.getByRole('button', { name: 'Post reply' });
+  const [left, right] = await Promise.all([attachment.boundingBox(), post.boundingBox()]);
+  const sameRow = await attachment.evaluate(el => el.closest('.discussion-input-actions').clientWidth);
+  assert(right.x - left.x >= sameRow / 2, 'attachment and send are at opposite ends of the composer');
+  await region.getByText('FR', { exact: true }).first().waitFor();
+  const composerTop = () => composer.evaluate(el => el.getBoundingClientRect().top + scrollY - 125);
   await composer.getByLabel('Your comment').fill('Keep this draft');
+  await snapshot(page, 'reply', suffix, await composerTop());
   const input = composer.locator('[name="imageFile"]');
   await input.setInputFiles({ name: 'attachment.png', mimeType: 'image/png', buffer: tilePng });
   const alt = composer.getByLabel('Describe the image');
@@ -72,6 +139,7 @@ async function discussionJourney(page, touch) {
     assert.equal(await clear.evaluate(el => getComputedStyle(el).opacity), '0');
     await composer.locator('[data-image-preview]').hover({ position: { x: 1, y: 1 } });
     assert.equal(await clear.locator('span').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(52, 52, 59)');
+    assert.equal(await clear.locator('span').evaluate(el => getComputedStyle(el).boxShadow), 'none');
     await clear.hover();
     await page.waitForFunction(() => document.querySelector('[data-clear-image]:hover')?.matches(':hover') &&
       getComputedStyle(document.querySelector('[data-clear-image] span')).backgroundColor === 'rgb(134, 29, 44)', null, { timeout: 2000 });
@@ -81,6 +149,7 @@ async function discussionJourney(page, touch) {
     await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-clear-image] span')).backgroundColor === 'rgb(134, 29, 44)', null, { timeout: 2000 });
   }
   assert.equal(await clear.evaluate(el => getComputedStyle(el).opacity), '1');
+  await snapshot(page, 'attachment', suffix, await composerTop());
   await clear.click();
   const attach = composer.getByRole('button', { name: 'Attach image' });
   assert(await attach.evaluate(el => el === document.activeElement));
@@ -88,11 +157,13 @@ async function discussionJourney(page, touch) {
   await alt.fill('An attachment');
   let writes = 0;
   let postStatus;
+  let finishPost;
+  const pending = new Promise(resolve => { finishPost = resolve; });
   await page.route('**/Comments', async route => {
     writes++;
     const multipart = route.request().postData();
     for (const field of ['body', 'parentId', 'imageFile', 'imageAlt', '__RequestVerificationToken']) assert(multipart.includes(`name="${field}"`));
-    await new Promise(resolve => setTimeout(resolve, 150));
+    if (postStatus === 400) await pending;
     return route.fulfill({ status: postStatus, json: postStatus === 201
       ? { ...comments[1], id: 'canonical', parentId: '1', body: 'Canonical reply' }
       : { error: `Fixture error ${postStatus}` } });
@@ -101,6 +172,11 @@ async function discussionJourney(page, touch) {
   for (postStatus of [400, 413, 503, 201]) {
     const done = page.waitForResponse(response => response.url().endsWith('/Comments') && response.request().method() === 'POST');
     await send.evaluate(el => { el.form.requestSubmit(); el.form.requestSubmit(); });
+    if (postStatus === 400) {
+      await composer.getByText('Posting…').waitFor();
+      await snapshot(page, 'posting', suffix, await composerTop());
+      finishPost();
+    }
     await done;
     if (postStatus !== 201) {
       await composer.getByRole('alert').waitFor();
@@ -108,6 +184,7 @@ async function discussionJourney(page, touch) {
       assert.equal(await composer.locator('[name="parentId"]').inputValue(), '1');
       assert.equal(await alt.inputValue(), 'An attachment');
       assert.equal(await input.evaluate(el => el.files[0].name), 'attachment.png');
+      if (postStatus === 413) await snapshot(page, 'post-error', suffix, await composerTop());
     }
   }
   await region.getByText('Canonical reply', { exact: true }).waitFor();
@@ -125,12 +202,14 @@ async function discussionJourney(page, touch) {
 
 (async () => {
   const browser = await chromium.launch({ executablePath });
+  const referenceGeometry = [];
   try {
     for (const width of [1440, 390]) {
       for (const colorScheme of ['light', 'dark']) {
         const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1040 }, colorScheme, hasTouch: width === 390, reducedMotion: 'reduce' });
         await context.addCookies([{ name, value, url: base }]);
         const page = await context.newPage();
+        const suffix = `${width}-${colorScheme}`;
         const errors = [];
         page.on('pageerror', error => errors.push(error.message));
         const appErrors = [];
@@ -159,13 +238,11 @@ async function discussionJourney(page, touch) {
         const canvas = map.locator('[data-map-canvas]');
         await page.locator('[data-map-state="loading"]').waitFor();
         const canvasHeight = (await canvas.boundingBox()).height;
+        if (evidence) await snapshot(page, 'map-loading', suffix, width === 390 ? Math.max(0, (await map.boundingBox()).y - 130) : 0);
         releaseTiles();
         await map.getByRole('button', { name: 'Retry map preview' }).waitFor();
         assert.equal((await canvas.boundingBox()).height, canvasHeight);
-        if (evidence && width === 390 && colorScheme === 'dark') {
-          await fs.mkdir(evidence, { recursive: true });
-          await page.screenshot({ path: path.join(evidence, 'details-map-error-390-dark.png') });
-        }
+        if (evidence) await snapshot(page, 'map-error', suffix, await page.evaluate(() => scrollY));
         tileFails = false;
         await map.getByRole('button', { name: 'Retry map preview' }).click();
         await page.locator('[data-map-state="ready"]').waitFor();
@@ -174,25 +251,27 @@ async function discussionJourney(page, touch) {
         assert.equal(await map.getByText('20.296058, 85.824539').isVisible(), false);
         await coordinates.press('Enter');
         await map.getByText('20.296058, 85.824539').waitFor();
+        if (evidence) await snapshot(page, 'coordinates', suffix, await page.evaluate(() => scrollY));
         await coordinates.press('Enter');
         await page.getByRole('link', { name: 'Submit a claim' }).waitFor();
         assert.equal(await page.getByRole('link', { name: 'Edit report' }).count(), 0);
         assert.equal(await page.getByRole('link', { name: /Back to results/ }).getAttribute('href'), '/Items');
         assert.equal(await page.getByRole('heading', { level: 1 }).textContent(), 'W'.repeat(120));
         await page.getByText('Message me', { exact: true }).waitFor();
-        await page.getByText('Location description: Library').waitFor();
+        await page.locator('.detail-report__location-fact').getByText('Library', { exact: false }).waitFor();
         const photo = page.locator('.detail-report__media img');
         await photo.evaluate(el => el.decode());
         const bounds = await page.locator('.detail-report__photo').boundingBox();
         assert.equal(await page.locator('html').getAttribute('data-theme'), colorScheme);
         await reflow(page);
         const rail = page.locator('.detail-report__media-column');
+        const [title, preview, body] = await Promise.all([page.locator('h1').boundingBox(), canvas.boundingBox(), description.boundingBox()]);
+        const [facts, claim] = await Promise.all([page.locator('.detail-report__facts').boundingBox(), page.getByRole('complementary', { name: 'Think this is yours?' }).boundingBox()]);
+        referenceGeometry.push({ width, theme: colorScheme, photo: [bounds.width, bounds.height], map: [preview.width, preview.height], titleBeforeMedia: title.y < bounds.y, mapBeforeDescription: preview.y < body.y, claimBeforeFacts: claim.y < facts.y });
         if (width === 390) {
-          const title = await page.locator('h1').boundingBox();
-          assert(bounds.y < (await canvas.boundingBox()).y && (await canvas.boundingBox()).y < title.y);
           assert.equal(await rail.evaluate(el => getComputedStyle(el).position), 'static');
         } else {
-          assert.equal(await rail.evaluate(el => getComputedStyle(el).position), 'sticky');
+          await page.waitForFunction(() => getComputedStyle(document.querySelector('.detail-report__media-column')).position === 'sticky');
           await page.evaluate(() => scrollTo(0, 150));
           await page.waitForFunction(() => {
             const rail = document.querySelector('.detail-report__media-column');
@@ -204,7 +283,12 @@ async function discussionJourney(page, touch) {
         const less = page.getByRole('button', { name: 'Show less' });
         assert.equal(await less.getAttribute('aria-expanded'), 'true');
         assert(await description.evaluate(el => el.clientHeight === el.scrollHeight));
-        await less.press('Space');
+        // Expansion moves the button; explicitly bring it back into view before keyboard activation.
+        await less.scrollIntoViewIfNeeded();
+        await less.focus();
+        assert(await less.evaluate(el => el === document.activeElement));
+        await page.keyboard.press('Space');
+        await toggle.waitFor({ state: 'visible', timeout: 5000 });
         assert.equal(await toggle.getAttribute('aria-expanded'), 'false');
         if (evidence) {
           await fs.mkdir(evidence, { recursive: true });
@@ -246,14 +330,23 @@ async function discussionJourney(page, touch) {
           await discussion.scrollIntoViewIfNeeded();
           assert(await page.evaluate(() => scrollY > 0));
           await reflow(page);
-          await page.setViewportSize({ width: 960, height: 850 });
-          await visit(page);
-          await reflow(page);
-          assert((await rail.boundingBox()).x < (await page.locator('h1').boundingBox()).x);
+          for (const breakpointWidth of [896, 895, 320]) {
+            await page.setViewportSize({ width: breakpointWidth, height: 850 });
+            await visit(page);
+            await reflow(page);
+            assert.equal((await rail.boundingBox()).x < (await page.locator('h1').boundingBox()).x, breakpointWidth >= 896);
+            await page.getByRole('link', { name: 'Submit a claim' }).click();
+            const drawer = page.getByRole('dialog', { name: 'Submit a claim' });
+            assert.equal((await drawer.boundingBox()).width, breakpointWidth >= 896 ? 432 : breakpointWidth);
+            await page.keyboard.press('Escape');
+            await drawer.waitFor({ state: 'hidden' });
+          }
+          await page.setViewportSize({ width, height: 1040 });
         }
         assert.deepEqual(errors, []);
         assert.deepEqual(appErrors, []);
-        await discussionJourney(page, width === 390);
+        await discussionJourney(page, width === 390, suffix);
+        await referenceStates(page, suffix);
         if (width === 1440 && colorScheme === 'light') {
           let posts = 0;
           await page.route(`**/Items/Resolve/${ids[1]}`, async route => {
@@ -289,6 +382,14 @@ async function discussionJourney(page, touch) {
     await browser.close();
   }
 
+  console.log(`PDF 05 geometry ${JSON.stringify(referenceGeometry)}`);
+  for (const { width, theme, photo, map, titleBeforeMedia, mapBeforeDescription, claimBeforeFacts } of referenceGeometry) {
+    assert.deepEqual(photo, width === 390 ? [350, 270] : [560, 368], `PDF 05 ${width} ${theme} photo`);
+    assert.deepEqual(map, width === 390 ? [310, 184] : [560, 184], `PDF 05 ${width} ${theme} map`);
+    if (width === 390) assert(titleBeforeMedia && mapBeforeDescription, 'PDF 05 phone puts title before media and description after map');
+    assert.equal(claimBeforeFacts, width === 1440, 'PDF 05 claim placement changes at the layout transition');
+  }
+
   const profile = await fs.mkdtemp(path.join(evidence || os.tmpdir(), 'details-zoom-'));
   try {
     const context = await chromium.launchPersistentContext(profile, { executablePath, channel: executablePath ? undefined : 'chromium', viewport: { width: 1440, height: 850 } });
@@ -308,6 +409,24 @@ async function discussionJourney(page, touch) {
       assert.equal(await page.locator('.detail-report__media-column').evaluate(el => getComputedStyle(el).position), 'static');
       await page.getByRole('heading', { name: 'Public discussion' }).scrollIntoViewIfNeeded();
       assert(await page.evaluate(() => scrollY > 0));
+      const opener = page.getByRole('link', { name: 'Submit a claim' });
+      await opener.press('Enter');
+      const drawer = page.getByRole('dialog', { name: 'Submit a claim' });
+      assert.equal((await drawer.boundingBox()).width, 720);
+      assert(await drawer.evaluate(el => el.scrollWidth === el.clientWidth));
+      const submit = drawer.getByRole('button', { name: 'Submit claim' });
+      await submit.focus();
+      // Normal motion is enabled here; hit-test after the drawer's entrance transform settles.
+      await drawer.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
+      const submitHit = await submit.evaluate(el => {
+        const r = el.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return { reachable: hit?.closest('button') === el, rect: r.toJSON(), viewport: [innerWidth, innerHeight], hit: hit?.className };
+      });
+      assert(submitHit.reachable, `Submit remains reachable at 200%: ${JSON.stringify(submitHit)}`);
+      await page.keyboard.press('Escape');
+      await drawer.waitFor({ state: 'hidden' });
+      assert(await opener.evaluate(el => el === document.activeElement));
     } finally {
       await context.close();
     }

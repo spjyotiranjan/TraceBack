@@ -81,6 +81,10 @@
     const author = node('strong', '', comment.deleted ? 'Deleted comment' : comment.authorName);
     const time = node('time', '', new Date(comment.createdAt).toLocaleString());
     time.dateTime = comment.createdAt;
+    const avatar = node('span', 'discussion-avatar', (comment.authorName || '').trim().split(/\s+/u).slice(0, 2)
+      .map(word => Array.from(word)[0] || '').join('').toUpperCase());
+    avatar.setAttribute('aria-hidden', 'true');
+    if (!comment.deleted && avatar.textContent) meta.append(avatar);
     meta.append(author, time);
     article.append(meta);
     if (comment.deleted) article.append(node('p', 'discussion-deleted', 'This comment was deleted.'));
@@ -129,6 +133,7 @@
           article.querySelector('.discussion-body')?.remove();
           article.querySelector('.discussion-image-link')?.remove();
           article.append(node('p', 'discussion-deleted', 'This comment was deleted.'));
+          avatar.remove();
           author.textContent = 'Deleted comment';
           actions.querySelector('.btn-outline-danger')?.remove();
           live.textContent = 'Comment deleted. Replies remain visible.';

@@ -17,8 +17,19 @@ public sealed partial class ReportAuthorizationTests
         reports.AdditionalItems.AddRange([
             new Item { Type = "Lost", Title = "Lost keys", Description = "Short description.", PostedByUserId = "test-user", Location = "Studio" },
             new Item { Type = "Found", Status = "Claimed", Title = "Claimed bag", ImageKey = "missing.png" },
-            new Item { Type = "Found", Status = "Resolved", Title = "Resolved gloves", ImageKey = "invalid.png", PostedByUserId = "test-user" }
+            new Item { Type = "Found", Status = "Resolved", Title = "Resolved gloves", ImageKey = "invalid.png", PostedByUserId = "test-user" },
+            Bottle(), Bottle("test-user"), Bottle(status: "Claimed"), Bottle(status: "Resolved"),
+            Bottle(image: null), Bottle(image: "missing.png"), Bottle(legacy: true),
+            new Item { Type = "Lost", Title = "Black headphones", Category = "Electronics", Location = "Engineering Building, Room 204", DateReported = new DateTime(2026, 11, 17), Description = "Black over-ear headphones were lost near the engineering classrooms.", ContactPreference = "Use TraceBack discussion", PostedByUserId = "other-user", MapLocation = reports.Item.MapLocation, ImageKey = "fixture-photo.png" }
         ]);
+
+        Item Bottle(string owner = "other-user", string status = "Active", string? image = "fixture-photo.png", bool legacy = false) => new()
+        {
+            Type = "Found", Status = status, Title = "Blue water bottle", Category = "Accessories", Location = "Campus library entrance",
+            DateReported = new DateTime(2026, 11, 18), ContactPreference = "Use TraceBack discussion", PostedByUserId = owner,
+            Description = "I found this blue metal bottle on the bench just inside the campus library. It has a black screw-top lid and a small dent near the base.",
+            ImageKey = image, MapLocation = legacy ? null : reports.Item.MapLocation
+        };
         await RunReportBrowserAsync(reports, "tests/ui/item-details-check.cjs");
     }
 
