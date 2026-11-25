@@ -6,6 +6,9 @@ const { chromium } = require('playwright');
 const base = process.env.TRACEBACK_URL;
 const fixture = JSON.parse(process.env.TRACEBACK_DASHBOARD_FIXTURE);
 const evidence = process.env.TRACEBACK_DASHBOARD_EVIDENCE;
+const referencePhotos = process.env.DASHBOARD_REFERENCE_PHOTOS;
+const baselineCapture = process.env.DASHBOARD_CAPTURE_BASELINE === '1';
+const states = ['overview', 'reports', 'claims', 'empty'];
 const details = id => `/Items/Details/${id}`;
 const claimRoute = `/Claims/Create?itemId=${fixture.target}`;
 const deleteRoute = id => `/Items/Delete/${id}`;
@@ -19,12 +22,42 @@ async function visit(page, route) {
 async function capture(page, name, fullPage = true) {
   if (!evidence) return;
   await fs.mkdir(evidence, { recursive: true });
+  if (fullPage) {
+    await page.evaluate(() => document.fonts.ready.then(() => true));
+    await page.locator('main img[data-report-photo]').evaluateAll(imgs => Promise.all(imgs.map(img => {
+      img.loading = 'eager';
+      return img.decode().catch(() => {});
+    })));
+    await page.screenshot({ path: path.join(evidence, `${name}-viewport.png`) });
+    const geometry = await page.locator('main').evaluate(main => Object.fromEntries([
+      'h1', '#my-reports', '#my-claims', '.tb-report-card', '.tb-report-card__media',
+      '.tb-claim-row', '.tb-claim-row .tb-status', '.tb-recovery-content', '.tb-feedback'
+    ].map(selector => [selector, [...main.querySelectorAll(selector)].map(el => {
+      const { x, y, width, height } = el.getBoundingClientRect();
+      return { x, y: y + scrollY, width, height, font: getComputedStyle(el).fontSize };
+    })])));
+    await fs.writeFile(path.join(evidence, `${name}.json`), JSON.stringify(geometry));
+  }
   await page.screenshot({ path: path.join(evidence, `${name}.png`), fullPage });
+}
+
+async function dashboardPhotos(context, width, theme) {
+  await context.route('**/*', route => new URL(route.request().url()).origin === new URL(base).origin
+    ? route.continue() : route.abort());
+  await context.route(url('/__dashboard-photo/*'), async route => {
+    const photo = new URL(route.request().url()).pathname.split('/').at(-1);
+    if (photo === 'failure') return route.fulfill({ status: 404 });
+    if (referencePhotos && [1440, 390].includes(width)) {
+      return route.fulfill({ path: path.join(referencePhotos, `${photo}-${width}-${theme}.png`) });
+    }
+    return route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#b5bdde"/></svg>' });
+  });
 }
 
 async function session(browser, member, width, colorScheme, javaScriptEnabled = true) {
   const context = await browser.newContext({ viewport: { width, height: width > 900 ? 1040 : 844 },
     colorScheme, reducedMotion: 'reduce', hasTouch: width < 896, javaScriptEnabled });
+  await dashboardPhotos(context, width, colorScheme);
   await context.addCookies([{ name: fixture.name, value: fixture.members[member], url: base }]);
   const page = await context.newPage();
   const errors = [];
@@ -53,7 +86,7 @@ async function inFrontOfShell(link) {
 async function dashboardMatrix(browser) {
   for (const width of [1440, 390, 896, 895, 320]) {
     for (const theme of width === 1440 || width === 390 ? ['light', 'dark'] : ['dark']) {
-      for (const member of width === 1440 || width === 390 ? Object.keys(fixture.members) : ['empty', 'overview']) {
+      for (const member of width === 1440 || width === 390 ? states : ['empty', 'overview']) {
         const { context, page, errors } = await session(browser, member, width, theme);
         await visit(page, '/Dashboard');
         const reports = page.getByRole('region', { name: /^My reports/ });
@@ -69,11 +102,8 @@ async function dashboardMatrix(browser) {
 
         const hasReports = member === 'overview' || member === 'reports';
         const hasClaims = member === 'overview' || member === 'claims';
-        assert.equal(await reports.locator('.tb-report-card--dashboard').count(), hasReports ? 1 : 0);
-        if (hasReports) {
-          assert.equal(await reports.locator('.tb-report-card--dashboard a').getAttribute('href'),
-            details(member === 'overview' ? fixture.owned : fixture.report));
-        }
+        const ownIds = member === 'overview' ? fixture.owned : member === 'reports' ? fixture.reports : [];
+        assert.deepEqual(await reports.locator('.tb-report-card--dashboard a').evaluateAll(links => links.map(a => a.getAttribute('href'))), ownIds.map(details));
         assert.equal(await reports.getByRole('heading', { name: 'No reports yet', level: 3 }).count(), hasReports ? 0 : 1);
         assert.equal(await claims.getByRole('heading', { name: 'No claims yet', level: 3 }).count(), hasClaims ? 0 : 1);
         if (!hasClaims) {
@@ -82,7 +112,7 @@ async function dashboardMatrix(browser) {
         } else {
           const rows = claims.locator('.tb-claim-row');
           assert.deepEqual(await rows.locator('.tb-status').allTextContents().then(text => text.map(value => value.trim())),
-            [...(member === 'overview' ? ['Pending'] : []), 'Approved', 'Rejected', 'Rejected']);
+            [...(member === 'claims' ? ['Pending'] : []), 'Approved', 'Rejected', 'Rejected']);
           const link = claims.getByRole('link', { name: fixture.title });
           assert.equal(await link.getAttribute('href'), details(fixture.umbrella));
           assert.equal(await link.locator('..').locator('..').locator('time').textContent(), fixture.date);
@@ -98,8 +128,11 @@ async function dashboardMatrix(browser) {
         }
         assert.equal(await page.locator('main a[href="/Items/Create"]:visible').count(), width >= 896 ? 1 : 0);
         if (width === 1440 || width === 390) await capture(page, `${member}-${width}-${theme}`);
+        if (!baselineCapture && [1440, 390].includes(width)) await parityGeometry(page, width, hasReports, hasClaims);
         if (member === 'overview' && width === 1440) {
-          await keyboardOpen(page, reports.locator(`a[href="${details(fixture.owned)}"]`), details(fixture.owned));
+          const own = fixture.owned[0];
+          await keyboardOpen(page, reports.locator(`a[href="${details(own)}"]`), details(own));
+          await keyboardOpen(page, page.getByRole('link', { name: 'Edit report' }), `/Items/Edit/${own}`);
           await visit(page, '/Dashboard');
           await keyboardOpen(page, claims.getByRole('link', { name: fixture.title }), details(fixture.umbrella));
         }
@@ -118,12 +151,13 @@ async function dashboardMatrix(browser) {
           const browse = claims.getByRole('link', { name: 'Browse found items' });
           await keyboardOpen(page, browse, await browse.getAttribute('href'));
           assert.equal(new URL(page.url()).searchParams.get('Type'), 'Found');
-          assert.equal(await page.locator('.tb-report-card--browse').count(), 3);
+          assert(await page.locator(`.tb-report-card--browse[data-record-id="${fixture.target}"]`).isVisible());
+          assert.equal(await page.locator(`.tb-report-card--browse[data-record-id="${fixture.owned[1]}"]`).count(), 0);
           await visit(page, '/Items?Type=Found&Query=not-an-existing-report');
           await page.getByRole('heading', { name: 'No reports match these filters' }).waitFor();
           await keyboardOpen(page, page.getByRole('link', { name: 'Clear filters' }), '/Items');
           await page.getByRole('heading', { name: 'Results' }).waitFor();
-          assert.equal(await page.locator('.tb-report-card--browse').count(), 5);
+          assert(await page.locator(`.tb-report-card--browse[data-record-id="${fixture.owned[1]}"]`).isVisible());
           await visit(page, '/Dashboard');
           await page.locator('.tb-member-dock a[href="/Items/Create"]').tap();
           await page.waitForURL(url('/Items/Create'));
@@ -138,6 +172,57 @@ async function dashboardMatrix(browser) {
   }
 }
 
+async function parityGeometry(page, width, hasReports, hasClaims) {
+  const desktop = width === 1440;
+  const heading = page.getByRole('heading', { level: 1 });
+  assert.equal((await heading.boundingBox()).x, desktop ? 120 : 20, 'align intro with the reference content grid');
+  assert.equal(await heading.evaluate(el => getComputedStyle(el).fontSize), desktop ? '48px' : '34px');
+  assert.equal(await page.locator('#my-reports').evaluate(el => getComputedStyle(el).fontSize), '26px');
+  const reports = page.getByRole('region', { name: 'My reports' });
+  const claims = page.getByRole('region', { name: 'My claims' });
+  if (desktop) {
+    const create = await reports.getByRole('link', { name: 'Report an item' }).boundingBox();
+    assert.deepEqual([create.width, create.height], [hasReports ? 171 : 205, 48]);
+  }
+  if (hasReports) {
+    const card = await reports.locator('.tb-report-card').first().boundingBox();
+    assert.equal(card.width, desktop ? 384 : 350);
+    assert.equal(card.height, 408);
+    assert.equal((await reports.locator('.tb-report-card__media').first().boundingBox()).height, 212);
+  } else {
+    assert.equal((await reports.locator('.tb-recovery-content').boundingBox()).height, 148);
+  }
+  if (hasClaims) {
+    const [first, second] = await claims.locator('.tb-claim-row').evaluateAll(rows => rows.map(row => row.getBoundingClientRect().toJSON()));
+    assert.equal(second.top - first.bottom, 12);
+    assert.equal((await claims.locator('.tb-status').first().boundingBox()).height, 28);
+  } else {
+    assert.equal((await claims.locator('.tb-recovery-content').boundingBox()).height, desktop ? 148 : 214);
+    const browse = await claims.getByRole('link', { name: 'Browse found items' }).boundingBox();
+    assert.deepEqual([browse.width, browse.height], [205, 48]);
+  }
+}
+
+async function edgeCases(browser) {
+  const { context, page, errors } = await session(browser, 'edge', 320, 'dark');
+  await visit(page, '/Dashboard/Index');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 320);
+  assert(await page.getByText('No photo provided').isVisible());
+  const failure = page.getByRole('article').filter({ hasText: 'Failed photo' });
+  await failure.scrollIntoViewIfNeeded();
+  await failure.getByText('Photo unavailable').waitFor();
+  await keyboardOpen(page, page.getByRole('link', { name: fixture.longTitle }), details(fixture.longTarget));
+  await visit(page, '/Dashboard');
+  const link = page.locator(`main a[href="${details(fixture.longReport)}"]`);
+  await keyboardOpen(page, link, details(fixture.longReport));
+  assert.equal(await page.getByRole('link', { name: 'Edit report' }).count(), 0);
+  const denied = await context.request.get(url(`/Items/Edit/${fixture.owned[0]}`), { maxRedirects: 0 });
+  assert.equal(denied.status(), 302);
+  assert.equal(new URL(denied.headers().location, base).pathname, '/Account/Denied');
+  assert.deepEqual(errors, []);
+  await context.close();
+}
+
 async function nativeZoom() {
   const bin = path.join(process.cwd(), 'src', 'TraceBack', 'bin');
   await fs.mkdir(bin, { recursive: true });
@@ -149,6 +234,7 @@ async function nativeZoom() {
       viewport: { width: 640, height: 1000 }, deviceScaleFactor: 1, colorScheme: 'dark', reducedMotion: 'reduce'
     });
     try {
+      await dashboardPhotos(context, 320, 'dark');
       await context.addCookies([{ name: fixture.name, value: fixture.members.overview, url: base }]);
       const page = context.pages()[0];
       await page.goto('chrome://settings/');
@@ -170,8 +256,16 @@ async function notice(page, message, prefix, initialTheme) {
   const status = page.getByRole('status').filter({ hasText: message });
   await status.waitFor();
   assert.equal(await status.count(), 1);
+  const dark = await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme === 'dark');
+  assert.equal(dark, initialTheme === 'dark');
   assert(await status.evaluate(el => el.compareDocumentPosition(document.querySelector('#my-reports')) & Node.DOCUMENT_POSITION_FOLLOWING));
   await capture(page, `${prefix}-${page.viewportSize().width}-${initialTheme}`);
+  if (!baselineCapture) {
+    assert(await status.evaluate(el => document.querySelector('main h1').compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING),
+      'dashboard notices belong after the page introduction');
+    const box = await status.locator('..').boundingBox();
+    assert.equal(box.height, page.viewportSize().width === 1440 ? 56 : 64);
+  }
   await page.reload();
   assert.equal(await status.count(), 0, 'success notice is consumed by the visible Dashboard GET');
 }
@@ -184,14 +278,22 @@ async function writeJourneys(browser) {
     assert.equal(response.status(), 302);
     assert.equal(new URL(response.headers().location, base).pathname, '/Account/Login');
   }
-  for (const route of [claimRoute, deleteRoute(fixture.owned)]) {
+  for (const route of [claimRoute, deleteRoute(fixture.owned[0])]) {
     const response = await anonymous.request.post(url(route), raw);
     assert.equal(response.status(), 302);
     assert.equal(new URL(response.headers().location, base).pathname, '/Account/Login');
   }
   await anonymous.close();
 
-  const claim = await session(browser, 'claims', 390, 'dark', false);
+  for (const width of [1440, 390]) {
+    for (const theme of ['light', 'dark']) await writeVariant(browser, width, theme);
+  }
+}
+
+async function writeVariant(browser, width, theme) {
+  const variant = `${width}-${theme}`;
+  const raw = { form: {}, maxRedirects: 0 };
+  const claim = await session(browser, `submit-${variant}`, width, theme, theme !== 'dark');
   await visit(claim.page, claimRoute);
   assert.equal((await claim.context.request.post(url(claimRoute), raw)).status(), 400);
   await claim.page.getByLabel(/Ownership details/).fill('There is a crescent-shaped scratch near the lid.');
@@ -199,25 +301,26 @@ async function writeJourneys(browser) {
   const submitted = claim.page.locator('.tb-claim-row').filter({ hasText: 'Blue water bottle' });
   assert.equal(await submitted.getByRole('link').getAttribute('href'), details(fixture.target));
   assert.equal((await submitted.locator('.tb-status').textContent()).trim(), 'Pending');
-  await notice(claim.page, 'Your claim was submitted.', 'claim-submitted', 'dark');
+  await notice(claim.page, 'Your claim was submitted.', 'claim-submitted', theme);
   assert.deepEqual(claim.errors, []);
   await claim.context.close();
 
-  const owner = await session(browser, 'overview', 1440, 'light');
-  await visit(owner.page, details(fixture.owned));
+  const [deleted, ...remaining] = fixture.deletes[variant];
+  const owner = await session(browser, `delete-${variant}`, width, theme);
+  await visit(owner.page, details(deleted));
   const dialog = owner.page.getByRole('dialog', { name: 'Delete this report?' });
   await owner.page.getByRole('button', { name: 'Delete report' }).click();
   const token = await dialog.locator('input[name="__RequestVerificationToken"]').inputValue();
   assert(token);
-  assert.equal((await owner.context.request.post(url(deleteRoute(fixture.owned)), raw)).status(), 400);
+  assert.equal((await owner.context.request.post(url(deleteRoute(deleted)), raw)).status(), 400);
   const denied = await owner.context.request.post(url(deleteRoute(fixture.target)), { form: { __RequestVerificationToken: token }, maxRedirects: 0 });
   assert.equal(denied.status(), 302);
   assert.equal(new URL(denied.headers().location, base).pathname, '/Account/Denied');
   await Promise.all([owner.page.waitForURL(url('/Dashboard')), dialog.getByRole('button', { name: 'Delete report' }).click()]);
-  await owner.page.getByRole('heading', { name: 'No reports yet' }).waitFor();
-  assert.equal(await owner.page.locator('.tb-claim-row').count(), 4);
-  assert.equal(await owner.page.locator(`main a[href="${details(fixture.owned)}"]`).count(), 0);
-  await notice(owner.page, 'The report and its claims were deleted.', 'report-deleted', 'light');
+  await owner.page.getByRole('heading', { name: 'No claims yet' }).waitFor();
+  assert.deepEqual(await owner.page.locator('.tb-report-card a').evaluateAll(links => links.map(a => a.getAttribute('href'))), remaining.map(details));
+  await notice(owner.page, 'The report and its claims were deleted.', 'report-deleted', theme);
+  assert.equal((await owner.context.request.get(url(details(deleted)), { maxRedirects: 0 })).status(), 404);
   assert.deepEqual(owner.errors, []);
   await owner.context.close();
 }
@@ -228,7 +331,8 @@ async function writeJourneys(browser) {
     await dashboardMatrix(browser);
     await nativeZoom();
     await writeJourneys(browser);
-    console.log('Dashboard: four real member states at 1440/390 light/dark; 896/895/320 layouts and native 200% zoom; keyboard/touch, filtered Browse, and one-time claim/delete notices passed.');
+    await edgeCases(browser);
+    console.log('Dashboard: six real states at 1440/390 light/dark; 896/895/320 and native 200% zoom; keyboard/touch, filtered Browse, owner Edit, unavailable targets and photos, and one-time claim/delete notices passed.');
   } finally {
     await browser.close();
   }

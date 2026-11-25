@@ -84,6 +84,7 @@
     }
 
     <main id="main-content" class="container main-content" tabindex="-1">
+        @await RenderSectionAsync("PageIntro", required: false)
         <partial name="_TempDataNotices" />
         @RenderBody()
     </main>

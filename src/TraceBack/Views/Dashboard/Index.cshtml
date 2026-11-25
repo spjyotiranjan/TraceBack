@@ -7,10 +7,12 @@
         Href: Url.Action("Index", "Items", new { Type = "Found" }));
 }
 
-<div class="page-heading tb-workspace-heading">
-    <h1>My dashboard</h1>
-    <p>Review your reports and follow your claims.</p>
-</div>
+@section PageIntro {
+    <div class="page-heading tb-dashboard-heading">
+        <h1>My dashboard</h1>
+        <p>Review your reports and follow your claims.</p>
+    </div>
+}
 
 <section class="tb-workspace-section tb-dashboard-section" aria-labelledby="my-reports">
     <div class="section-heading tb-workspace-section__heading">
@@ -27,7 +29,7 @@
     {
         <div class="tb-dashboard__reports-empty">
             <partial name="_RecoveryContent" model='@(new RecoveryContent("No reports yet", "You have not posted a report yet.",
-                RecoveryArt.Reports, Primary: reportAction, Nested: true))' />
+                RecoveryArt.Reports, Primary: reportAction with { Tone = ButtonTone.Secondary }, Nested: true))' />
         </div>
     }
     else
