@@ -50,6 +50,9 @@ public sealed partial class ReportAuthorizationTests
     [BrowserFact]
     public Task Recovery_pages_in_browser() => RunShellBrowserChecks("access-denied-check.cjs", "item-not-found-check.cjs", "privacy-check.cjs");
 
+    [BrowserFact]
+    public Task Recovery_and_privacy_match_reference_geometry_in_browser() => RunShellBrowserChecks("recovery-parity.cjs");
+
     [Fact]
     public async Task Unknown_report_and_global_404_are_distinct_for_guests_and_members()
     {

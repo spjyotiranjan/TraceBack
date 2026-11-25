@@ -1,30 +1,127 @@
-/* Shared page sizing; inline empty states keep their existing treatment. */
+/* Page-only geometry. Inline recovery/empty states keep their own treatment. */
 .main-content:has(> .tb-recovery-content--page) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: start;
+  padding-block-start: 4.375rem;
 }
 
 .main-content > .tb-recovery-content--page {
+  --tb-recovery-border: var(--tb-light, #dce1fa) var(--tb-dark, #3b4468);
+  --tb-recovery-icon-surface: var(--tb-light, #e8ebff) var(--tb-dark, #2b3465);
+  --tb-recovery-action-width: 10.375rem;
+  --tb-recovery-height: 21.75rem;
+  --tb-recovery-help-height: 2.5rem;
+  --tb-recovery-help-gap: .6875rem;
+  --tb-recovery-action-gap: 1.875rem;
   inline-size: min(100%, 36.875rem);
-  min-block-size: 20.5rem;
+  min-block-size: var(--tb-recovery-height);
   grid-template-columns: minmax(0, 1fr);
-  align-content: center;
+  align-content: start;
   margin-block: 0;
-  padding: clamp(1.25rem, 4vw, 2.5rem);
-  gap: 1rem;
-  box-shadow: var(--tb-shadow);
+  padding: 1.8125rem clamp(1rem, 6.5vw, 1.5625rem) .875rem;
+  gap: 0;
+  border-color: var(--tb-recovery-border);
+  border-radius: 1.25rem;
 }
 
-[data-route-art="error"] ~ main > .tb-recovery-content--page { min-block-size: 22rem; }
+.tb-recovery-content--page .tb-recovery-content__art {
+  inline-size: 5rem;
+  block-size: 5rem;
+  border-radius: 1.5625rem;
+  background: var(--tb-recovery-icon-surface);
+  color: var(--tb-ink);
+}
 
-.tb-recovery-content--page .tb-recovery-content__reference code { overflow-wrap: anywhere; }
+.tb-recovery-content--page .tb-recovery-content__art--service { background: var(--tb-danger-surface); }
+.tb-recovery-content--page .tb-recovery-content__art .tb-icon { inline-size: 1.5rem; block-size: 1.5rem; }
+
+.tb-recovery-content--page h1 {
+  margin-block-start: 1.3125rem;
+  font: 700 1.8125rem/2.4375rem var(--tb-font-family);
+  letter-spacing: normal;
+}
+
+.tb-recovery-content--page > p:not(.tb-recovery-content__reference) {
+  inline-size: 100%;
+  max-inline-size: none;
+  min-block-size: var(--tb-recovery-help-height);
+  margin-block-start: var(--tb-recovery-help-gap);
+  font: 400 .9375rem/1.25rem var(--tb-font-family);
+}
+
+.tb-recovery-content--page .tb-recovery-content__actions {
+  gap: .75rem 1.125rem;
+  margin-block-start: var(--tb-recovery-action-gap);
+}
+
+.tb-recovery-content--page .tb-button {
+  inline-size: var(--tb-recovery-action-width);
+  max-inline-size: 100%;
+  min-block-size: 3rem;
+  border-radius: .625rem;
+  font: 700 .9375rem/1.25rem var(--tb-font-family);
+}
+
+.tb-recovery-content--page .tb-button--secondary {
+  --tb-button-ink: var(--tb-ink);
+  --tb-button-border: var(--tb-recovery-border);
+}
+
+.tb-recovery-content--page .tb-recovery-content__reference {
+  max-inline-size: 100%;
+  margin-block-start: .6875rem;
+  font: 400 .8125rem/1.125rem var(--tb-font-family);
+}
+
+.tb-recovery-content--page .tb-recovery-content__reference code {
+  color: inherit;
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+
+/* The real reference (if supplied) and multi-line copy can grow the panel. */
+[data-route-art="error"] ~ main > .tb-recovery-content--page {
+  --tb-recovery-action-width: 8.5rem;
+  --tb-recovery-height: 24.125rem;
+  --tb-recovery-help-height: 3.75rem;
+  --tb-recovery-help-gap: .5rem;
+  --tb-recovery-action-gap: 1.8125rem;
+}
+
+[data-route-art="error"] ~ main > .tb-recovery-content--page:has(.tb-recovery-content__reference) {
+  --tb-recovery-height: 27.25rem;
+}
 
 @media (width >= 56rem) {
-  .main-content:has(> .tb-recovery-content--page) { align-content: center; }
-}
+  .main-content:has(> .tb-recovery-content--page) { padding-block-start: 8.5rem; }
 
-@media (width < 36rem) {
-  .main-content > .tb-recovery-content--page { min-block-size: 21.75rem; }
-  [data-route-art="error"] ~ main > .tb-recovery-content--page { min-block-size: 24.125rem; }
+  .main-content > .tb-recovery-content--page {
+    --tb-recovery-height: 20.5rem;
+    --tb-recovery-help-height: 2.875rem;
+    --tb-recovery-help-gap: .625rem;
+    --tb-recovery-action-gap: 1.1875rem;
+    padding-block-start: 2.0625rem;
+  }
+
+  .tb-recovery-content--page h1 {
+    margin-block-start: 1.375rem;
+    font-size: 2.5rem;
+    line-height: 3.375rem;
+  }
+
+  .tb-recovery-content--page > p:not(.tb-recovery-content__reference) {
+    font-size: 1.0625rem;
+    line-height: 1.4375rem;
+  }
+
+  .tb-recovery-content--page .tb-recovery-content__reference { margin-block-start: 1rem; }
+
+  [data-route-art="error"] ~ main > .tb-recovery-content--page {
+    --tb-recovery-height: 22rem;
+    --tb-recovery-help-height: 2.875rem;
+    --tb-recovery-help-gap: .625rem;
+    --tb-recovery-action-gap: 1.1875rem;
+  }
+
+  [data-route-art="error"] ~ main > .tb-recovery-content--page:has(.tb-recovery-content__reference) {
+    --tb-recovery-height: 24.125rem;
+  }
 }
