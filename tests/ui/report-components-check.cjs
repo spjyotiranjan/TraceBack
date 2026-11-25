@@ -67,8 +67,8 @@ async function cardMatrix(page, route, variant, width, colorScheme, imageRespons
     }
     const after = await media.boundingBox();
     assert.deepEqual([after.width, after.height], [before.width, before.height]);
-    if (variant === 'browse') assert.equal(after.height, 212, 'Browse media matches the 212px frame');
-    else assert(Math.abs(after.width / after.height - 4 / 3) < 0.002, '4:3 media');
+    if (variant === 'home') assert(Math.abs(after.width / after.height - 4 / 3) < 0.002, 'Home uses 4:3 media');
+    else assert.equal(after.height, 212, `${variant} media matches the 212px frame`);
     sizes.push([after.width, after.height]);
 
     if (variant === 'browse') {

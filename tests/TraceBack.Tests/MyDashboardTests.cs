@@ -30,25 +30,43 @@ public sealed partial class ReportAuthorizationTests
         try
         {
             var store = factory.Services.GetRequiredService<MongoStore>();
-            var owned = new Item { PostedByUserId = "overview", Type = "Lost", Title = "Blue backpack " + new string('W', 105), Location = "Library entrance" };
-            var reportsOnly = new Item { PostedByUserId = "reports", Type = "Lost", Title = "Green notebook" };
+            var day = new DateTime(2026, 11, 16, 12, 0, 0, DateTimeKind.Utc);
+            string[] variants = ["1440-light", "390-light", "1440-dark", "390-dark"];
+            Item[] Reports(string member) =>
+            [
+                new() { PostedByUserId = member, Type = "Found", Title = "Blue water bottle", Location = "Library entrance",
+                    Category = "Accessories", DateReported = day.AddDays(2), CreatedAt = day.AddDays(2), ImageUrl = "/__dashboard-photo/bottle" },
+                new() { PostedByUserId = member, Type = "Lost", Title = "Black headphones", Location = "Engineering Building, Room 204",
+                    Category = "Electronics", DateReported = day.AddDays(1), CreatedAt = day.AddDays(1), ImageUrl = "/__dashboard-photo/headphones" },
+                new() { PostedByUserId = member, Type = "Found", Title = "Silver key ring", Location = "Student Centre reception",
+                    Category = "Keys", DateReported = day, CreatedAt = day, ImageUrl = "/__dashboard-photo/keys" }
+            ];
+            var owned = Reports("overview");
+            var reportsOnly = Reports("reports");
+            var deleteOwners = variants.ToDictionary(v => v, v => Reports($"delete-{v}"));
             var target = new Item { PostedByUserId = "finder", Type = "Found", Title = "Blue water bottle" };
-            var umbrella = new Item { PostedByUserId = "finder", Type = "Found", Title = "Black umbrella with a small stitched repair on the handle and a red fabric sleeve " + new string('W', 40) };
+            const string title = "Black umbrella with a small stitched repair on the handle and a red fabric sleeve";
+            var umbrella = new Item { PostedByUserId = "finder", Type = "Found", Title = title };
             var keyRing = new Item { PostedByUserId = "finder", Type = "Found", Title = "Silver key ring" };
-            await store.Items.InsertManyAsync([owned, reportsOnly, target, umbrella, keyRing]);
+            var campusId = new Item { PostedByUserId = "finder", Type = "Found", Title = "Campus ID holder" };
+            var longClaim = new Item { PostedByUserId = "finder", Type = "Found", Title = title + " " + new string('W', 40) };
+            var longReport = new Item { PostedByUserId = "edge", Status = "Resolved", Title = "Blue backpack " + new string('W', 105), Location = new string('W', 110) };
+            var failedPhoto = new Item { PostedByUserId = "edge", Status = "Resolved", Title = "Failed photo", ImageUrl = "/__dashboard-photo/failure" };
+            await store.Items.InsertManyAsync([.. owned, .. reportsOnly, .. deleteOwners.Values.SelectMany(x => x), target, umbrella, keyRing, campusId, longClaim, longReport, failedPhoto]);
 
             const string privateMessage = "Private ownership proof, not part of the dashboard";
-            var day = new DateTime(2026, 11, 16, 12, 0, 0, DateTimeKind.Utc);
             var missing = ObjectId.GenerateNewId().ToString();
             var claims = new List<MemberClaim>();
-            foreach (var member in new[] { "overview", "claims" })
+            foreach (var member in new[] { "overview", "claims" }.Concat(variants.Select(v => $"submit-{v}")))
             {
                 claims.Add(new() { UserId = member, ItemId = umbrella.Id, Status = "Approved", Message = privateMessage, CreatedAt = day });
-                claims.Add(new() { UserId = member, ItemId = keyRing.Id, Status = "Rejected", CreatedAt = day.AddDays(-3) });
+                claims.Add(new() { UserId = member, ItemId = member == "claims" ? keyRing.Id : campusId.Id, Status = "Rejected", CreatedAt = day.AddDays(-3) });
                 claims.Add(new() { UserId = member, ItemId = missing, Status = "Rejected", CreatedAt = day.AddDays(-8) });
             }
-            claims.Add(new() { UserId = "overview", ItemId = target.Id, Status = "Pending", CreatedAt = day.AddDays(4) });
-            claims.Add(new() { UserId = "finder", ItemId = owned.Id, Status = "Rejected" });
+            claims.Add(new() { UserId = "claims", ItemId = target.Id, Status = "Pending", CreatedAt = day.AddDays(4) });
+            claims.Add(new() { UserId = "edge", ItemId = longClaim.Id, Status = "Approved" });
+            foreach (var reports in deleteOwners.Values)
+                claims.Add(new() { UserId = "finder", ItemId = reports[0].Id, Status = "Rejected" });
             await store.Claims.InsertManyAsync(claims);
 
             var options = factory.Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
@@ -79,9 +97,13 @@ public sealed partial class ReportAuthorizationTests
             start.Environment["TRACEBACK_DASHBOARD_FIXTURE"] = JsonSerializer.Serialize(new
             {
                 name = options.Cookie.Name,
-                members = new[] { "overview", "reports", "claims", "empty" }.ToDictionary(member => member, Ticket),
-                owned = owned.Id,
-                report = reportsOnly.Id,
+                members = new[] { "overview", "reports", "claims", "empty", "edge" }.Concat(variants.SelectMany(v => new[] { $"submit-{v}", $"delete-{v}" })).ToDictionary(member => member, Ticket),
+                owned = owned.Select(x => x.Id),
+                reports = reportsOnly.Select(x => x.Id),
+                deletes = deleteOwners.ToDictionary(pair => pair.Key, pair => pair.Value.Select(x => x.Id)),
+                longReport = longReport.Id,
+                longTarget = longClaim.Id,
+                longTitle = longClaim.Title,
                 target = target.Id,
                 umbrella = umbrella.Id,
                 title = umbrella.Title,
@@ -104,9 +126,14 @@ public sealed partial class ReportAuthorizationTests
             }
             Assert.True(browser.ExitCode == 0, $"{await stdout}\n{await stderr}");
             Console.WriteLine(await stdout);
-            Assert.Equal("Pending", (await store.Claims.Find(x => x.UserId == "claims" && x.ItemId == target.Id).SingleAsync()).Status);
-            Assert.False(await store.Items.Find(x => x.Id == owned.Id).AnyAsync());
-            Assert.False(await store.Claims.Find(x => x.ItemId == owned.Id).AnyAsync());
+            foreach (var variant in variants)
+            {
+                var deleted = deleteOwners[variant][0].Id;
+                var submitter = $"submit-{variant}";
+                Assert.Equal("Pending", (await store.Claims.Find(x => x.UserId == submitter && x.ItemId == target.Id).SingleAsync()).Status);
+                Assert.False(await store.Items.Find(x => x.Id == deleted).AnyAsync());
+                Assert.False(await store.Claims.Find(x => x.ItemId == deleted).AnyAsync());
+            }
             Assert.True(await store.Items.Find(x => x.Id == target.Id).AnyAsync());
         }
         finally
